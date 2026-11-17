@@ -12,10 +12,13 @@ public sealed class AppSettings
 {
     private const string FileName = "settings.json";
 
-    /// <summary>"tray": no taskbar button, tray icon, close = hide. "taskbar": a normal window.</summary>
-    public string WindowMode { get; set; } = "tray";
+    /// <summary>
+    /// "taskbar" (default): a normal window. "tray": no taskbar button, tray icon, close = hide.
+    /// Any other value counts as "taskbar", so a new user always sees the app in the taskbar.
+    /// </summary>
+    public string WindowMode { get; set; } = "taskbar";
 
-    public bool IsTrayMode => !string.Equals(WindowMode, "taskbar", StringComparison.OrdinalIgnoreCase);
+    public bool IsTrayMode => string.Equals(WindowMode, "tray", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Start with a maximized window (default).</summary>
     public bool StartMaximized { get; set; } = true;
@@ -133,8 +136,8 @@ public sealed class AppSettings
     private static string FileText(AppSettings s) => $$"""
         {
           // DirectoryFable settings. Change them on the settings page (gear button) or here.
+          // "taskbar" (default): a normal window with a taskbar button; closing the window exits.
           // "tray": no taskbar button, only a tray icon; closing the window hides it.
-          // "taskbar": a normal window with a taskbar button; closing the window exits.
           "windowMode": {{Json(s.WindowMode)}},
           // true: the window starts maximized.
           "startMaximized": {{Json(s.StartMaximized)}},

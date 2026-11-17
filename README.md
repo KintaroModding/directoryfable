@@ -40,8 +40,9 @@ release follows when the default settings are ready for everyone.
   example image size, artist, page count). `Alt+Enter` or the info button on a
   row.
 - **Status bar**: selected and total folders, files and size; free space.
-- **Settings page** behind the gear button. Tray mode (the default) or a normal
-  window with a taskbar button. Only one copy runs.
+- **Settings page** behind the gear button. A normal window with a taskbar
+  button (the default), or tray mode: only a tray icon, and closing the window
+  hides it. Only one copy runs.
 - **Session**: window, tabs, columns and the open Notepad# files come back at
   the next start.
 

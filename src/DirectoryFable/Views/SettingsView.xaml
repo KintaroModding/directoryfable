@@ -65,11 +65,11 @@
                     <StackPanel Margin="0,0,24,0">
                         <TextBlock Style="{StaticResource SettingName}" Text="Window mode" />
                         <TextBlock Style="{StaticResource SettingHelp}"
-                                   Text="Tray: no taskbar button, only a tray icon; closing the window hides it. Taskbar: a normal window; closing it exits the app. Applies after a restart." />
+                                   Text="Taskbar (default): a normal window; closing it exits the app. Tray: no taskbar button, only a tray icon; closing the window hides it. Applies after a restart." />
                     </StackPanel>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <RadioButton x:Name="TrayMode" Content="Tray icon" GroupName="WindowMode" Checked="WindowMode_Checked" />
-                        <RadioButton x:Name="TaskbarMode" Content="Taskbar button" GroupName="WindowMode" Margin="0,6,0,0"
+                        <RadioButton x:Name="TaskbarMode" Content="Taskbar button" GroupName="WindowMode" Checked="WindowMode_Checked" />
+                        <RadioButton x:Name="TrayMode" Content="Tray icon" GroupName="WindowMode" Margin="0,6,0,0"
                                      Checked="WindowMode_Checked" />
                     </StackPanel>
                 </Grid>
