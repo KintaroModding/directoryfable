@@ -45,7 +45,7 @@
             </Grid.ColumnDefinitions>
             <Image Source="Assets/app.ico" Width="16" Height="16" Margin="10,0,8,0" VerticalAlignment="Center"
                    RenderOptions.BitmapScalingMode="HighQuality" />
-            <!-- View tabs: [active folder] = explorer, [Notepad#] = text editor. -->
+            <!-- View tabs: [active folder] = explorer, [Notepad#] = text editor, [AstraViewer] = images. -->
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                 <ToggleButton x:Name="ExplorerTab" Style="{StaticResource TitleTabButton}" IsChecked="True"
                               ToolTip="Explorer" Click="ExplorerTab_Click">
@@ -54,6 +54,10 @@
                 <ToggleButton x:Name="NotepadTab" Style="{StaticResource TitleTabButton}" Margin="4,0,0,0"
                               ToolTip="Notepad# (text editor)" Click="NotepadTab_Click">
                     <TextBlock x:Name="NotepadTabText" Text="Notepad#" TextTrimming="CharacterEllipsis" MaxWidth="420" />
+                </ToggleButton>
+                <ToggleButton x:Name="AstraViewerTab" Style="{StaticResource TitleTabButton}" Margin="4,0,0,0"
+                              ToolTip="AstraViewer (images)" Click="AstraViewerTab_Click">
+                    <TextBlock x:Name="AstraViewerTabText" Text="AstraViewer" TextTrimming="CharacterEllipsis" MaxWidth="420" />
                 </ToggleButton>
             </StackPanel>
             <StackPanel Grid.Column="2" Orientation="Horizontal">
@@ -95,6 +99,10 @@
         <!-- Notepad#: covers everything below the title bar while shown (title bar tabs). -->
         <views:NotepadView x:Name="NotepadPage" Grid.Row="1" Grid.RowSpan="3" Grid.ColumnSpan="5"
                            Visibility="Collapsed" />
+
+        <!-- AstraViewer: covers everything below the title bar while shown (title bar tabs). -->
+        <views:AstraViewerView x:Name="AstraViewerPage" Grid.Row="1" Grid.RowSpan="3" Grid.ColumnSpan="5"
+                               Visibility="Collapsed" />
     </Grid>
     </Border>
 </Window>

@@ -224,9 +224,7 @@ public partial class NotepadView : UserControl
         ApplyWordWrap(wrap);
         try
         {
-            var settings = AppSettings.Load();
-            settings.EditorWordWrap = wrap;
-            settings.Save();
+            AppSettings.Update(s => s.EditorWordWrap = wrap);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

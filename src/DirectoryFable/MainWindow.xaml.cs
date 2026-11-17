@@ -33,6 +33,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         InitTitleBar();
         InitNotepad();
+        InitAstraViewer();
 
         TrayMode = trayMode;
         ShowInTaskbar = !trayMode;
@@ -99,8 +100,11 @@ public partial class MainWindow : Window
             }
 
             await NotepadPage.RestoreAsync(session?.Notepad);
+            await AstraViewerPage.RestoreAsync(session?.Viewer);
             if (session?.NotepadShown == true && NotepadPage.Documents.Any())
-                ShowNotepad(true);
+                ShowView(MainView.Notepad);
+            else if (session?.ViewerShown == true && AstraViewerPage.CurrentPath is not null)
+                ShowView(MainView.Viewer);
 
             // Restoring tabs queues "focus this list" steps; activate the saved pane after all of them.
             bool rightActive = leftFolder is null && rightFolder is null && session?.RightPaneActive == true;
@@ -109,6 +113,8 @@ public partial class MainWindow : Window
                 SetActive(rightActive ? _right : _left);
                 if (NotepadShown)
                     NotepadPage.FocusEditor();
+                else if (ViewerShown)
+                    AstraViewerPage.FocusView();
                 else
                     ActivePaneView.FocusList();
             }, System.Windows.Threading.DispatcherPriority.ContextIdle);
@@ -166,6 +172,8 @@ public partial class MainWindow : Window
             TreeFollowsPane = _tree.FollowsPane,
             NotepadShown = NotepadShown,
             Notepad = NotepadPage.CaptureState(),
+            ViewerShown = ViewerShown,
+            Viewer = AstraViewerPage.CaptureState(),
             Left = _left.CaptureState(),
             Right = _right.CaptureState(),
         }.Save();
@@ -268,8 +276,8 @@ public partial class MainWindow : Window
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        // Notepad# has its own keys (Tab, Ctrl+Z, ... belong to the editor).
-        if (NotepadShown)
+        // Notepad# and AstraViewer have their own keys (Tab, Ctrl+Z, arrows, ...).
+        if (NotepadShown || ViewerShown)
             return;
 
         // The settings page has its own keys (Tab between controls); Esc closes it.

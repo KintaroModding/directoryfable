@@ -1,6 +1,7 @@
 # DirectoryFable
 
-A two-pane file manager for Windows with a built-in text editor, Notepad#.
+A two-pane file manager for Windows with a built-in text editor, Notepad#, and
+an image viewer, AstraViewer.
 Dark, dense and made for the keyboard. Written in C# with WPF on .NET 10.
 
 ![DirectoryFable: two panes with tabs, folder tree and favorites bar](docs/screenshot-explorer.png)
@@ -75,6 +76,33 @@ release follows when the default settings are ready for everyone.
   types you choose. The double-click works only inside DirectoryFable; the file
   associations of Windows do not change.
 
+## AstraViewer
+
+![AstraViewer: history, image, folder thumbnails and properties](docs/screenshot-astraviewer.png)
+
+- A third view in the title bar: `[folder] [Notepad#] [AstraViewer]`.
+- **Opens only from DirectoryFable**: a double-click (or Enter) on the image
+  types you choose, "Open in AstraViewer" in the right-click menu, or images
+  dropped onto the `[AstraViewer]` tab. The file associations of Windows do
+  not change.
+- **History** on the left: the images you opened, the newest at the top.
+  Click one to show it again; the order stays. A right-click on the image or
+  on a thumbnail adds that image ("Add to history").
+- **The image** fits into the window (or starts at 100 %). Mouse wheel = zoom
+  at the mouse, drag = move, double-click = fit / 100 %, `R` = rotate the view
+  (the file is not changed). Transparent parts show a checkerboard.
+- **Thumbnails** of the other images in the folder, with "n / N", like VS
+  Code's image preview. The arrows next to "n / N", `Left` / `Right` or the
+  mouse side buttons go to the previous / next image.
+- **Properties** below: size in pixels, format, color depth, DPI, file size,
+  dates, camera (when the photo has it).
+- Settings: start zoom, background (dark, black, light), checkerboard,
+  thumbnail size (small, medium, large), history size, and the image types. JPEG / TIFF orientation (EXIF) is applied; icons
+  show their largest size; very large images are decoded smaller.
+- Formats: those that Windows can read (PNG, JPEG, BMP, GIF, TIFF, ICO, WebP,
+  JPEG XR; HEIC and AVIF with the matching Windows codecs). Animated GIFs show
+  their first frame.
+
 ## Requirements
 
 - Windows 11, x64. Windows 10 is not tested.
@@ -92,7 +120,7 @@ exe and writes nothing to AppData or the registry:
 |---|---|
 | `settings.json` | Settings, with a comment for each key. The settings page writes it. |
 | `favorites.json` | The favorites bar. |
-| `session.json` | Window, tabs, columns and Notepad# files of the last run. |
+| `session.json` | Window, tabs, columns, Notepad# files and the AstraViewer history of the last run. |
 | `notepad-cache\` | Notepad# texts kept over a restart: unsaved changes, new files, files deleted outside. |
 
 ## Command line
@@ -129,6 +157,9 @@ DirectoryFable.exe [leftFolder] [rightFolder] [--multi] [--taskbar|--tray] [--da
 | Notepad#: `Ctrl+F`, then `F3` / `Shift+F3` | Search, next / previous match |
 | Notepad#: `Alt+Z` | Word wrap on / off |
 | Notepad#: `Ctrl+Tab` | Next file |
+| AstraViewer: `Left` / `Right`, `Home` / `End` | Previous / next, first / last image |
+| AstraViewer: `F` / `1` / `+` / `-` | Fit / 100 % / zoom in / zoom out |
+| AstraViewer: `R` / `Shift+R`, `Ctrl+C`, `F5` | Rotate the view, copy the image, read the folder again |
 
 ## Build
 
@@ -149,6 +180,7 @@ src/DirectoryFable/
   Infrastructure/  Settings, session, folder watchers, sorting, formatting.
   Shell/           Windows shell: icons, context menu, file operations, undo, archives, 7-Zip.
   Editor/          Notepad#: documents, groups, syntax highlighting, minimap.
+  Viewer/          AstraViewer: image loading, thumbnails, image types.
   Themes/          Colors and control styles.
   Assets/          The app icon.
 ```

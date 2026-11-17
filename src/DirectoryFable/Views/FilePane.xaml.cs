@@ -469,6 +469,11 @@ public partial class FilePane : UserControl
             if (await ExtractSelectionAsync([item]) is [string extracted])
                 ShellOpen(extracted);
         }
+        else if (Viewer.ImageFileTypes.OpensInViewer(item.FullPath) && OpenInViewer is not null)
+        {
+            // Image types open in AstraViewer (settings; only inside DirectoryFable, Windows' defaults stay).
+            OpenInViewer(item.FullPath);
+        }
         else if (Editor.EditorFileTypes.OpensInNotepad(item.FullPath) && OpenInNotepad is not null)
         {
             // Text types open in Notepad# (settings; only inside DirectoryFable, Windows' defaults stay).

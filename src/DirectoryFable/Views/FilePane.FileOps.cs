@@ -58,6 +58,9 @@ public partial class FilePane
 
     private List<FileItem> SelectedFiles() => [.. FileList.SelectedItems.Cast<FileItem>()];
 
+    /// <summary>Set by the main window: opens an image in AstraViewer (and puts it at the top of its history).</summary>
+    public static Action<string>? OpenInViewer { get; set; }
+
     /// <summary>Set by the main window: opens files in Notepad#.</summary>
     public static Action<IReadOnlyList<string>>? OpenInNotepad { get; set; }
 

@@ -83,8 +83,8 @@ public partial class NotepadSettingsView : UserControl
     {
         if (_filling || FontBox.SelectedItem is not FontFamily family)
             return;
-        _settings.EditorFontFamily = family.Source;
-        SaveAndApply();
+        string font = family.Source;
+        SaveAndApply(s => s.EditorFontFamily = font);
     }
 
     private void SizeBox_Changed(object sender, SelectionChangedEventArgs e)
@@ -116,16 +116,15 @@ public partial class NotepadSettingsView : UserControl
         }
         if (Math.Abs(size - _settings.EditorFontSize) < 0.01)
             return;
-        _settings.EditorFontSize = size;
-        SaveAndApply();
+        SaveAndApply(s => s.EditorFontSize = size);
     }
 
     private void WrapBox_Changed(object sender, RoutedEventArgs e)
     {
         if (_filling)
             return;
-        _settings.EditorWordWrap = WrapBox.IsChecked == true;
-        SaveAndApply();
+        bool wrap = WrapBox.IsChecked == true;
+        SaveAndApply(s => s.EditorWordWrap = wrap);
     }
 
     // ---------- File list ----------
@@ -134,8 +133,8 @@ public partial class NotepadSettingsView : UserControl
     {
         if (_filling)
             return;
-        _settings.NotepadAutoGroupBy = GroupByFolder.IsChecked == true ? "folder" : "type";
-        SaveAndApply();
+        string method = GroupByFolder.IsChecked == true ? "folder" : "type";
+        SaveAndApply(s => s.NotepadAutoGroupBy = method);
     }
 
     // ---------- File types ----------
@@ -144,9 +143,9 @@ public partial class NotepadSettingsView : UserControl
     {
         if (_filling)
             return;
-        _settings.NotepadOpensFileTypes = OpensTypes.IsChecked == true;
-        TypesBox.IsEnabled = _settings.NotepadOpensFileTypes;
-        SaveAndApply();
+        bool opens = OpensTypes.IsChecked == true;
+        TypesBox.IsEnabled = opens;
+        SaveAndApply(s => s.NotepadOpensFileTypes = opens);
     }
 
     private void TypesBox_LostFocus(object sender, KeyboardFocusChangedEventArgs e) => SaveTypes(TypesBox.Text);
@@ -161,16 +160,17 @@ public partial class NotepadSettingsView : UserControl
         TypesBox.Text = normalized;
         if (normalized == _settings.NotepadFileTypes)
             return;
-        _settings.NotepadFileTypes = normalized;
-        SaveAndApply();
+        SaveAndApply(s => s.NotepadFileTypes = normalized);
     }
 
-    private void SaveAndApply()
+    /// <summary>Saves one change (on top of the newest settings.json, see AppSettings.Update) and applies it.</summary>
+    private void SaveAndApply(Action<AppSettings> change)
     {
+        change(_settings);
         UpdatePreview();
         try
         {
-            _settings.Save();
+            _settings = AppSettings.Update(change);
             SaveStatus.Text = $"Saved at {DateTime.Now:HH:mm:ss}";
             SettingsChanged?.Invoke(_settings);
         }

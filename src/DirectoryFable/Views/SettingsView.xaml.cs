@@ -56,13 +56,15 @@ public partial class SettingsView : UserControl
             System.Windows.Threading.DispatcherPriority.Input);
     }
 
-    private void Save()
+    /// <summary>Saves one change (on top of the newest settings.json, see AppSettings.Update).</summary>
+    private void Save(Action<AppSettings> change)
     {
         if (_filling)
             return;
+        change(_settings);
         try
         {
-            _settings.Save();
+            _settings = AppSettings.Update(change);
             SaveStatus.Text = $"Saved at {DateTime.Now:HH:mm:ss}";
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -77,17 +79,20 @@ public partial class SettingsView : UserControl
     {
         if (_filling)
             return; // Open() is still filling the controls: their values are not complete yet.
-        _settings.WindowMode = TaskbarMode.IsChecked == true ? "taskbar" : "tray";
-        Save();
+        string mode = TaskbarMode.IsChecked == true ? "taskbar" : "tray";
+        Save(s => s.WindowMode = mode);
     }
 
     private void Flag_Changed(object sender, RoutedEventArgs e)
     {
         if (_filling)
             return;
-        _settings.StartMaximized = StartMaximized.IsChecked == true;
-        _settings.RestoreSession = RestoreSession.IsChecked == true;
-        Save();
+        bool maximized = StartMaximized.IsChecked == true, restore = RestoreSession.IsChecked == true;
+        Save(s =>
+        {
+            s.StartMaximized = maximized;
+            s.RestoreSession = restore;
+        });
     }
 
     // ---------- Start folders ----------
@@ -111,20 +116,24 @@ public partial class SettingsView : UserControl
         if (left == _settings.LeftPath && right == _settings.RightPath && sevenZip == _settings.SevenZipFolder)
             return;
         // An empty box keeps the previous folder (an empty start folder makes no sense).
-        if (left.Length > 0)
-            _settings.LeftPath = left;
-        if (right.Length > 0)
-            _settings.RightPath = right;
+        if (left.Length == 0)
+            left = _settings.LeftPath;
+        if (right.Length == 0)
+            right = _settings.RightPath;
+        bool sevenZipChanged = sevenZip != _settings.SevenZipFolder;
+        Save(s =>
+        {
+            s.LeftPath = left;
+            s.RightPath = right;
+            s.SevenZipFolder = sevenZip; // Empty is allowed (= automatic).
+        });
         LeftPath.Text = _settings.LeftPath;
         RightPath.Text = _settings.RightPath;
-        // 7-Zip: empty is allowed (= automatic); applies at once.
-        if (sevenZip != _settings.SevenZipFolder)
+        if (sevenZipChanged)
         {
-            _settings.SevenZipFolder = sevenZip;
-            Shell.SevenZip.Configure(sevenZip);
+            Shell.SevenZip.Configure(sevenZip); // Applies at once.
             ShowSevenZipStatus();
         }
-        Save();
     }
 
     /// <summary>Which 7-Zip is used now (or why none).</summary>
@@ -170,9 +179,8 @@ public partial class SettingsView : UserControl
         ArchiveError.Visibility = valid || text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
         if (!valid || _filling || text == _settings.ArchiveBackground)
             return;
-        _settings.ArchiveBackground = text;
+        Save(s => s.ArchiveBackground = text);
         App.ApplyColors(_settings);
-        Save();
     }
 
     private void ArchiveDefault_Click(object sender, RoutedEventArgs e) => ArchiveBackground.Text = DefaultArchiveBackground;

@@ -69,6 +69,17 @@ public sealed class NotepadFileState
     public string? CachedEncoding { get; set; }
 }
 
+/// <summary>AstraViewer: the image history (newest first) and the shown image.</summary>
+public sealed class ViewerState
+{
+    public List<string> History { get; set; } = [];
+
+    /// <summary>The image shown at the end (null = none).</summary>
+    public string? Current { get; set; }
+
+    public double ListWidth { get; set; }
+}
+
 /// <summary>A group of the Notepad# file list, in list order.</summary>
 public sealed class NotepadGroupState
 {
@@ -117,6 +128,12 @@ public sealed class SessionState
 
     /// <summary>Open Notepad# files.</summary>
     public NotepadState? Notepad { get; set; }
+
+    /// <summary>True when AstraViewer was the shown view.</summary>
+    public bool ViewerShown { get; set; }
+
+    /// <summary>AstraViewer's history and shown image.</summary>
+    public ViewerState? Viewer { get; set; }
 
     private static string FilePath => System.IO.Path.Combine(AppSettings.DataFolder, FileName);
 

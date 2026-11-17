@@ -6,8 +6,8 @@ using DirectoryFable.Views;
 namespace DirectoryFable;
 
 /// <summary>
-/// Explorer / Notepad# views: the two title bar tabs switch everything below
-/// the title bar. The explorer keeps its state while Notepad# is shown, and the other way round.
+/// Explorer / Notepad# / AstraViewer views: the title bar tabs switch everything below
+/// the title bar. Each view keeps its state while another one is shown.
 /// </summary>
 public partial class MainWindow
 {
@@ -23,13 +23,7 @@ public partial class MainWindow
     {
         Closed += (_, _) => IsClosed = true;
         NotepadPage.ActiveChanged += UpdateTitle;
-        NotepadPage.ShowInExplorerRequested += async path =>
-        {
-            ShowNotepad(false);
-            if (ActivePane.SelectedTab is { } tab && Path.GetDirectoryName(path) is { } folder)
-                await tab.NavigateAsync(folder, focusPath: path);
-            ActivePaneView.FocusList();
-        };
+        NotepadPage.ShowInExplorerRequested += path => _ = ShowInExplorerAsync(path);
         // Explorer: "Open in Notepad#" (file menu) and Ctrl+E.
         FilePane.OpenInNotepad = async paths =>
         {
@@ -62,7 +56,7 @@ public partial class MainWindow
 
     /// <summary>
     /// The explorer parts below the title bar. Hidden (not collapsed: their layout stays) while
-    /// Notepad# covers them, so WPF does not draw them under the editor on every scroll step.
+    /// Notepad# or AstraViewer covers them, so WPF does not draw them under it on every scroll step.
     /// </summary>
     private void SetExplorerShown(bool shown)
     {
@@ -71,30 +65,46 @@ public partial class MainWindow
             part.Visibility = visibility;
     }
 
-    private void ExplorerTab_Click(object sender, RoutedEventArgs e) => ShowNotepad(false);
+    private void ExplorerTab_Click(object sender, RoutedEventArgs e) => ShowView(MainView.Explorer);
 
-    private void NotepadTab_Click(object sender, RoutedEventArgs e) => ShowNotepad(true);
+    private void NotepadTab_Click(object sender, RoutedEventArgs e) => ShowView(MainView.Notepad);
 
-    /// <summary>Shows Notepad# (true) or the explorer (false); a click on the shown tab keeps it.</summary>
-    private void ShowNotepad(bool show)
+    /// <summary>Shows Notepad# (true) or the explorer (false).</summary>
+    private void ShowNotepad(bool show) => ShowView(show ? MainView.Notepad : MainView.Explorer);
+
+    /// <summary>The views below the title bar, one per title bar tab.</summary>
+    private enum MainView { Explorer, Notepad, Viewer }
+
+    private MainView ShownView => NotepadShown ? MainView.Notepad : ViewerShown ? MainView.Viewer : MainView.Explorer;
+
+    /// <summary>
+    /// Shows one view below the title bar; the others keep their state. A click on the tab of
+    /// the shown view changes nothing (the focus stays where it is, e.g. on a settings page).
+    /// </summary>
+    private void ShowView(MainView view)
     {
-        ExplorerTab.IsChecked = !show;
-        NotepadTab.IsChecked = show;
-        if (show == NotepadShown)
+        ExplorerTab.IsChecked = view == MainView.Explorer;
+        NotepadTab.IsChecked = view == MainView.Notepad;
+        AstraViewerTab.IsChecked = view == MainView.Viewer;
+        if (view == ShownView)
             return;
 
-        if (show)
-        {
+        if (view != MainView.Explorer)
             ShowSettings(false); // The explorer's settings page belongs to the explorer.
-            NotepadPage.Visibility = Visibility.Visible;
-            SetExplorerShown(false);
-            NotepadPage.FocusEditor();
-        }
-        else
+        NotepadPage.Visibility = view == MainView.Notepad ? Visibility.Visible : Visibility.Collapsed;
+        AstraViewerPage.Visibility = view == MainView.Viewer ? Visibility.Visible : Visibility.Collapsed;
+        SetExplorerShown(view == MainView.Explorer);
+        switch (view)
         {
-            SetExplorerShown(true);
-            NotepadPage.Visibility = Visibility.Collapsed;
-            ActivePaneView.FocusList();
+            case MainView.Notepad:
+                NotepadPage.FocusEditor();
+                break;
+            case MainView.Viewer:
+                AstraViewerPage.FocusView();
+                break;
+            default:
+                ActivePaneView.FocusList();
+                break;
         }
         UpdateTitle();
     }

@@ -52,7 +52,14 @@ public partial class MainWindow
         ExplorerTabText.Text = folder;
         string? file = NotepadPage.Active?.FileName;
         NotepadTabText.Text = file is null ? "Notepad#" : $"Notepad#  ·  {file}";
-        Title = NotepadShown ? file ?? "Notepad#" : folder;
+        string? image = AstraViewerPage.CurrentPath is { } shown ? System.IO.Path.GetFileName(shown) : null;
+        AstraViewerTabText.Text = image is null ? "AstraViewer" : $"AstraViewer  ·  {image}";
+        Title = ShownView switch
+        {
+            MainView.Notepad => file ?? "Notepad#",
+            MainView.Viewer => image ?? "AstraViewer",
+            _ => folder,
+        };
     }
 
     protected override void OnSourceInitialized(EventArgs e)

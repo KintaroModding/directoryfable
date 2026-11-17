@@ -50,6 +50,27 @@ public sealed class AppSettings
     /// <summary>File types for <see cref="NotepadOpensFileTypes"/>, separated by spaces (".txt .log .json").</summary>
     public string NotepadFileTypes { get; set; } = Editor.EditorFileTypes.DefaultList;
 
+    /// <summary>A double-click in DirectoryFable opens <see cref="ViewerFileTypes"/> in AstraViewer (Windows' defaults stay untouched).</summary>
+    public bool ViewerOpensFileTypes { get; set; } = true;
+
+    /// <summary>Image types for AstraViewer, separated by spaces (".png .jpg .gif").</summary>
+    public string ViewerFileTypes { get; set; } = Viewer.ImageFileTypes.DefaultList;
+
+    /// <summary>AstraViewer: how a newly shown image starts, "fit" (into the window, never enlarged) or "actual" (100 %).</summary>
+    public string ViewerZoom { get; set; } = "fit";
+
+    /// <summary>AstraViewer: background around the image, "dark", "black" or "light".</summary>
+    public string ViewerBackground { get; set; } = "dark";
+
+    /// <summary>AstraViewer: a checkerboard behind the image shows its transparent parts.</summary>
+    public bool ViewerCheckerboard { get; set; } = true;
+
+    /// <summary>AstraViewer: size of the thumbnails below the image, "small", "medium" or "large".</summary>
+    public string ViewerThumbnailSize { get; set; } = "medium";
+
+    /// <summary>AstraViewer: how many images the history keeps (10 to 1000).</summary>
+    public int ViewerHistorySize { get; set; } = 100;
+
     /// <summary>Folder with 7zG.exe / 7z.exe ("7z" button, 7z and RAR browsing); empty = find 7-Zip automatically.</summary>
     public string SevenZipFolder { get; set; } = "";
 
@@ -80,13 +101,38 @@ public sealed class AppSettings
                 Directory.CreateDirectory(DataFolder);
                 File.WriteAllText(path, FileText(new AppSettings()));
             }
-            return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(path), ReadOptions) ?? new AppSettings();
+            return FillNulls(JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(path), ReadOptions) ?? new AppSettings());
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
             // A broken settings file must not stop the app; defaults apply.
             return new AppSettings();
         }
+    }
+
+    /// <summary>A hand-edited <c>"key": null</c> gets the default value (text settings are never null).</summary>
+    private static AppSettings FillNulls(AppSettings settings)
+    {
+        var defaults = new AppSettings();
+        foreach (var property in typeof(AppSettings).GetProperties())
+        {
+            if (property.PropertyType == typeof(string) && property.CanWrite && property.GetValue(settings) is null)
+                property.SetValue(settings, property.GetValue(defaults));
+        }
+        return settings;
+    }
+
+    /// <summary>
+    /// Changes settings.json: reads the newest file, applies <paramref name="change"/> and
+    /// saves. Every settings page saves this way, so a page never writes back an older copy of
+    /// settings that another page (or a key like Alt+Z) changed meanwhile. Returns the saved settings.
+    /// </summary>
+    public static AppSettings Update(Action<AppSettings> change)
+    {
+        var settings = Load();
+        change(settings);
+        settings.Save();
+        return settings;
     }
 
     /// <summary>
@@ -130,6 +176,17 @@ public sealed class AppSettings
           // Notepad# file list: files in no own group are grouped "type" or "folder".
           "notepadAutoGroupBy": {{Json(s.NotepadAutoGroupBy)}},
           "notepadFileTypes": {{Json(s.NotepadFileTypes)}},
+          // AstraViewer: a double-click in DirectoryFable opens these image types in AstraViewer (Windows' defaults are not changed).
+          "viewerOpensFileTypes": {{Json(s.ViewerOpensFileTypes)}},
+          "viewerFileTypes": {{Json(s.ViewerFileTypes)}},
+          // AstraViewer: start zoom "fit" (into the window) or "actual" (100 %); background "dark", "black" or "light";
+          // checkerboard behind transparent images; images kept in the history (10 to 1000).
+          "viewerZoom": {{Json(s.ViewerZoom)}},
+          "viewerBackground": {{Json(s.ViewerBackground)}},
+          "viewerCheckerboard": {{Json(s.ViewerCheckerboard)}},
+          // AstraViewer: thumbnails below the image "small", "medium" or "large".
+          "viewerThumbnailSize": {{Json(s.ViewerThumbnailSize)}},
+          "viewerHistorySize": {{s.ViewerHistorySize.ToString(System.Globalization.CultureInfo.InvariantCulture)}},
           // Start folders when there is no saved session.
           "leftPath": {{Json(s.LeftPath)}},
           "rightPath": {{Json(s.RightPath)}}

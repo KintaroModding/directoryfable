@@ -55,6 +55,7 @@ public partial class App : Application
         ApplyColors(settings);
         SevenZip.Configure(settings.SevenZipFolder);
         Editor.EditorFileTypes.Configure(settings);
+        Viewer.ImageFileTypes.Configure(settings);
 
         _window = new MainWindow(folders.ElementAtOrDefault(0), folders.ElementAtOrDefault(1), trayMode, settings, session);
         MainWindow = _window;
