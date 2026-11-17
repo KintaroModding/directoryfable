@@ -49,11 +49,6 @@ public partial class App : Application
         ZipBrowser.CleanStaleTemp(); // Files unpacked from ZIPs by copies that crashed.
         base.OnStartup(e);
 
-        // First start of the portable version: take over the old AppData files once.
-        // Never with --data= (tests must not copy the user's real files anywhere).
-        if (dataArg is null)
-            AppSettings.CopyFromOldAppDataIfEmpty();
-
         var settings = AppSettings.Load();
         bool trayMode = Flag("--taskbar") ? false : Flag("--tray") || settings.IsTrayMode;
         var session = settings.RestoreSession ? SessionState.Load() : null;

@@ -56,39 +56,9 @@ public sealed class AppSettings
 
     /// <summary>
     /// Folder for settings.json, favorites.json, session.json: "data" next to the exe
-    /// (portable: no AppData). <c>--data=</c> changes it (tests).
+    /// (portable). <c>--data=</c> changes it (tests).
     /// </summary>
     public static string DataFolder { get; set; } = Path.Combine(AppContext.BaseDirectory, "data");
-
-    /// <summary>Where earlier versions kept the files (AppData).</summary>
-    private static string OldAppDataFolder =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "DirectoryFable");
-
-    private static readonly string[] DataFiles = ["settings.json", "favorites.json", "session.json"];
-
-    /// <summary>
-    /// One-time move to the portable data folder: when it has none of the data files yet,
-    /// copy them from the old AppData folder. Copy only; the old folder is left as it is.
-    /// </summary>
-    public static void CopyFromOldAppDataIfEmpty()
-    {
-        try
-        {
-            if (DataFiles.Any(f => File.Exists(Path.Combine(DataFolder, f))) || !Directory.Exists(OldAppDataFolder))
-                return;
-            Directory.CreateDirectory(DataFolder);
-            foreach (string file in DataFiles)
-            {
-                string from = Path.Combine(OldAppDataFolder, file);
-                if (File.Exists(from))
-                    File.Copy(from, Path.Combine(DataFolder, file));
-            }
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            // Not fatal: the app starts with defaults.
-        }
-    }
 
     private static readonly JsonSerializerOptions ReadOptions = new()
     {
