@@ -1,0 +1,82 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Colors of the dark look. -->
+
+    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#191919" />
+    <SolidColorBrush x:Key="TreeBackgroundBrush" Color="#181818" />
+    <SolidColorBrush x:Key="TreeHeaderBackgroundBrush" Color="#141414" />
+    <SolidColorBrush x:Key="TreeSelectedBrush" Color="#3E3E3E" />
+    <SolidColorBrush x:Key="TreeHeaderTextBrush" Color="#A0A0A0" />
+    <!-- Boxed +/- expander: gray frame, dark fill, green sign. -->
+    <SolidColorBrush x:Key="ExpanderBorderBrush" Color="#A0A0A0" />
+    <SolidColorBrush x:Key="ExpanderFillBrush" Color="#3A3A3A" />
+    <SolidColorBrush x:Key="ExpanderHoverBorderBrush" Color="#E0E0E0" />
+    <SolidColorBrush x:Key="ExpanderSignBrush" Color="#73D573" />
+
+    <SolidColorBrush x:Key="TabStripBackgroundBrush" Color="#191919" />
+    <SolidColorBrush x:Key="TabActiveBackgroundBrush" Color="#191919" />
+    <SolidColorBrush x:Key="TabInactiveBackgroundBrush" Color="#000000" />
+    <SolidColorBrush x:Key="TabActiveTextBrush" Color="#EEEEEE" />
+    <SolidColorBrush x:Key="TabInactiveTextBrush" Color="#A0A0A0" />
+    <SolidColorBrush x:Key="TabStripLineBrush" Color="#404040" />
+
+    <SolidColorBrush x:Key="NavBarActiveBrush" Color="#111111" />
+    <SolidColorBrush x:Key="NavBarInactiveBrush" Color="#000000" />
+    <SolidColorBrush x:Key="BreadcrumbTextBrush" Color="#D2D2D2" />
+
+    <SolidColorBrush x:Key="ColumnHeaderBackgroundBrush" Color="#202020" />
+    <SolidColorBrush x:Key="ColumnHeaderHoverBrush" Color="#2A2A2A" />
+    <SolidColorBrush x:Key="ColumnHeaderSeparatorBrush" Color="#404040" />
+    <SolidColorBrush x:Key="ColumnHeaderTextBrush" Color="#A0A0A0" />
+
+    <SolidColorBrush x:Key="ListBackgroundBrush" Color="#191919" />
+    <!-- Inside a ZIP: almost pure dark. Replaced at start by settings.json "archiveBackground". -->
+    <SolidColorBrush x:Key="ArchiveListBackgroundBrush" Color="#0C0C0C" />
+    <SolidColorBrush x:Key="ListTextBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="ListHoverBrush" Color="#262626" />
+    <!-- Windows blue #0078D4 at ~45 % over the list background. -->
+    <SolidColorBrush x:Key="ListSelectedBrush" Color="#0E446D" />
+    <SolidColorBrush x:Key="ListSelectedHoverBrush" Color="#13507F" />
+    <SolidColorBrush x:Key="FocusRectBrush" Color="#626262" />
+
+    <SolidColorBrush x:Key="SplitterBrush" Color="#141414" />
+
+    <!-- Fine 1 px divider lines between elements.
+         Line = main divider; the navigation bar has an inner frame (Dark, then Light). -->
+    <SolidColorBrush x:Key="LineBrush" Color="#404040" />
+    <SolidColorBrush x:Key="LineDarkBrush" Color="#1E1E1E" />
+    <SolidColorBrush x:Key="LineLightBrush" Color="#363636" />
+    <SolidColorBrush x:Key="SecondaryTextBrush" Color="#A0A0A0" />
+    <SolidColorBrush x:Key="SubtleHoverBrush" Color="#2A2A2A" />
+    <SolidColorBrush x:Key="SubtlePressedBrush" Color="#333333" />
+    <SolidColorBrush x:Key="GroupChevronBrush" Color="#3399FF" />
+
+    <FontFamily x:Key="UiFont">Segoe UI</FontFamily>
+    <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+    <system:Double xmlns:system="clr-namespace:System;assembly=mscorlib" x:Key="UiFontSize">12</system:Double>
+
+    <!-- Own title bar and favorites bar: one step bigger than the Windows title bar
+         (22 DIP, 12 DIP text). -->
+    <SolidColorBrush x:Key="TitleBarBrush" Color="#202020" />
+    <SolidColorBrush x:Key="CaptionCloseHoverBrush" Color="#C42B1C" />
+    <!-- Favorites: dim "/" between the items, hover = SubtleHoverBrush. -->
+    <SolidColorBrush x:Key="QuickBarBrush" Color="#161616" />
+    <SolidColorBrush x:Key="ErrorTextBrush" Color="#FF7B72" />
+    <SolidColorBrush x:Key="RowInfoBrush" Color="#5A5A5A" />
+    <!-- Notepad# editor (dark, like VS Code's Dark+). -->
+    <SolidColorBrush x:Key="EditorBackgroundBrush" Color="#1A1A1A" />
+    <SolidColorBrush x:Key="EditorTextBrush" Color="#D4D4D4" />
+    <SolidColorBrush x:Key="EditorLineNumberBrush" Color="#6E6E6E" />
+    <SolidColorBrush x:Key="EditorCurrentLineBrush" Color="#242424" />
+    <SolidColorBrush x:Key="EditorSelectionBrush" Color="#264F78" />
+    <!-- Title bar view tabs ([folder] [Notepad#]). -->
+    <SolidColorBrush x:Key="TitleTabActiveBrush" Color="#3A3A3A" />
+    <SolidColorBrush x:Key="HeaderToggleOffBrush" Color="#707070" />
+    <SolidColorBrush x:Key="FavoriteSeparatorBrush" Color="#8C8C8C" />
+    <system:Double xmlns:system="clr-namespace:System;assembly=mscorlib" x:Key="FavoritesGap">14</system:Double>
+    <SolidColorBrush x:Key="CaptionClosePressedBrush" Color="#B22A1B" />
+    <system:Double xmlns:system="clr-namespace:System;assembly=mscorlib" x:Key="TitleBarHeight">28</system:Double>
+    <system:Double xmlns:system="clr-namespace:System;assembly=mscorlib" x:Key="TitleFontSize">13</system:Double>
+    <system:Double xmlns:system="clr-namespace:System;assembly=mscorlib" x:Key="FavoritesBarHeight">27</system:Double>
+    <system:Double xmlns:system="clr-namespace:System;assembly=mscorlib" x:Key="FavoritesFontSize">13</system:Double>
+</ResourceDictionary>

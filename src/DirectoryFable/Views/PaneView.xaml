@@ -1,0 +1,80 @@
+<UserControl x:Class="DirectoryFable.Views.PaneView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             FontFamily="{StaticResource UiFont}"
+             FontSize="{StaticResource UiFontSize}"
+             PreviewKeyDown="Pane_PreviewKeyDown">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Tab strip -->
+        <Border Grid.Row="0" Background="{StaticResource TabStripBackgroundBrush}"
+                BorderBrush="{StaticResource TabStripLineBrush}" BorderThickness="0,0,0,1"
+                MouseLeftButtonDown="TabStrip_MouseLeftButtonDown">
+            <Grid x:Name="TabStripGrid">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Too many tabs: the strip scrolls with the mouse wheel. -->
+                <ScrollViewer x:Name="TabScroller" Grid.Column="0"
+                              HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
+                              PreviewMouseWheel="TabScroller_PreviewMouseWheel">
+                    <ItemsControl x:Name="TabItems" ItemsSource="{Binding Tabs}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource TabHeaderStyle}"
+                                        ToolTip="{Binding CurrentPath}"
+                                        MouseLeftButtonDown="Tab_MouseLeftButtonDown"
+                                        MouseMove="Tab_MouseMove"
+                                        MouseLeftButtonUp="Tab_MouseLeftButtonUp"
+                                        MouseUp="Tab_MouseUp"
+                                        AllowDrop="True"
+                                        DragEnter="Tab_DragOver"
+                                        DragOver="Tab_DragOver"
+                                        DragLeave="Tab_DragLeave"
+                                        Drop="Tab_Drop">
+                                    <Border.ContextMenu>
+                                        <ContextMenu Opened="TabMenu_Opened">
+                                            <MenuItem Header="New tab" InputGestureText="Ctrl+T" Click="TabMenu_New" />
+                                            <MenuItem Header="Duplicate tab" Click="TabMenu_Duplicate" />
+                                            <Separator />
+                                            <MenuItem Header="Add to favorites" Tag="AddFavorite" Click="TabMenu_AddFavorite" />
+                                            <Separator />
+                                            <MenuItem Header="Close tab" InputGestureText="Ctrl+W" Click="TabMenu_Close" />
+                                            <MenuItem Header="Close other tabs" Click="TabMenu_CloseOthers" />
+                                        </ContextMenu>
+                                    </Border.ContextMenu>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Image x:Name="TabIcon" Width="13" Height="13" Margin="0,0,5,0"
+                                               RenderOptions.BitmapScalingMode="HighQuality"
+                                               Source="{Binding FolderIcon}" />
+                                        <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis"
+                                                   MaxWidth="92" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <Button Grid.Column="1" Style="{StaticResource SubtleButton}" Width="24" Height="24"
+                        Padding="0" Content="&#xE710;" FontFamily="{StaticResource IconFont}" FontSize="10"
+                        ToolTip="New tab (Ctrl+T)" Click="NewTab_Click" />
+            </Grid>
+        </Border>
+
+        <!-- One FilePane per tab, kept alive so each tab keeps its scroll position and selection. -->
+        <Grid x:Name="TabHost" Grid.Row="1" />
+    </Grid>
+</UserControl>

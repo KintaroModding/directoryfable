@@ -1,0 +1,229 @@
+<UserControl x:Class="DirectoryFable.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             FontFamily="{StaticResource UiFont}" FontSize="13"
+             Foreground="{StaticResource ListTextBrush}"
+             Background="{StaticResource WindowBackgroundBrush}">
+    <!-- Settings page: fills everything below the action bar while open.
+         Every change is saved at once to settings.json. -->
+    <UserControl.Resources>
+        <Style x:Key="SectionTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource GroupChevronBrush}" />
+            <Setter Property="Margin" Value="0,26,0,6" />
+        </Style>
+        <Style x:Key="SettingName" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+        <Style x:Key="SettingHelp" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,3,0,0" />
+        </Style>
+        <!-- One setting: name + help on the left, the control on the right, a fine line below. -->
+        <Style x:Key="SettingRow" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="Padding" Value="0,12" />
+        </Style>
+        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Padding" Value="6,0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="40,24,40,40" MaxWidth="900" HorizontalAlignment="Left">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Close (Esc)" MinWidth="100" VerticalAlignment="Center"
+                        Click="Close_Click" />
+                <TextBlock Text="Settings" FontSize="24" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </DockPanel>
+            <TextBlock Style="{StaticResource SettingHelp}" Margin="0,6,0,0">
+                <Run Text="Changes are saved at once to" />
+                <Run x:Name="FilePathRun" Foreground="{StaticResource ListTextBrush}" />
+            </TextBlock>
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                <Button Content="Open data folder" MinWidth="140" Click="OpenDataFolder_Click" />
+                <TextBlock x:Name="SaveStatus" Margin="14,0,0,0" VerticalAlignment="Center"
+                           Style="{StaticResource SettingHelp}" />
+            </StackPanel>
+
+            <!-- ===== Window ===== -->
+            <TextBlock Style="{StaticResource SectionTitle}" Text="Window" />
+
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Style="{StaticResource SettingName}" Text="Window mode" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="Tray: no taskbar button, only a tray icon; closing the window hides it. Taskbar: a normal window; closing it exits the app. Applies after a restart." />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <RadioButton x:Name="TrayMode" Content="Tray icon" GroupName="WindowMode" Checked="WindowMode_Checked" />
+                        <RadioButton x:Name="TaskbarMode" Content="Taskbar button" GroupName="WindowMode" Margin="0,6,0,0"
+                                     Checked="WindowMode_Checked" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Style="{StaticResource SettingName}" Text="Start maximized" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="Used when there is no saved session; a restored session keeps its own window state." />
+                    </StackPanel>
+                    <CheckBox x:Name="StartMaximized" Grid.Column="1" VerticalAlignment="Center" Content="Maximized"
+                              Checked="Flag_Changed" Unchecked="Flag_Changed" />
+                </Grid>
+            </Border>
+
+            <!-- ===== Start ===== -->
+            <TextBlock Style="{StaticResource SectionTitle}" Text="Start" />
+
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Style="{StaticResource SettingName}" Text="Restore last session" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="Reopen the last tabs, columns, window position and splitters." />
+                    </StackPanel>
+                    <CheckBox x:Name="RestoreSession" Grid.Column="1" VerticalAlignment="Center" Content="Restore"
+                              Checked="Flag_Changed" Unchecked="Flag_Changed" />
+                </Grid>
+            </Border>
+
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Style="{StaticResource SettingName}" Text="Left start folder" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="Used when there is no saved session. Environment variables such as %USERPROFILE% work." />
+                    </StackPanel>
+                    <TextBox x:Name="LeftPath" Grid.Column="1" VerticalAlignment="Center"
+                             LostKeyboardFocus="Path_LostFocus" KeyDown="Path_KeyDown" />
+                    <Button Grid.Column="2" Content="Browse…" MinWidth="90" Margin="8,0,0,0" VerticalAlignment="Center"
+                            Tag="{Binding ElementName=LeftPath}" Click="Browse_Click" />
+                </Grid>
+            </Border>
+
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Style="{StaticResource SettingName}" Text="Right start folder" />
+                        <TextBlock Style="{StaticResource SettingHelp}" Text="Used when there is no saved session." />
+                    </StackPanel>
+                    <TextBox x:Name="RightPath" Grid.Column="1" VerticalAlignment="Center"
+                             LostKeyboardFocus="Path_LostFocus" KeyDown="Path_KeyDown" />
+                    <Button Grid.Column="2" Content="Browse…" MinWidth="90" Margin="8,0,0,0" VerticalAlignment="Center"
+                            Tag="{Binding ElementName=RightPath}" Click="Browse_Click" />
+                </Grid>
+            </Border>
+
+            <!-- ===== Columns ===== -->
+            <TextBlock Style="{StaticResource SectionTitle}" Text="Columns" />
+
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Style="{StaticResource SettingName}" Text="Same columns in both panes" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="Copies the columns of the visible left tab (which columns, their order and widths) to every tab of the right pane. Sort order is not changed." />
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="Copy left columns to the right" Padding="14,0" Height="30"
+                            VerticalAlignment="Center" Click="CopyColumns_Click" />
+                    <TextBlock x:Name="ColumnsStatus" Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Center"
+                               Style="{StaticResource SettingHelp}" />
+                </Grid>
+            </Border>
+
+            <!-- ===== Tools ===== -->
+            <TextBlock Style="{StaticResource SectionTitle}" Text="Tools" />
+
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.RowSpan="2" Margin="0,0,24,0">
+                        <TextBlock Style="{StaticResource SettingName}" Text="7-Zip folder" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="Folder with 7zG.exe and 7z.exe. Used by the &quot;7z&quot; button and to look inside 7z and RAR files. Leave empty to find 7-Zip automatically." />
+                    </StackPanel>
+                    <TextBox x:Name="SevenZipFolder" Grid.Column="1" VerticalAlignment="Center"
+                             LostKeyboardFocus="Path_LostFocus" KeyDown="Path_KeyDown" />
+                    <Button Grid.Column="2" Content="Browse…" MinWidth="90" Margin="8,0,0,0" VerticalAlignment="Center"
+                            Tag="{Binding ElementName=SevenZipFolder}" Click="Browse_Click" />
+                    <TextBlock x:Name="SevenZipStatus" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                               Style="{StaticResource SettingHelp}" Margin="0,6,0,0" />
+                </Grid>
+            </Border>
+
+            <!-- ===== Appearance ===== -->
+            <TextBlock Style="{StaticResource SectionTitle}" Text="Appearance" />
+
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Style="{StaticResource SettingName}" Text="ZIP list background" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="Background of the file list while you look inside a ZIP file, as #RRGGBB. The normal list is #191919. Applies at once." />
+                    </StackPanel>
+                    <TextBox x:Name="ArchiveBackground" Grid.Column="1" Width="110" VerticalAlignment="Center"
+                             TextChanged="ArchiveBackground_TextChanged" />
+                    <Border x:Name="ArchiveSwatch" Grid.Column="2" Width="28" Height="28" Margin="8,0,0,0" CornerRadius="3"
+                            BorderBrush="{StaticResource LineBrush}" BorderThickness="1" VerticalAlignment="Center" />
+                    <Button Grid.Column="3" Content="Default" MinWidth="80" Margin="8,0,0,0" VerticalAlignment="Center"
+                            Click="ArchiveDefault_Click" />
+                    <TextBlock x:Name="ArchiveError" Grid.Column="4" Margin="10,0,0,0" VerticalAlignment="Center"
+                               Foreground="{StaticResource ErrorTextBrush}" Text="Not a color (use #RRGGBB)" Visibility="Collapsed" />
+                </Grid>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

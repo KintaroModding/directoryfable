@@ -1,0 +1,35 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <!-- Only for the tray icon (NotifyIcon); part of the Windows Desktop runtime, no extra package. -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- WPF0001: ThemeMode (Fluent theme) is marked experimental.
+         WFO0003: WinForms analyzer wants DPI mode set via Application.SetHighDpiMode; this is a
+         WPF app (WinForms only for the tray icon), so the manifest DPI setting is correct. -->
+    <NoWarn>$(NoWarn);WPF0001;WFO0003</NoWarn>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- WinForms and WPF share many type names; keep WinForms out of the global usings. -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
+    <!-- Notepad# syntax definitions (AutoHotkey, INI): loaded by Editor/EditorHighlighting.cs. -->
+    <EmbeddedResource Include="Editor\Syntax\*.xshd" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AvalonEdit" Version="6.3.1.120" />
+  </ItemGroup>
+
+</Project>

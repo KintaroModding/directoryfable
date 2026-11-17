@@ -1,0 +1,66 @@
+<UserControl x:Class="DirectoryFable.Views.FolderTree"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:DirectoryFable.ViewModels"
+             FontFamily="{StaticResource UiFont}" FontSize="{StaticResource UiFontSize}"
+             Background="{StaticResource TreeBackgroundBrush}">
+    <!-- Shared folder tree. Acts on the active pane. -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Header: same height as the tab strips, fine line below. -->
+        <Border Grid.Row="0" Height="25" Background="{StaticResource TreeHeaderBackgroundBrush}"
+                BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1">
+            <DockPanel LastChildFill="True">
+                <!-- Collapse all: two stacked expander boxes with a minus (same look as the tree's). -->
+                <Button DockPanel.Dock="Right" Style="{StaticResource SubtleButton}" Width="22" Height="20"
+                        Margin="0,0,3,0" Padding="0" ToolTip="Collapse all" Click="CollapseAll_Click">
+                    <Canvas Width="12" Height="12" SnapsToDevicePixels="True">
+                        <Border Canvas.Left="3" Canvas.Top="0" Width="9" Height="9" CornerRadius="1.5"
+                                BorderThickness="1" BorderBrush="{StaticResource ExpanderBorderBrush}" />
+                        <Border Canvas.Left="0" Canvas.Top="3" Width="9" Height="9" CornerRadius="1.5"
+                                BorderThickness="1" BorderBrush="{StaticResource ExpanderBorderBrush}"
+                                Background="{StaticResource ExpanderFillBrush}">
+                            <Rectangle Width="5" Height="1" Fill="{StaticResource ExpanderSignBrush}" />
+                        </Border>
+                    </Canvas>
+                </Button>
+                <!-- Follow toggle: blue = the tree follows your browsing, gray = it stays still. -->
+                <ToggleButton DockPanel.Dock="Right" Style="{StaticResource HeaderToggle}" Margin="0,0,1,0"
+                              Content="&#xE71B;" IsChecked="{Binding FollowsPane}">
+                    <ToggleButton.ToolTip>
+                        <ToolTip Content="Follow the current folder (on/off)" />
+                    </ToggleButton.ToolTip>
+                </ToggleButton>
+                <TextBlock Text="Folder Tree" Margin="6,0" VerticalAlignment="Center"
+                           Foreground="{StaticResource TreeHeaderTextBrush}" />
+            </DockPanel>
+        </Border>
+
+        <TreeView x:Name="Tree" Grid.Row="1" ItemsSource="{Binding Roots}"
+                  Background="{StaticResource TreeBackgroundBrush}" BorderThickness="0" Padding="0,4,0,0"
+                  ScrollViewer.CanContentScroll="False"
+                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                  ItemContainerStyle="{StaticResource FolderTreeItemStyle}"
+                  SelectedItemChanged="Tree_SelectedItemChanged"
+                  PreviewMouseUp="Tree_PreviewMouseUp"
+                  PreviewMouseLeftButtonDown="Tree_PreviewMouseLeftButtonDown"
+                  PreviewMouseLeftButtonUp="Tree_PreviewMouseLeftButtonUp"
+                  MouseRightButtonUp="Tree_MouseRightButtonUp"
+                  KeyDown="Tree_KeyDown"
+                  AllowDrop="True" DragOver="Tree_DragOver" DragLeave="Tree_DragLeave" Drop="Tree_Drop">
+            <TreeView.ItemTemplate>
+                <HierarchicalDataTemplate DataType="{x:Type vm:FolderNodeViewModel}" ItemsSource="{Binding Children}">
+                    <StackPanel Orientation="Horizontal" ToolTip="{Binding Path}">
+                        <Image Source="{Binding Icon}" Width="13" Height="13" Margin="0,0,5,0"
+                               RenderOptions.BitmapScalingMode="HighQuality" />
+                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </HierarchicalDataTemplate>
+            </TreeView.ItemTemplate>
+        </TreeView>
+    </Grid>
+</UserControl>

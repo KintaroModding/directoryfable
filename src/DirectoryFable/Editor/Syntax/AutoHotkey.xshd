@@ -1,0 +1,79 @@
+<?xml version="1.0"?>
+<!-- AutoHotkey (v1 and v2) for Notepad#. Own definition, kept small on purpose:
+     comments, strings, directives, hotkeys/hotstrings, %variables%, keywords, common commands. -->
+<SyntaxDefinition name="AutoHotkey" extensions=".ahk;.ah2;.ahk2" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" foreground="#6A9955" />
+  <Color name="String" foreground="#CE9178" />
+  <Color name="Escape" foreground="#D7BA7D" />
+  <Color name="Directive" foreground="#C586C0" />
+  <Color name="Hotkey" foreground="#4EC9B0" />
+  <Color name="Label" foreground="#4EC9B0" />
+  <Color name="Variable" foreground="#9CDCFE" />
+  <Color name="Keyword" foreground="#569CD6" />
+  <Color name="Command" foreground="#DCDCAA" />
+  <Color name="BuiltinVariable" foreground="#4FC1FF" />
+  <Color name="Number" foreground="#B5CEA8" />
+
+  <RuleSet ignoreCase="true">
+    <!-- Block comment: "/*" at line start, "*/" at line start or end. -->
+    <Span color="Comment" multiline="true" begin="^\s*/\*" end="\*/" />
+    <!-- Line comment: ";" at line start or after a space or tab. -->
+    <Span color="Comment" begin="(?&lt;=^|[ \t]);" />
+
+    <Span color="String" begin="&quot;" end="&quot;|$">
+      <RuleSet>
+        <Rule color="Escape">`.</Rule>
+      </RuleSet>
+    </Span>
+    <Span color="String" begin="'" end="'|$">
+      <RuleSet>
+        <Rule color="Escape">`.</Rule>
+      </RuleSet>
+    </Span>
+
+    <Rule color="Directive">^\s*\#\w+</Rule>
+    <!-- Hotkeys "^!x::" and hotstrings "::btw::". -->
+    <Rule color="Hotkey">^\s*[^\s;:]*::(.*?::)?</Rule>
+    <Rule color="Label">^\s*\w+:(?=\s*($|;))</Rule>
+    <Rule color="Variable">%[\w#@$]+%</Rule>
+    <Rule color="BuiltinVariable">\bA_\w+\b</Rule>
+
+    <Keywords color="Keyword">
+      <Word>if</Word><Word>else</Word><Word>loop</Word><Word>while</Word><Word>until</Word>
+      <Word>for</Word><Word>in</Word><Word>break</Word><Word>continue</Word><Word>return</Word>
+      <Word>goto</Word><Word>gosub</Word><Word>try</Word><Word>catch</Word><Word>finally</Word>
+      <Word>throw</Word><Word>switch</Word><Word>case</Word><Word>default</Word>
+      <Word>global</Word><Word>local</Word><Word>static</Word><Word>class</Word><Word>extends</Word>
+      <Word>new</Word><Word>this</Word><Word>super</Word><Word>true</Word><Word>false</Word>
+      <Word>and</Word><Word>or</Word><Word>not</Word><Word>is</Word><Word>unset</Word>
+      <Word>ifwinactive</Word><Word>ifwinexist</Word><Word>ifexist</Word><Word>ifinstring</Word>
+    </Keywords>
+
+    <Keywords color="Command">
+      <Word>MsgBox</Word><Word>InputBox</Word><Word>ToolTip</Word><Word>TrayTip</Word>
+      <Word>Send</Word><Word>SendInput</Word><Word>SendEvent</Word><Word>SendPlay</Word><Word>SendRaw</Word><Word>SendText</Word>
+      <Word>Run</Word><Word>RunWait</Word><Word>Sleep</Word><Word>ExitApp</Word><Word>Exit</Word><Word>Reload</Word>
+      <Word>SetTimer</Word><Word>Hotkey</Word><Word>Hotstring</Word><Word>Suspend</Word><Word>Pause</Word>
+      <Word>WinActivate</Word><Word>WinWait</Word><Word>WinWaitActive</Word><Word>WinWaitClose</Word><Word>WinClose</Word>
+      <Word>WinExist</Word><Word>WinActive</Word><Word>WinGetTitle</Word><Word>WinGetPos</Word><Word>WinMove</Word>
+      <Word>WinMinimize</Word><Word>WinMaximize</Word><Word>WinRestore</Word><Word>WinHide</Word><Word>WinShow</Word>
+      <Word>ControlClick</Word><Word>ControlSend</Word><Word>ControlGetText</Word><Word>ControlSetText</Word>
+      <Word>Click</Word><Word>MouseMove</Word><Word>MouseClick</Word><Word>MouseGetPos</Word>
+      <Word>KeyWait</Word><Word>GetKeyState</Word><Word>Input</Word><Word>InputHook</Word>
+      <Word>FileRead</Word><Word>FileAppend</Word><Word>FileDelete</Word><Word>FileCopy</Word><Word>FileMove</Word>
+      <Word>FileExist</Word><Word>DirExist</Word><Word>DirCreate</Word><Word>FileCreateDir</Word>
+      <Word>IniRead</Word><Word>IniWrite</Word><Word>IniDelete</Word><Word>RegRead</Word><Word>RegWrite</Word>
+      <Word>StrLen</Word><Word>SubStr</Word><Word>InStr</Word><Word>StrReplace</Word><Word>StrSplit</Word>
+      <Word>RegExMatch</Word><Word>RegExReplace</Word><Word>Format</Word><Word>Trim</Word><Word>LTrim</Word><Word>RTrim</Word>
+      <Word>StrLower</Word><Word>StrUpper</Word><Word>Round</Word><Word>Floor</Word><Word>Ceil</Word><Word>Abs</Word><Word>Random</Word>
+      <Word>Gui</Word><Word>GuiControl</Word><Word>GuiControlGet</Word><Word>Menu</Word><Word>A_TrayMenu</Word>
+      <Word>PixelGetColor</Word><Word>PixelSearch</Word><Word>ImageSearch</Word>
+      <Word>Clipboard</Word><Word>ClipWait</Word><Word>A_Clipboard</Word><Word>SetWorkingDir</Word>
+      <Word>SetKeyDelay</Word><Word>SetMouseDelay</Word><Word>SetTitleMatchMode</Word><Word>CoordMode</Word>
+      <Word>DllCall</Word><Word>ComObject</Word><Word>ComObjCreate</Word><Word>Func</Word><Word>OnExit</Word><Word>OnMessage</Word>
+      <Word>Array</Word><Word>Map</Word><Word>Object</Word><Word>Integer</Word><Word>Number</Word><Word>String</Word><Word>Type</Word>
+    </Keywords>
+
+    <Rule color="Number">\b0[xX][0-9a-fA-F]+\b|\b\d+(\.\d+)?\b</Rule>
+  </RuleSet>
+</SyntaxDefinition>

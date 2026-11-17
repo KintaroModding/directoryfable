@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<!-- INI / config files for Notepad#: [sections], key = value, ; and # comments. -->
+<SyntaxDefinition name="INI" extensions=".ini;.inf;.cfg;.conf;.properties;.editorconfig;.gitconfig" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" foreground="#6A9955" />
+  <Color name="Section" foreground="#569CD6" fontWeight="bold" />
+  <Color name="Key" foreground="#9CDCFE" />
+  <Color name="Equals" foreground="#808080" />
+  <Color name="Value" foreground="#CE9178" />
+
+  <RuleSet>
+    <Span color="Comment" begin="^\s*[;#]" />
+    <Rule color="Section">^\s*\[[^\]\r\n]*\]</Rule>
+    <Rule color="Key">^\s*[^=;\#\[\r\n][^=\r\n]*?(?=\s*=)</Rule>
+    <Span color="Value" begin="=" end="$" />
+  </RuleSet>
+</SyntaxDefinition>

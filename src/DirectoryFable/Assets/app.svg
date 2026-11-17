@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>DirectoryFable - Fable Book</title>
+  <defs>
+    <linearGradient id="blue" x1="0" y1="0" x2="0.35" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#087DE0"/>
+      <stop offset="1" stop-color="#0041B8"/>
+    </linearGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="0.35" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#27CCD9"/>
+      <stop offset="1" stop-color="#0099B8"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#blue)" d="M 18,180 L 18,77 Q 18,66 29,66 L 31,66 L 31,55 Q 31,44 42,44 L 79,44 Q 86,44 90,51 L 99,64 C 109,67 119,71 126,80 L 126,196 C 99,174 65,169 23,185 Q 18,187 18,180 Z"/>
+  <path fill="url(#cyan)" d="M 238,180 L 238,77 Q 238,66 227,66 L 225,66 L 225,55 Q 225,44 214,44 L 177,44 Q 170,44 166,51 L 157,64 C 147,67 137,71 130,80 L 130,196 C 157,174 191,169 233,185 Q 238,187 238,180 Z"/>
+  <path fill="url(#blue)" d="M 27,193 C 65,178 99,184 126,205 L 126,213 C 96,194 64,191 27,204 Z"/>
+  <path fill="url(#cyan)" d="M 229,193 C 191,178 157,184 130,205 L 130,213 C 160,194 192,191 229,204 Z"/>
+</svg>

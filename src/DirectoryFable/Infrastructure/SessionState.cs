@@ -1,0 +1,145 @@
+using System.IO;
+using System.Text.Json;
+
+namespace DirectoryFable.Infrastructure;
+
+/// <summary>One shown column of a file list: which one and how wide (display order = list order).</summary>
+public sealed class ColumnState
+{
+    public string Key { get; set; } = "";
+    public double Width { get; set; }
+}
+
+/// <summary>One tab as saved in session.json.</summary>
+public sealed class TabState
+{
+    public string Path { get; set; } = "";
+    public string SortColumn { get; set; } = nameof(Infrastructure.SortColumn.Name);
+    public bool SortDescending { get; set; }
+    public bool GroupByType { get; set; } = true;
+    /// <summary>Shown columns in display order with widths; null = default columns.</summary>
+    public List<ColumnState>? Columns { get; set; }
+    /// <summary>Closed group dividers (type names).</summary>
+    public List<string>? CollapsedGroups { get; set; }
+}
+
+/// <summary>One pane (left or right) as saved in session.json.</summary>
+public sealed class PaneState
+{
+    public List<TabState> Tabs { get; set; } = [];
+    public int SelectedIndex { get; set; }
+}
+
+/// <summary>
+/// What the app restores at the next start: window, splitters, tabs.
+/// Stored in <c>session.json</c> in the data folder; written by the app, separate from
+/// settings.json so the user's settings file is never overwritten.
+/// </summary>
+/// <summary>One open Notepad# file in the session.</summary>
+public sealed class NotepadFileState
+{
+    public string Path { get; set; } = "";
+
+    /// <summary>The own group the file is in; null = its automatic group.</summary>
+    public string? Group { get; set; }
+
+    /// <summary>Language name; "" = Normal Text.</summary>
+    public string? Language { get; set; }
+    public int Caret { get; set; }
+    public double VerticalOffset { get; set; }
+
+    /// <summary>The file was gone and its text is in data\notepad-cache: its encoding key; null = not cached.</summary>
+    public string? CachedEncoding { get; set; }
+}
+
+/// <summary>A group of the Notepad# file list, in list order.</summary>
+public sealed class NotepadGroupState
+{
+    public string Name { get; set; } = "";
+
+    /// <summary>Automatic groups: the extension or folder; own groups: null.</summary>
+    public string? Key { get; set; }
+    public bool Expanded { get; set; } = true;
+}
+
+public sealed class NotepadState
+{
+    public List<NotepadGroupState>? Groups { get; set; }
+
+    /// <summary>"type" or "folder": how the automatic groups were made.</summary>
+    public string? AutoGroupBy { get; set; }
+    public List<NotepadFileState> Files { get; set; } = [];
+    public int ActiveIndex { get; set; } = -1;
+    public double ListWidth { get; set; }
+}
+
+public sealed class SessionState
+{
+    private const string FileName = "session.json";
+
+    public double WindowLeft { get; set; }
+    public double WindowTop { get; set; }
+    public double WindowWidth { get; set; }
+    public double WindowHeight { get; set; }
+    public bool Maximized { get; set; }
+
+    public double TreeWidth { get; set; }
+    /// <summary>Star sizes of the left and right pane columns (their ratio is the splitter position).</summary>
+    public double LeftPaneStars { get; set; } = 1;
+    public double RightPaneStars { get; set; } = 1;
+
+    public bool RightPaneActive { get; set; }
+
+    /// <summary>Folder tree follows the active pane's folder (header toggle).</summary>
+    public bool TreeFollowsPane { get; set; } = true;
+    public PaneState Left { get; set; } = new();
+    public PaneState Right { get; set; } = new();
+
+    /// <summary>True when Notepad# was the shown view.</summary>
+    public bool NotepadShown { get; set; }
+
+    /// <summary>Open Notepad# files.</summary>
+    public NotepadState? Notepad { get; set; }
+
+    private static string FilePath => System.IO.Path.Combine(AppSettings.DataFolder, FileName);
+
+    private static readonly JsonSerializerOptions Options = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        AllowTrailingCommas = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        WriteIndented = true,
+    };
+
+    /// <summary>Null when there is no (readable) session yet.</summary>
+    public static SessionState? Load()
+    {
+        try
+        {
+            return File.Exists(FilePath)
+                ? JsonSerializer.Deserialize<SessionState>(File.ReadAllText(FilePath), Options)
+                : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        {
+            return null;
+        }
+    }
+
+    public void Save()
+    {
+        try
+        {
+            Directory.CreateDirectory(AppSettings.DataFolder);
+            // Write to a temp file first: a crash while writing must not leave a broken session.
+            string temp = FilePath + ".tmp";
+            File.WriteAllText(temp, JsonSerializer.Serialize(this, Options));
+            File.Move(temp, FilePath, overwrite: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Not fatal: the next start uses the defaults.
+        }
+    }
+}
