@@ -80,6 +80,22 @@
                 </Grid>
             </Border>
 
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Text="Word wrap" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="Long lines wrap at the right edge instead of scrolling sideways. Also the &quot;Word wrap&quot; button in the bar, or Alt+Z." />
+                    </StackPanel>
+                    <CheckBox x:Name="WrapBox" Grid.Column="1" Content="Wrap long lines" VerticalAlignment="Center"
+                              Checked="WrapBox_Changed" Unchecked="WrapBox_Changed" />
+                </Grid>
+            </Border>
+
             <TextBlock Style="{StaticResource SectionTitle}" Text="File list" />
 
             <Border Style="{StaticResource SettingRow}">

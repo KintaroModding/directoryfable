@@ -186,27 +186,71 @@ public sealed class Minimap : FrameworkElement
 
     private double ContentHeight => _lines * LineHeight;
 
+    // The minimap draws one row per document line. With word wrap a document line can fill
+    // several editor rows, so positions go through document lines (fractional, 0-based):
+    // LineAt(editor offset) and OffsetOf(line) are each other's inverse. Without word wrap they
+    // are simply offset / line height.
+
+    /// <summary>The document line (0-based, with the fraction inside the line) at an editor offset (DIP).</summary>
+    private double LineAt(double offset)
+    {
+        var view = _editor!.TextArea.TextView;
+        var document = _editor.Document;
+        if (document is null || document.LineCount == 0)
+            return 0;
+        var line = view.GetDocumentLineByVisualTop(Math.Max(0, offset));
+        double top = view.GetVisualTopByDocumentLine(line.LineNumber);
+        double bottom = line.LineNumber < document.LineCount
+            ? view.GetVisualTopByDocumentLine(line.LineNumber + 1)
+            : Math.Max(top + view.DefaultLineHeight, view.DocumentHeight);
+        double fraction = bottom > top ? Math.Clamp((offset - top) / (bottom - top), 0, 1) : 0;
+        return line.LineNumber - 1 + fraction;
+    }
+
+    /// <summary>The editor offset (DIP) of a document line (0-based, fractional).</summary>
+    private double OffsetOf(double line)
+    {
+        var view = _editor!.TextArea.TextView;
+        var document = _editor.Document;
+        if (document is null || document.LineCount == 0)
+            return 0;
+        line = Math.Clamp(line, 0, document.LineCount);
+        int number = Math.Min((int)Math.Floor(line) + 1, document.LineCount);
+        double top = view.GetVisualTopByDocumentLine(number);
+        double bottom = number < document.LineCount
+            ? view.GetVisualTopByDocumentLine(number + 1)
+            : Math.Max(top + view.DefaultLineHeight, view.DocumentHeight);
+        return top + (line - (number - 1)) * (bottom - top);
+    }
+
+    /// <summary>First shown document line and how many document lines the editor shows.</summary>
+    private (double First, double Count) ShownLines()
+    {
+        double first = LineAt(_editor!.VerticalOffset);
+        double last = LineAt(_editor.VerticalOffset + _editor.ViewportHeight);
+        return (first, Math.Max(0, last - first));
+    }
+
     /// <summary>How far the minimap itself is scrolled (long files), in DIP.</summary>
     private double MapOffset
     {
         get
         {
-            if (_editor is null || ContentHeight <= ActualHeight)
+            if (_editor?.Document is null || ContentHeight <= ActualHeight)
                 return 0;
-            double scrollable = Math.Max(1, _editor.ExtentHeight - _editor.ViewportHeight);
-            return Math.Clamp(_editor.VerticalOffset / scrollable, 0, 1) * (ContentHeight - ActualHeight);
+            var (first, count) = ShownLines();
+            double scrollableLines = Math.Max(1, _lines - count);
+            return Math.Clamp(first / scrollableLines, 0, 1) * (ContentHeight - ActualHeight);
         }
     }
 
     /// <summary>The light box: top and height (DIP, minimap coordinates) of the lines shown in the editor.</summary>
     private (double Top, double Height) ViewportBox()
     {
-        if (_editor is null)
+        if (_editor?.Document is null)
             return (0, 0);
-        double editorLine = Math.Max(1, _editor.TextArea.TextView.DefaultLineHeight);
-        double firstLine = _editor.VerticalOffset / editorLine;
-        double visibleLines = _editor.ViewportHeight / editorLine;
-        return (firstLine * LineHeight - MapOffset, Math.Max(4, visibleLines * LineHeight));
+        var (first, count) = ShownLines();
+        return (first * LineHeight - MapOffset, Math.Max(4, count * LineHeight));
     }
 
     protected override void OnRender(DrawingContext dc)
@@ -293,12 +337,11 @@ public sealed class Minimap : FrameworkElement
     /// <summary>A click outside the box: the clicked line goes to the middle of the editor.</summary>
     private void JumpTo(double y)
     {
-        if (_editor is null)
+        if (_editor?.Document is null)
             return;
-        double editorLine = Math.Max(1, _editor.TextArea.TextView.DefaultLineHeight);
         double line = (y + MapOffset) / LineHeight;
         double scrollable = Math.Max(0, _editor.ExtentHeight - _editor.ViewportHeight);
-        _editor.ScrollToVerticalOffset(Math.Clamp(line * editorLine - _editor.ViewportHeight / 2, 0, scrollable));
+        _editor.ScrollToVerticalOffset(Math.Clamp(OffsetOf(line) - _editor.ViewportHeight / 2, 0, scrollable));
     }
 
     /// <summary>
@@ -308,20 +351,21 @@ public sealed class Minimap : FrameworkElement
     /// </summary>
     private void ScrollBoxTo(double boxTop)
     {
-        if (_editor is null)
+        if (_editor?.Document is null)
             return;
-        double editorLine = Math.Max(1, _editor.TextArea.TextView.DefaultLineHeight);
         double scrollable = Math.Max(0, _editor.ExtentHeight - _editor.ViewportHeight);
-        double offset;
+        double firstLine;
         if (ContentHeight <= ActualHeight)
         {
-            offset = boxTop / LineHeight * editorLine;
+            firstLine = boxTop / LineHeight;
         }
         else
         {
-            double boxHeight = ViewportBox().Height;
-            offset = boxTop / Math.Max(1, ActualHeight - boxHeight) * scrollable;
+            // The inverse of MapOffset / ViewportBox: box top = fraction * (height - box height).
+            var (_, count) = ShownLines();
+            double boxHeight = Math.Max(4, count * LineHeight);
+            firstLine = Math.Clamp(boxTop / Math.Max(1, ActualHeight - boxHeight), 0, 1) * Math.Max(0, _lines - count);
         }
-        _editor.ScrollToVerticalOffset(Math.Clamp(offset, 0, scrollable));
+        _editor.ScrollToVerticalOffset(Math.Clamp(OffsetOf(firstLine), 0, scrollable));
     }
 }

@@ -156,7 +156,7 @@ public static class FileDrop
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, "DirectoryFable", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageDialog.Show(null, ex.Message, "DirectoryFable", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 

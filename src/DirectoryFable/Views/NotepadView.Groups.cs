@@ -33,7 +33,11 @@ public partial class NotepadView
 
     private EditorGroup? GroupOf(EditorDocument document) => Groups.FirstOrDefault(g => g.Documents.Contains(document));
 
-    private string AutoKey(EditorDocument document) => _autoGroupBy == "folder"
+    /// <summary>Automatic group of new files that have no path yet ("New files").</summary>
+    private const string NewFilesKey = "<new>";
+
+    private string AutoKey(EditorDocument document) => document.IsUntitled ? NewFilesKey
+        : _autoGroupBy == "folder"
         ? Path.GetDirectoryName(document.FilePath) ?? ""
         : Path.GetExtension(document.FilePath).ToLowerInvariant();
 
@@ -45,6 +49,12 @@ public partial class NotepadView
         var group = Groups.FirstOrDefault(g => g.IsAuto && string.Equals(g.Key, key, StringComparison.OrdinalIgnoreCase));
         if (group is not null)
             return group;
+        if (key == NewFilesKey)
+        {
+            group = new EditorGroup("New files", key, "New files that are not saved yet");
+            Groups.Add(group);
+            return group;
+        }
         string name = _autoGroupBy == "folder"
             ? (PathHelper.GetName(key) is { Length: 2 } drive && drive[1] == ':' ? drive + "\\" : PathHelper.GetName(key))
             : (key.Length > 0 ? key : "(no extension)");
@@ -137,6 +147,7 @@ public partial class NotepadView
             _rebuilding = false;
         }
         SelectActiveRow();
+        ScheduleBackup(); // Files or groups changed: save the session soon.
     }
 
     private void SelectActiveRow()
@@ -272,6 +283,7 @@ public partial class NotepadView
                     menu.Items.Add(new Separator());
                 }
                 Add(menu, "Save", "Ctrl+S", () => SaveDocument(document), enabled: document.HasContent);
+                Add(menu, "Save as...", "Ctrl+Alt+S", () => SaveDocumentAs(document), enabled: document.HasContent);
                 Add(menu, "Close", "Ctrl+W", () => CloseDocument(document));
                 Add(menu, "Close others", "", () =>
                 {
@@ -313,8 +325,8 @@ public partial class NotepadView
                     catch (COMException)
                     {
                     }
-                });
-                Add(menu, "Show in explorer", "", () => ShowInExplorerRequested?.Invoke(document.FilePath));
+                }, enabled: !document.IsUntitled);
+                Add(menu, "Show in explorer", "", () => ShowInExplorerRequested?.Invoke(document.FilePath), enabled: !document.IsUntitled);
                 break;
             }
 
@@ -331,6 +343,8 @@ public partial class NotepadView
                 break;
 
             default:
+                Add(menu, "New file", "Ctrl+N", NewFile);
+                menu.Items.Add(new Separator());
                 Add(menu, "New group...", "", () => NewGroup());
                 Add(menu, "Collapse all", "", () => SetAllExpanded(false), enabled: Groups.Count > 0);
                 Add(menu, "Expand all", "", () => SetAllExpanded(true), enabled: Groups.Count > 0);
@@ -476,10 +490,20 @@ public partial class NotepadView
 
     // ---------- Session ----------
 
+    /// <summary>True while the last session is put back (no backups then: they would miss entries).</summary>
+    private bool _restoring;
+
+    /// <summary>Entries whose text is kept in data\notepad-cache: gone files, unsaved changes, new files with text.</summary>
+    private static bool KeepsText(EditorDocument d) =>
+        d.HasContent && (d.IsMissing || d.IsDirty || (d.IsUntitled && d.Document.TextLength > 0));
+
     public NotepadState CaptureState()
     {
-        // The text of files that are gone survives a restart (data\notepad-cache).
-        MissingFileCache.Update(Documents.Where(d => d.IsMissing && d.HasContent));
+        // Texts that must survive a restart (data\notepad-cache): files that are gone,
+        // unsaved changes, and new files that were never saved.
+        var kept = Documents.Where(KeepsText).ToList();
+        if (!_restoring)
+            NotepadTextCache.Update(kept);
         if (Active is { } active && Editor.Document == active.Document)
             RememberView(active);
         var all = Documents.ToList();
@@ -490,22 +514,43 @@ public partial class NotepadView
             Files = [.. all.Select(d => new NotepadFileState
             {
                 Path = d.FilePath,
+                Untitled = d.IsUntitled ? d.FileName : null,
+                UntitledId = d.IsUntitled ? d.UntitledId : null,
+                Unsaved = kept.Contains(d) && !d.IsMissing,
+                DiskTicks = d.DiskWriteTimeUtc.Ticks,
+                DiskLength = d.DiskLength,
                 Group = GroupOf(d) is { IsAuto: false } own ? own.Name : null,
                 Language = d.Highlighting?.Name ?? "",
                 Caret = d.CaretOffset,
                 VerticalOffset = d.VerticalOffset,
-                CachedEncoding = d.IsMissing && d.HasContent ? d.EncodingKey : null,
+                CachedEncoding = kept.Contains(d) ? d.EncodingKey : null,
             })],
             ActiveIndex = Active is null ? -1 : all.IndexOf(Active),
             ListWidth = ListColumn.ActualWidth,
         };
     }
 
-    /// <summary>Reopens the files and groups of the last session (files that are gone are skipped).</summary>
+    /// <summary>
+    /// Reopens the files and groups of the last session, with their unsaved changes and the new
+    /// files (their text was kept in data\notepad-cache). Files that are gone stay listed in red.
+    /// </summary>
     public async Task RestoreAsync(NotepadState? state)
     {
         if (state is null)
             return;
+        _restoring = true;
+        try
+        {
+            await RestoreFilesAsync(state);
+        }
+        finally
+        {
+            _restoring = false;
+        }
+    }
+
+    private async Task RestoreFilesAsync(NotepadState state)
+    {
         if (state.ListWidth >= 80)
             ListColumn.Width = new GridLength(state.ListWidth);
 
@@ -514,26 +559,45 @@ public partial class NotepadView
         {
             if (saved.Key is null)
                 Groups.Add(new EditorGroup(saved.Name) { IsExpanded = saved.Expanded });
-            else if (string.Equals(state.AutoGroupBy, _autoGroupBy, StringComparison.OrdinalIgnoreCase))
+            else if (string.Equals(state.AutoGroupBy, _autoGroupBy, StringComparison.OrdinalIgnoreCase) || saved.Key == NewFilesKey)
                 AutoGroup(saved.Key).IsExpanded = saved.Expanded;
         }
 
+        var restored = new List<EditorDocument?>();
         foreach (var file in state.Files)
         {
             var own = file.Group is null ? null : Groups.FirstOrDefault(g => !g.IsAuto && g.Name == file.Group);
             EditorDocument? document;
-            if (File.Exists(file.Path))
+            if (file.Untitled is not null)
+            {
+                // A new file that was never saved, with its text.
+                document = EditorDocument.CreateUntitled(file.Untitled, file.UntitledId);
+                if (file.CachedEncoding is not null && NotepadTextCache.Read(document.CacheKey) is { } text)
+                    document.ApplyUnsavedText(text, file.CachedEncoding);
+                AddDocument(document, own);
+            }
+            else if (File.Exists(file.Path))
             {
                 document = await LoadOrFindAsync(file.Path, own);
+                if (document is not null && file.Unsaved && file.CachedEncoding is not null &&
+                    NotepadTextCache.Read(file.Path) is { } text)
+                {
+                    // The unsaved changes come back over the file's text (Ctrl+Z = the saved text).
+                    document.ApplyUnsavedText(text, file.CachedEncoding);
+                    // Another program changed the file since: ask when it is shown.
+                    if (file.DiskTicks != 0 && document.DiffersFromDisk(new DateTime(file.DiskTicks, DateTimeKind.Utc), file.DiskLength))
+                        document.ChangedOutside = true;
+                }
             }
             else
             {
                 // Gone: keep the entry (red) until the user dismisses it, with its cached text if any.
-                document = file.CachedEncoding is not null && MissingFileCache.Read(file.Path) is { } text
+                document = file.CachedEncoding is not null && NotepadTextCache.Read(file.Path) is { } text
                     ? EditorDocument.CreateMissing(file.Path, text, file.CachedEncoding)
                     : EditorDocument.CreateMissing(file.Path);
                 AddDocument(document, own);
             }
+            restored.Add(document);
             if (document is null)
                 continue;
             // Language "" = the user chose Normal Text; null = by extension (already set).
@@ -545,9 +609,7 @@ public partial class NotepadView
         RemoveEmptyAutoGroups();
         RebuildRows();
 
-        var reopened = state.ActiveIndex >= 0 && state.ActiveIndex < state.Files.Count
-            ? Documents.FirstOrDefault(d => PathHelper.IsSamePath(d.FilePath, state.Files[state.ActiveIndex].Path))
-            : null;
+        var reopened = state.ActiveIndex >= 0 && state.ActiveIndex < restored.Count ? restored[state.ActiveIndex] : null;
         ShowDocument(reopened ?? Documents.FirstOrDefault());
     }
 }

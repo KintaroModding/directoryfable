@@ -36,6 +36,28 @@ public partial class MainWindow
             ShowNotepad(true);
             await NotepadPage.OpenFilesAsync(paths);
         };
+        // Unsaved Notepad# texts are kept a moment after typing stops: the session is saved with them.
+        NotepadPage.BackupRequested += SaveSession;
+
+        // Files dragged onto the [Notepad#] title tab (from the panes, Explorer, ...) open there.
+        NotepadTab.AllowDrop = true;
+        DragEventHandler over = (_, e) =>
+        {
+            e.Effects = NotepadView.DroppableFiles(e.Data).Count > 0 ? DragDropEffects.Copy : DragDropEffects.None;
+            e.Handled = true;
+        };
+        NotepadTab.DragEnter += over;
+        NotepadTab.DragOver += over;
+        NotepadTab.Drop += async (_, e) =>
+        {
+            e.Handled = true;
+            var files = NotepadView.DroppableFiles(e.Data);
+            if (files.Count == 0)
+                return;
+            ShowNotepad(true);
+            Activate();
+            await NotepadPage.OpenFilesAsync(files);
+        };
     }
 
     /// <summary>

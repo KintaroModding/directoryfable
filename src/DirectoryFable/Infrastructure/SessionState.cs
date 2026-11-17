@@ -38,7 +38,24 @@ public sealed class PaneState
 /// <summary>One open Notepad# file in the session.</summary>
 public sealed class NotepadFileState
 {
+    /// <summary>The file's path; "" for a new file that was never saved (see <see cref="Untitled"/>).</summary>
     public string Path { get; set; } = "";
+
+    /// <summary>A new file without a path: its name ("new 1"); null for normal files.</summary>
+    public string? Untitled { get; set; }
+
+    /// <summary>A new file's id: its text is kept in data\notepad-cache under this id.</summary>
+    public string? UntitledId { get; set; }
+
+    /// <summary>
+    /// True: the entry had unsaved changes; their text is in data\notepad-cache (with
+    /// <see cref="CachedEncoding"/>) and is put back over the file's text at the next start.
+    /// </summary>
+    public bool Unsaved { get; set; }
+
+    /// <summary>Write time (UTC ticks) and size of the file when Notepad# last read or wrote it.</summary>
+    public long DiskTicks { get; set; }
+    public long DiskLength { get; set; }
 
     /// <summary>The own group the file is in; null = its automatic group.</summary>
     public string? Group { get; set; }
@@ -48,7 +65,7 @@ public sealed class NotepadFileState
     public int Caret { get; set; }
     public double VerticalOffset { get; set; }
 
-    /// <summary>The file was gone and its text is in data\notepad-cache: its encoding key; null = not cached.</summary>
+    /// <summary>The entry's text is in data\notepad-cache (file gone, unsaved changes, new file): its encoding key; null = not cached.</summary>
     public string? CachedEncoding { get; set; }
 }
 

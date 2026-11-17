@@ -55,14 +55,24 @@ release follows when the default settings are ready for everyone.
 - **Open files in a vertical list**, in groups of your own and in automatic
   groups (by type or by folder). Drag files and groups to order them.
 - **Editor** based on [AvalonEdit](https://github.com/icsharpcode/AvalonEdit):
-  line numbers, search (`Ctrl+F`), syntax highlighting for the languages
-  AvalonEdit knows plus AutoHotkey and INI, chosen per file.
+  line numbers, syntax highlighting for the languages AvalonEdit knows plus
+  AutoHotkey and INI, chosen per file, and word wrap (`Alt+Z`).
+- **Search** (`Ctrl+F`) in a dark search box: match case, whole words, regular
+  expressions.
 - **Minimap** beside the scroll bar: click to jump, drag to scroll.
+- **New files** (`Ctrl+N`) and **Save as** (`Ctrl+Alt+S`).
+- **Nothing is lost on exit.** Unsaved changes and new files that were never
+  saved come back at the next start, also after a crash (they are kept a few
+  seconds after you stop typing). `Ctrl+Z` after a restart goes back to the
+  saved text.
+- **Changes from other programs**: a file without unsaved changes is reloaded
+  by itself; with unsaved changes, Notepad# asks first.
 - Files keep their encoding and line endings.
 - **A file deleted outside stays in the list** in red and read-only, with its
   text, also after a restart. Save writes it back.
-- **Open from the explorer** with the context menu, `Ctrl+E`, or a double-click
-  on the file types you choose. This works only inside DirectoryFable; the file
+- **Open from the explorer** with the context menu, `Ctrl+E`, by dragging files
+  onto the `[Notepad#]` tab or into Notepad#, or with a double-click on the file
+  types you choose. The double-click works only inside DirectoryFable; the file
   associations of Windows do not change.
 
 ## Requirements
@@ -83,7 +93,7 @@ exe and writes nothing to AppData or the registry:
 | `settings.json` | Settings, with a comment for each key. The settings page writes it. |
 | `favorites.json` | The favorites bar. |
 | `session.json` | Window, tabs, columns and Notepad# files of the last run. |
-| `notepad-cache\` | The text of Notepad# files that were deleted outside. |
+| `notepad-cache\` | Notepad# texts kept over a restart: unsaved changes, new files, files deleted outside. |
 
 ## Command line
 
@@ -114,9 +124,11 @@ DirectoryFable.exe [leftFolder] [rightFolder] [--multi] [--taskbar|--tray] [--da
 | `Ctrl+Z` | Undo the last file operation |
 | `Alt+Enter` | Properties window |
 | `Ctrl+E` | Open the selected files in Notepad# |
-| Notepad#: `Ctrl+S` / `Ctrl+Shift+S` | Save / save all |
-| Notepad#: `Ctrl+O` / `Ctrl+W` | Open / close a file |
-| Notepad#: `Ctrl+Tab` / `Ctrl+F` | Next file / search |
+| Notepad#: `Ctrl+N` / `Ctrl+O` / `Ctrl+W` | New / open / close a file |
+| Notepad#: `Ctrl+S` / `Ctrl+Shift+S` / `Ctrl+Alt+S` | Save / save all / save as |
+| Notepad#: `Ctrl+F`, then `F3` / `Shift+F3` | Search, next / previous match |
+| Notepad#: `Alt+Z` | Word wrap on / off |
+| Notepad#: `Ctrl+Tab` | Next file |
 
 ## Build
 

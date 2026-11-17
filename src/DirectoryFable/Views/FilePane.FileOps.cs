@@ -236,7 +236,7 @@ public partial class FilePane
         }
 
         string what = files.Count == 1 ? $"\"{files[0].Name}\"" : $"{files.Count:N0} items";
-        var answer = MessageBox.Show(Window.GetWindow(this),
+        var answer = MessageDialog.Show(Window.GetWindow(this),
             $"Delete {what} from {Path.GetFileName(zipFile)}?\n\nThis cannot be undone (no Recycle Bin inside a ZIP file).",
             "DirectoryFable", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
         if (answer != MessageBoxResult.Yes)

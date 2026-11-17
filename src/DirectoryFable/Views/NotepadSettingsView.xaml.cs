@@ -42,6 +42,7 @@ public partial class NotepadSettingsView : UserControl
             FontBox.SelectedItem = FontBox.Items.Cast<FontFamily>()
                 .FirstOrDefault(f => string.Equals(f.Source, _settings.EditorFontFamily, StringComparison.OrdinalIgnoreCase));
             SizeBox.Text = _settings.EditorFontSize.ToString(CultureInfo.CurrentCulture);
+            WrapBox.IsChecked = _settings.EditorWordWrap;
             GroupByFolder.IsChecked = _settings.NotepadAutoGroupBy == "folder";
             GroupByType.IsChecked = _settings.NotepadAutoGroupBy != "folder";
             OpensTypes.IsChecked = _settings.NotepadOpensFileTypes;
@@ -116,6 +117,14 @@ public partial class NotepadSettingsView : UserControl
         if (Math.Abs(size - _settings.EditorFontSize) < 0.01)
             return;
         _settings.EditorFontSize = size;
+        SaveAndApply();
+    }
+
+    private void WrapBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_filling)
+            return;
+        _settings.EditorWordWrap = WrapBox.IsChecked == true;
         SaveAndApply();
     }
 

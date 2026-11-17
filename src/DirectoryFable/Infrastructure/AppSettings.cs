@@ -38,6 +38,9 @@ public sealed class AppSettings
     /// <summary>Notepad# editor font size.</summary>
     public double EditorFontSize { get; set; } = 14;
 
+    /// <summary>Notepad#: long lines wrap at the editor's right edge (no horizontal scrolling).</summary>
+    public bool EditorWordWrap { get; set; }
+
     /// <summary>Notepad# file list: files in no own group are grouped by "type" or by "folder".</summary>
     public string NotepadAutoGroupBy { get; set; } = "type";
 
@@ -120,6 +123,8 @@ public sealed class AppSettings
           // Notepad#: editor font and size.
           "editorFontFamily": {{Json(s.EditorFontFamily)}},
           "editorFontSize": {{s.EditorFontSize.ToString(System.Globalization.CultureInfo.InvariantCulture)}},
+          // Notepad#: true = long lines wrap at the right edge (Alt+Z switches it).
+          "editorWordWrap": {{Json(s.EditorWordWrap)}},
           // Notepad#: a double-click in DirectoryFable opens these file types in Notepad# (Windows' defaults are not changed).
           "notepadOpensFileTypes": {{Json(s.NotepadOpensFileTypes)}},
           // Notepad# file list: files in no own group are grouped "type" or "folder".
