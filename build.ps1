@@ -10,13 +10,14 @@ $ErrorActionPreference = 'Stop'
 $project = Join-Path $PSScriptRoot 'src\DirectoryFable\DirectoryFable.csproj'
 $version = ([xml](Get-Content $project)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
 
-dotnet publish $project `
-    --configuration Release `
-    --runtime win-x64 `
-    --self-contained false `
-    -p:PublishSingleFile=true `
-    -p:DebugType=embedded `
-    --output $Output
+# A full build first: an incremental build keeps resources of files that were removed (for example
+# pictures), and they would end up in the exe. Then publish exactly that build.
+$settings = @('--configuration', 'Release', '--runtime', 'win-x64', '--self-contained', 'false',
+    '-p:PublishSingleFile=true', '-p:DebugType=embedded')
+dotnet build $project @settings --no-incremental
+if ($LASTEXITCODE -eq 0) {
+    dotnet publish $project @settings --no-build --output $Output
+}
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Build failed (exit code $LASTEXITCODE)." -ForegroundColor Red
     exit $LASTEXITCODE
