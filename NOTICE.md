@@ -38,3 +38,7 @@ These terms apply to this program and to every work based on it.
 - The NTFS file table reader of the search (src/DirectoryFable/Search/MftReader.cs)
   was written after the managed MFT parser of Lertaro (MIT license). License
   text: licenses/Lertaro.txt.
+- The "Technical Notes" highlighting of Notepad# uses, unchanged, the TextMate
+  grammar of the Technical Notes VS Code language mode (MIT license):
+  src/DirectoryFable/Editor/Syntax/TechnicalNotes.tmLanguage.json. License text:
+  licenses/TechnicalNotes.txt.

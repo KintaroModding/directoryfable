@@ -10,7 +10,8 @@ namespace DirectoryFable.Editor;
 /// Syntax highlighting for Notepad#. AvalonEdit's built-in definitions are
 /// made for a white background: they are loaded again here from AvalonEdit's own resources,
 /// their colors are changed to a dark palette (like VS Code's Dark+) before they are built,
-/// and registered under the same names. Own definitions: AutoHotkey, INI.
+/// and registered under the same names. Own definitions: AutoHotkey, INI, and Technical Notes (its own
+/// highlighter, see <see cref="TechnicalNotes"/>).
 /// </summary>
 public static class EditorHighlighting
 {
@@ -80,6 +81,8 @@ public static class EditorHighlighting
             var xshd = HighlightingLoader.LoadXshd(reader);
             manager.RegisterHighlighting(xshd.Name, [.. xshd.Extensions], HighlightingLoader.Load(xshd, manager));
         }
+
+        manager.RegisterHighlighting(TechnicalNotes.Name, TechnicalNotes.Extensions, TechnicalNotesDefinition.Instance);
     }
 
     /// <summary>The languages of the Language menu, sorted by name.</summary>

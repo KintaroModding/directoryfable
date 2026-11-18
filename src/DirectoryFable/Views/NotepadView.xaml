@@ -290,7 +290,7 @@
                     </Grid.ColumnDefinitions>
                     <!-- Text | minimap | scroll bar, like VS Code: the editor's own vertical scroll bar
                          is hidden (it still scrolls); EditorScrollBar on the right stands in for it. -->
-                    <avalon:TextEditor x:Name="Editor" ShowLineNumbers="True" Visibility="Collapsed"
+                    <editor:NotepadTextEditor x:Name="Editor" ShowLineNumbers="True" Visibility="Collapsed"
                                        Background="{StaticResource EditorBackgroundBrush}"
                                        Foreground="{StaticResource EditorTextBrush}"
                                        LineNumbersForeground="{StaticResource EditorLineNumberBrush}"

@@ -62,7 +62,12 @@ yourself, see [Build](#build).
   groups (by type or by folder). Drag files and groups to order them.
 - **Editor** based on [AvalonEdit](https://github.com/icsharpcode/AvalonEdit):
   line numbers, syntax highlighting for the languages AvalonEdit knows plus
-  AutoHotkey and INI, chosen per file, and word wrap (`Alt+Z`).
+  AutoHotkey, INI and Technical Notes, chosen per file, and word wrap (`Alt+Z`).
+- **Technical Notes**: highlighting for plain-text notes and logs: dates and
+  times, status words (`TODO`, `FIXED`, `ERROR`), paths, file names, dotted
+  members, brackets (colored by depth), quotes, numbers; capitalized words
+  always stand out. `.tnotes` files get it at once; for any other file choose
+  it in the Language menu.
 - **Search** (`Ctrl+F`) in a dark search box: match case, whole words, regular
   expressions.
 - **Minimap** beside the scroll bar: click to jump, drag to scroll.

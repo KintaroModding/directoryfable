@@ -33,6 +33,8 @@
     <Resource Include="Assets\sonnetsearch.ico" />
     <!-- Notepad# syntax definitions (AutoHotkey, INI): loaded by Editor/EditorHighlighting.cs. -->
     <EmbeddedResource Include="Editor\Syntax\*.xshd" />
+    <!-- Technical Notes: a TextMate grammar (from its VS Code language mode), read by Editor/TextMateLine.cs. -->
+    <EmbeddedResource Include="Editor\Syntax\*.tmLanguage.json" />
   </ItemGroup>
 
   <ItemGroup>

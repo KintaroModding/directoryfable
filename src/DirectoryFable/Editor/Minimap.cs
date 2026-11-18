@@ -107,9 +107,9 @@ public sealed class Minimap : FrameworkElement
         Array.Fill(pixels, ToBgra(BackgroundColor));
 
         var definition = _editor!.SyntaxHighlighting;
-        using var highlighter = definition is not null && _lines <= MaxColoredLines
-            ? new ICSharpCode.AvalonEdit.Highlighting.DocumentHighlighter(document, definition)
-            : null;
+        using var highlighter = definition is null || _lines > MaxColoredLines ? null
+            : definition is TechnicalNotesDefinition ? TechnicalNotes.CreateHighlighter(document)
+            : new ICSharpCode.AvalonEdit.Highlighting.DocumentHighlighter(document, definition);
         int plain = ToBgra(PlainColor);
         var charColors = new int[4096];
 

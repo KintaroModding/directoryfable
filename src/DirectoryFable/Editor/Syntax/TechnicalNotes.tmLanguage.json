@@ -1,0 +1,578 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Technical Notes",
+  "scopeName": "text.technical-notes",
+  "patterns": [
+    {
+      "include": "#content"
+    }
+  ],
+  "repository": {
+    "content": {
+      "patterns": [
+        {
+          "include": "#inline-code"
+        },
+        {
+          "include": "#double-quote"
+        },
+        {
+          "include": "#single-quote"
+        },
+        {
+          "include": "#tokens"
+        },
+        {
+          "include": "#round"
+        },
+        {
+          "include": "#square"
+        },
+        {
+          "include": "#curly"
+        }
+      ]
+    },
+    "tokens": {
+      "patterns": [
+        {
+          "match": "\\b\\d{4}-\\d{2}-\\d{2}(?:[ T]\\d{2}:\\d{2}(?::\\d{2}(?:\\.\\d+)?)?(?:Z|[+-]\\d{2}:\\d{2})?)?\\b",
+          "name": "constant.other.timestamp.technical-notes",
+          "captures": {
+            "0": {
+              "patterns": [
+                {
+                  "include": "#capitalized"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "match": "\\b\\d{1,2}:\\d{2}(?::\\d{2})?\\b",
+          "name": "constant.other.timestamp.technical-notes",
+          "captures": {
+            "0": {
+              "patterns": [
+                {
+                  "include": "#capitalized"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "match": "\\b(?:NOT VERIFIED|NOT TESTED|TODO|FIXME|WARNING|WARN|PENDING|WIP|DEFERRED)\\b:?",
+          "name": "markup.changed.status.warning.technical-notes",
+          "captures": {
+            "0": {
+              "patterns": [
+                {
+                  "include": "#capitalized"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "match": "\\b(?:ERROR|FAILED|FAILURE|BROKEN|BLOCKED|BUG)\\b:?",
+          "name": "markup.deleted.status.error.technical-notes",
+          "captures": {
+            "0": {
+              "patterns": [
+                {
+                  "include": "#capitalized"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "match": "\\b(?:FIX|FIXED|DONE|PASS|PASSED|VERIFIED|COMPLETE|OK)\\b:?",
+          "name": "markup.inserted.status.success.technical-notes",
+          "captures": {
+            "0": {
+              "patterns": [
+                {
+                  "include": "#capitalized"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "match": "\\b(?:NOTE|INFO|BUILD|TEST|TESTS|VERIFY|FOUND)\\b:",
+          "name": "keyword.other.status.info.technical-notes",
+          "captures": {
+            "0": {
+              "patterns": [
+                {
+                  "include": "#capitalized"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "match": "\\bhttps?://[^\\s<>\\\"'()\\[\\]{}]*[^\\s<>\\\"'()\\[\\]{}.,;:!?]",
+          "name": "markup.underline.link.technical-notes",
+          "captures": {
+            "0": {
+              "patterns": [
+                {
+                  "include": "#capitalized"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "match": "(?<![\\w])(?:[A-Za-z]:[\\\\/]|\\\\\\\\|//|\\.\\.?[\\\\/]|~/)[^\\s\\\"'<>|()\\[\\]{},;]*[^\\s\\\"'<>|()\\[\\]{},;.!?]",
+          "name": "string.other.path.technical-notes",
+          "captures": {
+            "0": {
+              "patterns": [
+                {
+                  "include": "#capitalized"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "match": "(?<![\\w/])(?:[\\w.@+-]+/)+[\\w.@+-]+(?<![.,;:!?])",
+          "name": "string.other.path.technical-notes",
+          "captures": {
+            "0": {
+              "patterns": [
+                {
+                  "include": "#capitalized"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "match": "(?i)(?<![\\w.])[\\w-]+(?:\\.[\\w-]+)*\\.(?:txt|md|jsonc?|csproj|sln|cs|js|jsx|ts|tsx|mjs|cjs|py|ps1|cmd|bat|sh|ya?ml|toml|ini|cfg|config|xml|html?|css|scss|lua|log|csv|sql|dll|exe|zip|gz|vsix|png|jpe?g|svg|webp|pdf|ao|aoc|ot|pet|trl|epk|mat|fmt|sm)(?!\\w|\\.\\w)",
+          "name": "string.other.filename.technical-notes",
+          "captures": {
+            "0": {
+              "patterns": [
+                {
+                  "include": "#capitalized"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "match": "(?i)(?<![\\w.])\\.(?:txt|md|jsonc?|csproj|sln|cs|js|jsx|ts|tsx|mjs|cjs|py|ps1|cmd|bat|sh|ya?ml|toml|ini|cfg|config|xml|html?|css|scss|lua|log|csv|sql|dll|exe|zip|gz|vsix|png|jpe?g|svg|webp|pdf|ao|aoc|ot|pet|trl|epk|mat|fmt|sm)(?!\\w|\\.\\w)",
+          "name": "string.other.extension.technical-notes",
+          "captures": {
+            "0": {
+              "patterns": [
+                {
+                  "include": "#capitalized"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "match": "(?<![\\w.])([A-Za-z_]\\w*)((?:\\??\\.[A-Za-z_]\\w*)*)(\\??\\.)([A-Za-z_]\\w*)(?=\\s*\\()",
+          "name": "meta.dotted.technical-notes",
+          "captures": {
+            "1": {
+              "name": "entity.name.type.object.technical-notes",
+              "patterns": [
+                {
+                  "include": "#capitalized"
+                }
+              ]
+            },
+            "2": {
+              "patterns": [
+                {
+                  "match": "\\??\\.",
+                  "name": "punctuation.accessor.technical-notes",
+                  "captures": {
+                    "0": {
+                      "patterns": [
+                        {
+                          "include": "#capitalized"
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "match": "[A-Za-z_]\\w*",
+                  "name": "variable.other.property.technical-notes",
+                  "captures": {
+                    "0": {
+                      "patterns": [
+                        {
+                          "include": "#capitalized"
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "3": {
+              "name": "punctuation.accessor.technical-notes",
+              "patterns": [
+                {
+                  "include": "#capitalized"
+                }
+              ]
+            },
+            "4": {
+              "name": "entity.name.function.technical-notes",
+              "patterns": [
+                {
+                  "include": "#capitalized"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "match": "(?<![\\w.])([A-Za-z_]\\w*)((?:\\??\\.[A-Za-z_]\\w*)+)",
+          "name": "meta.dotted.technical-notes",
+          "captures": {
+            "1": {
+              "name": "entity.name.type.object.technical-notes",
+              "patterns": [
+                {
+                  "include": "#capitalized"
+                }
+              ]
+            },
+            "2": {
+              "patterns": [
+                {
+                  "match": "\\??\\.",
+                  "name": "punctuation.accessor.technical-notes",
+                  "captures": {
+                    "0": {
+                      "patterns": [
+                        {
+                          "include": "#capitalized"
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "match": "[A-Za-z_]\\w*(?=\\s*\\()",
+                  "name": "entity.name.function.technical-notes",
+                  "captures": {
+                    "0": {
+                      "patterns": [
+                        {
+                          "include": "#capitalized"
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "match": "[A-Za-z_]\\w*",
+                  "name": "variable.other.property.technical-notes",
+                  "captures": {
+                    "0": {
+                      "patterns": [
+                        {
+                          "include": "#capitalized"
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "match": "\\b[A-Za-z_]\\w*(?=\\s*\\()",
+          "name": "entity.name.function.technical-notes",
+          "captures": {
+            "0": {
+              "patterns": [
+                {
+                  "include": "#capitalized"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "match": "\\b(?:true|false|null|nil|undefined)\\b",
+          "name": "constant.language.technical-notes",
+          "captures": {
+            "0": {
+              "patterns": [
+                {
+                  "include": "#capitalized"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "match": "(?<!\\w)[+-]?(?:0[xX][0-9a-fA-F]+|\\d+(?:\\.\\d+)*(?:[eE][+-]?\\d+)?)(?:%|ms|MB|GB|KB|px|Hz)?(?!\\w)",
+          "name": "constant.numeric.technical-notes",
+          "captures": {
+            "0": {
+              "patterns": [
+                {
+                  "include": "#capitalized"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "match": "->|=>|<-|==|!=|<=|>=|&&|\\|\\||:=|[=+*]",
+          "name": "keyword.operator.technical-notes",
+          "captures": {
+            "0": {
+              "patterns": [
+                {
+                  "include": "#capitalized"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "match": "^\\s*(?:[-*+](?=\\s)|\\d+[.)](?=\\s))",
+          "name": "punctuation.definition.list.technical-notes",
+          "captures": {
+            "0": {
+              "patterns": [
+                {
+                  "include": "#capitalized"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "match": "^\\s*#{1,6}\\s+.*$",
+          "name": "markup.heading.technical-notes",
+          "captures": {
+            "0": {
+              "patterns": [
+                {
+                  "include": "#capitalized"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "include": "#capitalized"
+        }
+      ]
+    },
+    "round": {
+      "begin": "\\(",
+      "end": "\\)|$",
+      "name": "meta.group.round.technical-notes",
+      "contentName": "entity.name.tag.group-content.round.technical-notes",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.section.group.begin.technical-notes"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.group.end.technical-notes"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#content"
+        }
+      ]
+    },
+    "square": {
+      "begin": "\\[",
+      "end": "\\]|$",
+      "name": "meta.group.square.technical-notes",
+      "contentName": "entity.name.tag.group-content.square.technical-notes",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.section.group.begin.technical-notes"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.group.end.technical-notes"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#content"
+        }
+      ]
+    },
+    "curly": {
+      "begin": "\\{",
+      "end": "\\}|$",
+      "name": "meta.group.curly.technical-notes",
+      "contentName": "entity.name.tag.group-content.curly.technical-notes",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.section.group.begin.technical-notes"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.group.end.technical-notes"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#content"
+        }
+      ]
+    },
+    "inline-code": {
+      "begin": "(?<!\\x60)(\\x60+)",
+      "end": "\\1|$",
+      "name": "meta.inline-code.technical-notes",
+      "contentName": "markup.inline.raw.technical-notes",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.begin.technical-notes"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.end.technical-notes"
+        }
+      },
+      "patterns": [
+        {
+          "match": "\\\\[\\\\'\\\"nrt]",
+          "name": "constant.character.escape.technical-notes",
+          "captures": {
+            "0": {
+              "patterns": [
+                {
+                  "include": "#capitalized"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "include": "#tokens"
+        },
+        {
+          "include": "#round"
+        },
+        {
+          "include": "#square"
+        },
+        {
+          "include": "#curly"
+        }
+      ]
+    },
+    "double-quote": {
+      "begin": "\"",
+      "end": "\"|$",
+      "name": "meta.double-quote.technical-notes",
+      "contentName": "string.quoted.double.technical-notes",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.begin.technical-notes"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.end.technical-notes"
+        }
+      },
+      "patterns": [
+        {
+          "match": "\\\\[\\\\'\\\"nrt]",
+          "name": "constant.character.escape.technical-notes",
+          "captures": {
+            "0": {
+              "patterns": [
+                {
+                  "include": "#capitalized"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "include": "#tokens"
+        },
+        {
+          "include": "#round"
+        },
+        {
+          "include": "#square"
+        },
+        {
+          "include": "#curly"
+        }
+      ]
+    },
+    "single-quote": {
+      "begin": "(?<![\\w])'(?=\\S)",
+      "end": "'(?!\\w)|$",
+      "name": "meta.single-quote.technical-notes",
+      "contentName": "string.quoted.single.technical-notes",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.begin.technical-notes"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.end.technical-notes"
+        }
+      },
+      "patterns": [
+        {
+          "match": "\\\\[\\\\'\\\"nrt]",
+          "name": "constant.character.escape.technical-notes",
+          "captures": {
+            "0": {
+              "patterns": [
+                {
+                  "include": "#capitalized"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "include": "#tokens"
+        },
+        {
+          "include": "#round"
+        },
+        {
+          "include": "#square"
+        },
+        {
+          "include": "#curly"
+        }
+      ]
+    },
+    "capitalized": {
+      "match": "(?<![\\p{L}\\p{M}\\p{N}_])\\p{Lu}[\\p{L}\\p{M}\\p{N}_]*",
+      "name": "keyword.control.capitalized.technical-notes"
+    }
+  }
+}
