@@ -66,6 +66,8 @@ yourself, see [Build](#build).
 - **Search** (`Ctrl+F`) in a dark search box: match case, whole words, regular
   expressions.
 - **Minimap** beside the scroll bar: click to jump, drag to scroll.
+- **The full path** of the shown file just above the first line; right-click
+  it to copy it or to show the file in the explorer.
 - **New files** (`Ctrl+N`) and **Save as** (`Ctrl+Alt+S`).
 - **Nothing is lost on exit.** Unsaved changes and new files that were never
   saved come back at the next start, also after a crash (they are kept a few

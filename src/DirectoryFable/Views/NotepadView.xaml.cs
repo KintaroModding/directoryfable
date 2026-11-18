@@ -572,6 +572,7 @@ public partial class NotepadView : UserControl
         SaveButton.IsEnabled = document is { HasContent: true };
         LanguageButton.IsEnabled = document is not null;
         LanguageText.Text = document?.LanguageName ?? "Normal Text";
+        ShowPath(document);
         if (document is null)
         {
             StatusText.Text = "";
@@ -586,6 +587,44 @@ public partial class NotepadView : UserControl
     }
 
     private void ShowMessage(string text) => MessageText.Text = text;
+
+    /// <summary>The bar shows the full path of the shown file (a new file: its name, not saved yet).</summary>
+    private void ShowPath(EditorDocument? document)
+    {
+        string text = document is null ? ""
+            : document.IsUntitled ? $"{document.FileName}   (new file, not saved yet)"
+            : document.FilePath;
+        if (PathText.Text != text)
+        {
+            PathText.Text = text;
+            PathText.ToolTip = document is { IsUntitled: false } ? $"{document.FilePath}\nRight-click: copy the path or show it in the explorer" : null;
+        }
+    }
+
+    private void PathText_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (Active is not { IsUntitled: false } document)
+            return;
+        e.Handled = true;
+        var menu = NewMenu(PathText, PlacementMode.MousePoint);
+        var copy = new MenuItem { Header = "Copy path" };
+        copy.Click += (_, _) =>
+        {
+            try
+            {
+                Clipboard.SetText(document.FilePath);
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                // The clipboard is busy (another program holds it).
+            }
+        };
+        var show = new MenuItem { Header = "Show in explorer" };
+        show.Click += (_, _) => ShowInExplorerRequested?.Invoke(document.FilePath);
+        menu.Items.Add(copy);
+        menu.Items.Add(show);
+        menu.IsOpen = true;
+    }
 
     // ---------- Save / close ----------
 
