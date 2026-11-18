@@ -5,8 +5,10 @@ namespace DirectoryFable.Shell;
 
 /// <summary>
 /// Copy, move, delete and rename through the Windows copy engine (IFileOperation).
-/// This gives the standard progress dialog, conflict handling, Recycle Bin and elevation
-/// prompts. Each operation runs on its own STA thread so the window stays responsive.
+/// This gives Recycle Bin, elevation prompts and undo records. Copy and move show DirectoryFable's
+/// own dark progress window (<see cref="OperationProgress"/>) instead of Windows' white one, and ask about
+/// names that are already taken in DirectoryFable's own dialog before they start (<see cref="ConflictPlanner"/>),
+/// so the engine never shows its question; delete and rename keep Windows' dialogs. Each operation runs on its own STA thread so the window stays responsive.
 /// Copy, move, rename and delete-to-Recycle-Bin are recorded in <see cref="UndoManager"/> with
 /// the exact results Windows reports (new names such as "a - Copy.txt", Recycle Bin items).
 /// </summary>
@@ -19,38 +21,98 @@ public static class FileOperations
         // conflicts still get the normal Windows question.
         var sameFolder = sources.Where(s => IsInFolder(s, destinationFolder)).ToList();
         var otherFolders = sources.Except(sameFolder).ToList();
-        var recorder = new UndoRecorder(sources);
         bool ok = true;
 
+        var planned = new List<PlannedItem>();
+        uint flags = CopyMoveFlags;
         if (otherFolders.Count > 0)
-            ok &= await CopyCoreAsync(owner, otherFolders, destinationFolder, CopyMoveFlags, recorder);
+        {
+            if (await ResolveConflictsAsync(owner, otherFolders, destinationFolder, move: false) is not { } choices)
+                return false; // Cancelled in the conflict dialog: nothing happens.
+            planned = ConflictPlanner.Plan(otherFolders, destinationFolder, choices).Items;
+            if (choices.Count > 0)
+                flags |= FOF_NOCONFIRMATION; // Every conflict left is a "replace" the user chose.
+        }
+        var recorder = new UndoRecorder(planned.Select(i => i.Source).Concat(sameFolder));
+        if (planned.Count > 0)
+            ok &= await RunPlannedAsync(owner, planned, flags, recorder, move: false);
         if (sameFolder.Count > 0)
-            ok &= await CopyCoreAsync(owner, sameFolder, destinationFolder, CopyMoveFlags | FOF_RENAMEONCOLLISION, recorder);
+        {
+            ok &= await RunPlannedAsync(owner, [.. sameFolder.Select(s => new PlannedItem(s, destinationFolder, null))],
+                CopyMoveFlags | FOF_RENAMEONCOLLISION, recorder, move: false);
+        }
         UndoManager.Record(UndoKind.Copy, recorder.Items, destinationFolder);
         return ok;
     }
 
-    private static Task<bool> CopyCoreAsync(
-        IntPtr owner, IReadOnlyList<string> sources, string destinationFolder, uint flags, UndoRecorder recorder) =>
+    /// <summary>Runs the planned items as one copy or move (one progress window).</summary>
+    private static Task<bool> RunPlannedAsync(IntPtr owner, IReadOnlyList<PlannedItem> items, uint flags, UndoRecorder recorder, bool move) =>
         RunAsync(owner, flags, op =>
         {
-            var dest = CreateItem(destinationFolder);
-            foreach (string source in sources)
-                op.CopyItem(CreateItem(source), dest, null, IntPtr.Zero);
-        }, recorder);
+            var folders = new Dictionary<string, IShellItem>(StringComparer.OrdinalIgnoreCase);
+            foreach (var item in items)
+            {
+                if (!folders.TryGetValue(item.TargetFolder, out var folder))
+                    folders[item.TargetFolder] = folder = CreateItem(item.TargetFolder);
+                if (move)
+                    op.MoveItem(CreateItem(item.Source), folder, item.NewName, IntPtr.Zero);
+                else
+                    op.CopyItem(CreateItem(item.Source), folder, item.NewName, IntPtr.Zero);
+            }
+        }, recorder, progress: NewProgress(move), skipWhenEmpty: () => items.Count == 0);
+
+    /// <summary>
+    /// Finds names that are already taken in the target and asks about each in DirectoryFable's dialog ("do the same
+    /// for the others" answers the rest; a file cannot replace a folder, so such a conflict is still asked).
+    /// Returns the choices by source path, or null when the user cancelled.
+    /// </summary>
+    private static async Task<Dictionary<string, ConflictChoice>?> ResolveConflictsAsync(
+        IntPtr owner, IReadOnlyList<string> sources, string destinationFolder, bool move)
+    {
+        var conflicts = await Task.Run(() => ConflictPlanner.Find(sources, destinationFolder));
+        var choices = new Dictionary<string, ConflictChoice>(StringComparer.OrdinalIgnoreCase);
+        ConflictChoice? forAll = null;
+        for (int i = 0; i < conflicts.Count; i++)
+        {
+            var conflict = conflicts[i];
+            if (forAll is { } all && !(all == ConflictChoice.Replace && conflict.TypeMismatch))
+            {
+                choices[conflict.Source] = all;
+                continue;
+            }
+            if (Views.ConflictDialog.Ask(owner, conflict, i + 1, conflicts.Count, move) is not { } answer)
+                return null;
+            choices[conflict.Source] = answer.Choice;
+            if (answer.ForAll)
+                forAll = answer.Choice;
+        }
+        return choices;
+    }
 
     private static bool IsInFolder(string path, string folder) =>
         string.Equals(Path.GetDirectoryName(path.TrimEnd('\\')), folder.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase);
 
     public static async Task<bool> MoveAsync(IntPtr owner, IReadOnlyList<string> sources, string destinationFolder)
     {
-        var recorder = new UndoRecorder(sources);
-        bool ok = await RunAsync(owner, CopyMoveFlags, op =>
+        if (await ResolveConflictsAsync(owner, sources, destinationFolder, move: true) is not { } choices)
+            return false; // Cancelled in the conflict dialog: nothing happens.
+        var (planned, split) = ConflictPlanner.Plan(sources, destinationFolder, choices);
+        var recorder = new UndoRecorder(planned.Select(i => i.Source));
+        bool ok = await RunPlannedAsync(owner, planned, CopyMoveFlags | (choices.Count > 0 ? FOF_NOCONFIRMATION : 0), recorder, move: true);
+        // A folder that was split into its children stays behind; remove it when nothing is left in it
+        // (skipped items keep it). Deepest first.
+        foreach (string folder in split.OrderByDescending(f => f.Length))
         {
-            var dest = CreateItem(destinationFolder);
-            foreach (string source in sources)
-                op.MoveItem(CreateItem(source), dest, null, IntPtr.Zero);
-        }, recorder);
+            try
+            {
+                if (Directory.Exists(folder) && !Directory.EnumerateFileSystemEntries(folder).Any())
+                    Directory.Delete(folder);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Keep it.
+            }
+        }
         UndoManager.Record(UndoKind.Move, recorder.Items, destinationFolder);
         return ok;
     }
@@ -78,7 +140,7 @@ public static class FileOperations
     {
         var recorder = new UndoRecorder([source]);
         bool ok = await RunAsync(owner, CopyMoveFlags, op =>
-            op.CopyItem(CreateItem(source), CreateItem(destinationFolder), newName, IntPtr.Zero), recorder);
+            op.CopyItem(CreateItem(source), CreateItem(destinationFolder), newName, IntPtr.Zero), recorder, progress: NewProgress(move: false));
         UndoManager.Record(UndoKind.Copy, recorder.Items, destinationFolder);
         return ok;
     }
@@ -113,6 +175,9 @@ public static class FileOperations
                 try
                 {
                     item = CreateItem(from);
+                    // The folder may be gone (a merged move removes source folders it emptied): make it again.
+                    if (!toFolder.StartsWith("::", StringComparison.Ordinal) && Path.IsPathFullyQualified(toFolder))
+                        Directory.CreateDirectory(toFolder);
                     folder = CreateItem(toFolder);
                 }
                 catch (Exception ex) when (ex is COMException or FileNotFoundException or DirectoryNotFoundException or UnauthorizedAccessException)
@@ -129,16 +194,23 @@ public static class FileOperations
 
     // ---------- Runner ----------
 
+    /// <summary>DirectoryFable's progress window for a copy or move (created on the UI thread); null without one.</summary>
+    private static OperationProgress? NewProgress(bool move) =>
+        System.Windows.Application.Current?.Dispatcher is { } ui ? new OperationProgress(ui, move) : null;
+
     /// <param name="recorder">Receives the per-item results (for Undo), or null.</param>
     /// <param name="skipWhenEmpty">After queuing: true = nothing was queued, do not run.</param>
+    /// <param name="progress">Own progress window instead of Windows' dialog, or null.</param>
     private static Task<bool> RunAsync(
-        IntPtr owner, uint flags, Action<IFileOperation> queue, UndoRecorder? recorder = null, Func<bool>? skipWhenEmpty = null)
+        IntPtr owner, uint flags, Action<IFileOperation> queue, UndoRecorder? recorder = null, Func<bool>? skipWhenEmpty = null,
+        OperationProgress? progress = null)
     {
         var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var thread = new Thread(() =>
         {
             IFileOperation? op = null;
             IntPtr sink = IntPtr.Zero;
+            IntPtr dialog = IntPtr.Zero;
             try
             {
                 op = (IFileOperation)Activator.CreateInstance(Type.GetTypeFromCLSID(ClsidFileOperation)!)!;
@@ -149,6 +221,11 @@ public static class FileOperations
                 {
                     sink = Marshal.GetComInterfaceForObject<UndoRecorder, IFileOperationProgressSink>(recorder);
                     op.Advise(sink, out cookie);
+                }
+                if (progress is not null)
+                {
+                    dialog = Marshal.GetComInterfaceForObject<OperationProgress, OperationProgress.IOperationsProgressDialog>(progress);
+                    op.SetProgressDialog(dialog);
                 }
                 queue(op);
                 if (skipWhenEmpty?.Invoke() == true)
@@ -171,6 +248,8 @@ public static class FileOperations
             {
                 if (sink != IntPtr.Zero)
                     Marshal.Release(sink);
+                if (dialog != IntPtr.Zero)
+                    Marshal.Release(dialog);
                 if (op is not null)
                     Marshal.ReleaseComObject(op);
             }
@@ -306,6 +385,7 @@ public static class FileOperations
     private const uint SIGDN_DESKTOPABSOLUTEPARSING = 0x80028000;
 
     private const uint FOF_RENAMEONCOLLISION = 0x0008;
+    private const uint FOF_NOCONFIRMATION = 0x0010;
     private const uint FOF_ALLOWUNDO = 0x0040;
     private const uint FOF_NOCONFIRMMKDIR = 0x0200;
     private const uint FOF_WANTNUKEWARNING = 0x4000;

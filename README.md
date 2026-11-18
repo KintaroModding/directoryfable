@@ -29,9 +29,18 @@ yourself, see [Build](#build).
 - **Details view** with group dividers by file type. Sort, resize and reorder
   the columns. Hidden and system files are always shown.
 - **Auto-refresh**: the lists and the tree follow changes on disk.
-- **File operations through Windows** (progress window, conflict questions,
-  Recycle Bin, elevation). **Undo** (`Ctrl+Z`) for copy, move, rename,
-  duplicate and delete to the Recycle Bin.
+- **File operations through Windows** (Recycle Bin, elevation).
+- **Own question for names that are taken**: before a copy or move starts,
+  DirectoryFable finds the names that already exist in the target (also inside
+  folders that are merged) and asks in a dark dialog: Replace, Skip or Keep both
+  (`name (2).ext`), with sizes and dates side by side (newer and larger marked)
+  and "do the same for the other conflicts". Cancel changes nothing. **Undo** (`Ctrl+Z`) for copy, move, rename, duplicate and delete
+  to the Recycle Bin.
+- **Own dark progress window** for copy and move: from / to, the current
+  item, current and average speed, elapsed time and time left, items and size
+  left, Pause / Resume and Cancel (closing the window cancels too). `Details`
+  slides open the full paths of from, to and the current item (right-click one
+  to copy it). It shows only for operations that take longer than a moment.
 - **Rectangle selection**: hold the left button on empty list space, or on a
   row outside its name, and drag; `Ctrl` adds to the selection. The list
   scrolls when you drag past its top or bottom.
