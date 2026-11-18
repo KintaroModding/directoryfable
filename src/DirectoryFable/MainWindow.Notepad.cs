@@ -73,9 +73,10 @@ public partial class MainWindow
     private void ShowNotepad(bool show) => ShowView(show ? MainView.Notepad : MainView.Explorer);
 
     /// <summary>The views below the title bar, one per title bar tab.</summary>
-    private enum MainView { Explorer, Notepad, Viewer }
+    private enum MainView { Explorer, Notepad, Viewer, Search }
 
-    private MainView ShownView => NotepadShown ? MainView.Notepad : ViewerShown ? MainView.Viewer : MainView.Explorer;
+    private MainView ShownView => NotepadShown ? MainView.Notepad : ViewerShown ? MainView.Viewer
+        : SearchShown ? MainView.Search : MainView.Explorer;
 
     /// <summary>
     /// Shows one view below the title bar; the others keep their state. A click on the tab of
@@ -86,6 +87,7 @@ public partial class MainWindow
         ExplorerTab.IsChecked = view == MainView.Explorer;
         NotepadTab.IsChecked = view == MainView.Notepad;
         AstraViewerTab.IsChecked = view == MainView.Viewer;
+        SearchTab.IsChecked = view == MainView.Search;
         if (view == ShownView)
             return;
 
@@ -93,6 +95,7 @@ public partial class MainWindow
             ShowSettings(false); // The explorer's settings page belongs to the explorer.
         NotepadPage.Visibility = view == MainView.Notepad ? Visibility.Visible : Visibility.Collapsed;
         AstraViewerPage.Visibility = view == MainView.Viewer ? Visibility.Visible : Visibility.Collapsed;
+        SearchPage.Visibility = view == MainView.Search ? Visibility.Visible : Visibility.Collapsed;
         SetExplorerShown(view == MainView.Explorer);
         switch (view)
         {
@@ -101,6 +104,9 @@ public partial class MainWindow
                 break;
             case MainView.Viewer:
                 AstraViewerPage.FocusView();
+                break;
+            case MainView.Search:
+                SearchPage.FocusQuery();
                 break;
             default:
                 ActivePaneView.FocusList();

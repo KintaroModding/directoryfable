@@ -277,6 +277,20 @@ public partial class FilePane
         }
     }
 
+    /// <summary>SonnetSearch in this folder and its subfolders (like Ctrl+F).</summary>
+    private void QuickSearch_Click(object sender, RoutedEventArgs e)
+    {
+        string path = _viewModel?.CurrentPath ?? "";
+        if (path.Length == 0)
+            return;
+        if (InArchive)
+        {
+            _viewModel?.ShowStatus("SonnetSearch looks in folders on the drives, not inside archives.");
+            return;
+        }
+        SearchInFolder?.Invoke(path);
+    }
+
     private void QuickExplorer_Click(object sender, RoutedEventArgs e)
     {
         string path = _viewModel?.CurrentPath ?? "";

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>AstraViewer</title>
+  <defs>
+    <linearGradient id="blue" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0" stop-color="#087DE0"/><stop offset="1" stop-color="#0041B8"/></linearGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0" stop-color="#27CCD9"/><stop offset="1" stop-color="#0099B8"/></linearGradient>
+  </defs>
+  <path fill="url(#blue)" d="M 38,37 L 218,37 Q 236,37 236,55 L 236,201 Q 236,219 218,219 L 38,219 Q 20,219 20,201 L 20,55 Q 20,37 38,37 Z"/>
+  <path fill="#092D64" d="M 44,55 L 212,55 Q 218,55 218,61 L 218,190 Q 218,201 207,201 L 49,201 Q 38,201 38,190 L 38,61 Q 38,55 44,55 Z"/>
+  <path fill="#087DE0" d="M 38,176 L 84,123 Q 90,116 96,123 L 162,201 L 49,201 Q 38,201 38,190 Z"/>
+  <path fill="url(#cyan)" d="M 95,201 L 157,125 Q 163,118 169,125 L 218,181 L 218,190 Q 218,201 207,201 Z"/>
+  <path fill="#E8F9FF" d="M 170,64 L 178,87 L 201,95 L 178,103 L 170,126 L 162,103 L 139,95 L 162,87 Z"/>
+</svg>

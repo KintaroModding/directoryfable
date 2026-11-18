@@ -64,6 +64,9 @@ public partial class FilePane
     /// <summary>Set by the main window: opens files in Notepad#.</summary>
     public static Action<IReadOnlyList<string>>? OpenInNotepad { get; set; }
 
+    /// <summary>Set by the main window: shows SonnetSearch, limited to a folder and its subfolders.</summary>
+    public static Action<string>? SearchInFolder { get; set; }
+
     /// <summary>Ctrl+E / "Open in Notepad#": the selected files (folders are skipped).</summary>
     private void OpenSelectedInNotepad()
     {

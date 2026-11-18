@@ -197,6 +197,41 @@
                 </Grid>
             </Border>
 
+            <!-- ===== Updates ===== -->
+            <TextBlock Style="{StaticResource SectionTitle}" Text="Updates" />
+
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Style="{StaticResource SettingName}" Text="Update button" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="The Update button in the title bar: it shows new versions from GitHub with their changes and installs them. Off: no button and no update checks." />
+                    </StackPanel>
+                    <CheckBox x:Name="ShowUpdateButton" Grid.Column="1" VerticalAlignment="Center" Content="Show"
+                              Checked="Update_Changed" Unchecked="Update_Changed" />
+                </Grid>
+            </Border>
+
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Style="{StaticResource SettingName}" Text="Check at start" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="A few seconds after the start, ask GitHub for a new version. The button then shows a green checkmark or the new version. The same switch is in the Update drop-down." />
+                    </StackPanel>
+                    <CheckBox x:Name="UpdateCheckAtStart" Grid.Column="1" VerticalAlignment="Center" Content="Check"
+                              Checked="Update_Changed" Unchecked="Update_Changed" />
+                </Grid>
+            </Border>
+
             <!-- ===== Appearance ===== -->
             <TextBlock Style="{StaticResource SectionTitle}" Text="Appearance" />
 

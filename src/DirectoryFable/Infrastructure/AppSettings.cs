@@ -26,6 +26,12 @@ public sealed class AppSettings
     /// <summary>Reopen the last tabs, window and splitters (session.json).</summary>
     public bool RestoreSession { get; set; } = true;
 
+    /// <summary>The Update button in the title bar (GitHub releases). False: no button and no update checks at all.</summary>
+    public bool UpdateButton { get; set; } = true;
+
+    /// <summary>Ask GitHub for a new version a few seconds after each start.</summary>
+    public bool UpdateCheckAtStart { get; set; } = true;
+
     /// <summary>
     /// File list background while inside a ZIP file ("#RRGGBB"). Default almost pure dark
     /// (the normal list is #191919).
@@ -162,6 +168,10 @@ public sealed class AppSettings
           "startMaximized": {{Json(s.StartMaximized)}},
           // true: reopen the last tabs, window position and splitters.
           "restoreSession": {{Json(s.RestoreSession)}},
+          // The Update button in the title bar (new versions from GitHub); false = no button and no update checks.
+          "updateButton": {{Json(s.UpdateButton)}},
+          // true: ask GitHub for a new version a few seconds after each start.
+          "updateCheckAtStart": {{Json(s.UpdateCheckAtStart)}},
           // File list background while inside a ZIP file ("#RRGGBB"; normal list: "#191919").
           "archiveBackground": {{Json(s.ArchiveBackground)}},
           // Folder of 7-Zip (7zG.exe, 7z.exe) for the "7z" button and 7z / RAR archives; "" = find it automatically.

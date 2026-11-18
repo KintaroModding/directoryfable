@@ -1,0 +1,69 @@
+<UserControl x:Class="DirectoryFable.Views.UpdatePanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             FontFamily="{StaticResource UiFont}" FontSize="13"
+             Foreground="{StaticResource ListTextBrush}">
+    <!-- The update drop-down of the title bar: this version, GitHub's newest, what changed, Update now. -->
+    <Border Background="#202020" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" Padding="27,24" Width="870">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="12" ShadowDepth="3" Opacity="0.6" Color="Black" />
+        </Border.Effect>
+        <DockPanel>
+            <Grid DockPanel.Dock="Top">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Image x:Name="AppIcon" Width="48" Height="48" Margin="0,0,16,0" VerticalAlignment="Center"
+                       RenderOptions.BitmapScalingMode="HighQuality" />
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="DirectoryFable" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock x:Name="VersionText" Foreground="{StaticResource SecondaryTextBrush}" />
+                </StackPanel>
+            </Grid>
+
+            <StackPanel DockPanel.Dock="Top" Margin="0,20,0,0">
+                <TextBlock x:Name="StatusText" TextWrapping="Wrap" LineHeight="19" />
+                <ProgressBar x:Name="Progress" Height="4" Margin="0,8,0,0" Minimum="0" Maximum="1" Visibility="Collapsed" />
+                <TextBlock x:Name="HintText" Margin="0,6,0,0" TextWrapping="Wrap" LineHeight="18"
+                           Foreground="{StaticResource SecondaryTextBrush}" Visibility="Collapsed" />
+            </StackPanel>
+
+            <!-- Settings of the update itself: automatic check at start, and the way to remove the button. -->
+            <DockPanel DockPanel.Dock="Bottom" Margin="0,18,0,0" LastChildFill="False">
+                <CheckBox x:Name="CheckAtStartBox" Content="Check for updates automatically at start"
+                          Checked="CheckAtStart_Changed" Unchecked="CheckAtStart_Changed" />
+                <Button x:Name="RemoveButton" DockPanel.Dock="Right" Style="{StaticResource SubtleButton}" Padding="6,3"
+                        Foreground="{StaticResource SecondaryTextBrush}" Click="Remove_Click" VerticalAlignment="Center"
+                        ToolTip="No Update button and no update checks any more (Settings, section Updates, brings it back)">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE74D;" Margin="0,1,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Remove the update check..." />
+                    </StackPanel>
+                </Button>
+            </DockPanel>
+
+            <DockPanel DockPanel.Dock="Bottom" Margin="0,22,0,0" LastChildFill="False">
+                <Button x:Name="UpdateNowButton" Style="{DynamicResource AccentButtonStyle}" MinWidth="120" Margin="0,0,8,0"
+                        Click="UpdateNow_Click" Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE896;" Margin="0,1,8,0" VerticalAlignment="Center" />
+                        <TextBlock x:Name="UpdateNowText" Text="Update now" />
+                    </StackPanel>
+                </Button>
+                <Button x:Name="CheckButton" Content="Check again" MinWidth="110" Click="Check_Click" />
+                <Button x:Name="ReleasePageButton" DockPanel.Dock="Right" Content="Release page" MinWidth="110" Click="ReleasePage_Click"
+                        ToolTip="Open the releases on GitHub in the browser" />
+            </DockPanel>
+
+            <!-- What changed: the release notes of the newer releases (or of this one), as GitHub shows them. -->
+            <Border x:Name="ChangelogBox" Margin="0,20,0,0" Background="{StaticResource ListBackgroundBrush}"
+                    BorderBrush="{StaticResource LineBrush}" BorderThickness="1" Visibility="Collapsed">
+                <ScrollViewer MaxHeight="570" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel x:Name="ChangelogPanel" Margin="20,14,20,16" TextElement.FontSize="13"
+                                TextElement.Foreground="#C8C8C8" />
+                </ScrollViewer>
+            </Border>
+        </DockPanel>
+    </Border>
+</UserControl>

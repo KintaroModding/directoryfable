@@ -45,7 +45,7 @@
             </Grid.ColumnDefinitions>
             <Image Source="Assets/app.ico" Width="16" Height="16" Margin="10,0,8,0" VerticalAlignment="Center"
                    RenderOptions.BitmapScalingMode="HighQuality" />
-            <!-- View tabs: [active folder] = explorer, [Notepad#] = text editor, [AstraViewer] = images. -->
+            <!-- View tabs: [active folder] = explorer, [Notepad#] = text editor, [AstraViewer] = images, [SonnetSearch] = file search. -->
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                 <ToggleButton x:Name="ExplorerTab" Style="{StaticResource TitleTabButton}" IsChecked="True"
                               ToolTip="Explorer" Click="ExplorerTab_Click">
@@ -53,14 +53,40 @@
                 </ToggleButton>
                 <ToggleButton x:Name="NotepadTab" Style="{StaticResource TitleTabButton}" Margin="4,0,0,0"
                               ToolTip="Notepad# (text editor)" Click="NotepadTab_Click">
-                    <TextBlock x:Name="NotepadTabText" Text="Notepad#" TextTrimming="CharacterEllipsis" MaxWidth="420" />
+                    <StackPanel Orientation="Horizontal">
+                        <Image Source="Assets/notepad.ico" Style="{StaticResource TitleTabIcon}" />
+                        <TextBlock Text="Notepad#" VerticalAlignment="Center" />
+                    </StackPanel>
                 </ToggleButton>
                 <ToggleButton x:Name="AstraViewerTab" Style="{StaticResource TitleTabButton}" Margin="4,0,0,0"
                               ToolTip="AstraViewer (images)" Click="AstraViewerTab_Click">
-                    <TextBlock x:Name="AstraViewerTabText" Text="AstraViewer" TextTrimming="CharacterEllipsis" MaxWidth="420" />
+                    <StackPanel Orientation="Horizontal">
+                        <Image Source="Assets/astraviewer.ico" Style="{StaticResource TitleTabIcon}" />
+                        <TextBlock Text="AstraViewer" VerticalAlignment="Center" />
+                    </StackPanel>
+                </ToggleButton>
+                <ToggleButton x:Name="SearchTab" Style="{StaticResource TitleTabButton}" Margin="4,0,0,0"
+                              ToolTip="SonnetSearch: find files on whole drives (Ctrl+F in the explorer: search in the shown folder)" Click="SearchTab_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <Image Source="Assets/sonnetsearch.ico" Style="{StaticResource TitleTabIcon}" />
+                        <TextBlock Text="SonnetSearch" VerticalAlignment="Center" />
+                    </StackPanel>
                 </ToggleButton>
             </StackPanel>
             <StackPanel Grid.Column="2" Orientation="Horizontal">
+                <!-- Update: GitHub's newest release, what changed, update on a click (MainWindow.Update.cs). -->
+                <ToggleButton x:Name="UpdateButton" Style="{StaticResource TitleTabButton}" Margin="0,0,6,0"
+                              VerticalAlignment="Center" Click="UpdateButton_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="UpdateButtonIcon" FontFamily="{StaticResource IconFont}" FontSize="12" Text="&#xE896;"
+                                   Margin="0,1,6,0" VerticalAlignment="Center" />
+                        <TextBlock x:Name="UpdateButtonText" Text="Update" VerticalAlignment="Center" />
+                    </StackPanel>
+                </ToggleButton>
+                <Popup x:Name="UpdatePopup" PlacementTarget="{Binding ElementName=UpdateButton}" Placement="Bottom"
+                       StaysOpen="False" AllowsTransparency="True" Closed="UpdatePopup_Closed">
+                    <views:UpdatePanel x:Name="UpdatePage" Margin="0,4,12,12" />
+                </Popup>
                 <Button Style="{StaticResource CaptionButton}" Content="&#xE921;" ToolTip="Minimize"
                         Click="Minimize_Click" />
                 <!-- Mouse input reaches this button as HTMAXBUTTON (Windows 11 snap layouts); see MainWindow.TitleBar.cs. -->
@@ -103,6 +129,10 @@
         <!-- AstraViewer: covers everything below the title bar while shown (title bar tabs). -->
         <views:AstraViewerView x:Name="AstraViewerPage" Grid.Row="1" Grid.RowSpan="3" Grid.ColumnSpan="5"
                                Visibility="Collapsed" />
+
+        <!-- SonnetSearch: covers everything below the title bar while shown (title bar tabs). -->
+        <views:SearchView x:Name="SearchPage" Grid.Row="1" Grid.RowSpan="3" Grid.ColumnSpan="5"
+                          Visibility="Collapsed" />
     </Grid>
     </Border>
 </Window>

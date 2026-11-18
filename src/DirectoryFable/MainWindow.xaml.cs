@@ -34,6 +34,8 @@ public partial class MainWindow : Window
         InitTitleBar();
         InitNotepad();
         InitAstraViewer();
+        InitSearch();
+        InitUpdate(settings);
 
         TrayMode = trayMode;
         ShowInTaskbar = !trayMode;
@@ -101,10 +103,13 @@ public partial class MainWindow : Window
 
             await NotepadPage.RestoreAsync(session?.Notepad);
             await AstraViewerPage.RestoreAsync(session?.Viewer);
+            SearchPage.RestoreState(session?.Search);
             if (session?.NotepadShown == true && NotepadPage.Documents.Any())
                 ShowView(MainView.Notepad);
             else if (session?.ViewerShown == true && AstraViewerPage.CurrentPath is not null)
                 ShowView(MainView.Viewer);
+            else if (session?.SearchShown == true)
+                ShowView(MainView.Search);
 
             // Restoring tabs queues "focus this list" steps; activate the saved pane after all of them.
             bool rightActive = leftFolder is null && rightFolder is null && session?.RightPaneActive == true;
@@ -115,6 +120,8 @@ public partial class MainWindow : Window
                     NotepadPage.FocusEditor();
                 else if (ViewerShown)
                     AstraViewerPage.FocusView();
+                else if (SearchShown)
+                    SearchPage.FocusQuery();
                 else
                     ActivePaneView.FocusList();
             }, System.Windows.Threading.DispatcherPriority.ContextIdle);
@@ -174,6 +181,8 @@ public partial class MainWindow : Window
             Notepad = NotepadPage.CaptureState(),
             ViewerShown = ViewerShown,
             Viewer = AstraViewerPage.CaptureState(),
+            SearchShown = SearchShown,
+            Search = SearchPage.CaptureState(),
             Left = _left.CaptureState(),
             Right = _right.CaptureState(),
         }.Save();
@@ -276,8 +285,8 @@ public partial class MainWindow : Window
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        // Notepad# and AstraViewer have their own keys (Tab, Ctrl+Z, arrows, ...).
-        if (NotepadShown || ViewerShown)
+        // Notepad#, AstraViewer and Search have their own keys (Tab, Ctrl+Z, arrows, ...).
+        if (NotepadShown || ViewerShown || SearchShown)
             return;
 
         // The settings page has its own keys (Tab between controls); Esc closes it.
@@ -288,6 +297,14 @@ public partial class MainWindow : Window
                 e.Handled = true;
                 ShowSettings(false);
             }
+            return;
+        }
+
+        // Ctrl+F: search in the shown folder (and below).
+        if (e.Key == Key.F && Keyboard.Modifiers == ModifierKeys.Control && Keyboard.FocusedElement is not TextBoxBase)
+        {
+            e.Handled = true;
+            SearchHere();
             return;
         }
 

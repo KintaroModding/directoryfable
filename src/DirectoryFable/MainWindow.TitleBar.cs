@@ -36,8 +36,9 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// The explorer tab shows the active folder's name; the window title (taskbar button,
-    /// Alt+Tab) is the name of what is shown: that folder, or Notepad#'s file.
+    /// The explorer tab shows the active folder's name; the other tabs show only their view's
+    /// name (no file name, no search text). The window title (taskbar button, Alt+Tab) is the
+    /// name of what is shown: that folder, Notepad#'s file, the image, or the search.
     /// </summary>
     private void UpdateTitle()
     {
@@ -51,13 +52,13 @@ public partial class MainWindow
         }
         ExplorerTabText.Text = folder;
         string? file = NotepadPage.Active?.FileName;
-        NotepadTabText.Text = file is null ? "Notepad#" : $"Notepad#  ·  {file}";
         string? image = AstraViewerPage.CurrentPath is { } shown ? System.IO.Path.GetFileName(shown) : null;
-        AstraViewerTabText.Text = image is null ? "AstraViewer" : $"AstraViewer  ·  {image}";
+        string search = SearchPage.TitleText;
         Title = ShownView switch
         {
             MainView.Notepad => file ?? "Notepad#",
             MainView.Viewer => image ?? "AstraViewer",
+            MainView.Search => search.Length == 0 ? "SonnetSearch" : $"SonnetSearch: {search}",
             _ => folder,
         };
     }

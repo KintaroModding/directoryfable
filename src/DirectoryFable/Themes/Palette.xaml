@@ -34,6 +34,8 @@
     <SolidColorBrush x:Key="ArchiveListBackgroundBrush" Color="#0C0C0C" />
     <SolidColorBrush x:Key="ListTextBrush" Color="#FFFFFF" />
     <SolidColorBrush x:Key="ListHoverBrush" Color="#262626" />
+    <!-- Every second row of long lists (SonnetSearch results), between the list and the hover color. -->
+    <SolidColorBrush x:Key="ListAlternateRowBrush" Color="#1F1F1F" />
     <!-- Windows blue #0078D4 at ~45 % over the list background. -->
     <SolidColorBrush x:Key="ListSelectedBrush" Color="#0E446D" />
     <SolidColorBrush x:Key="ListSelectedHoverBrush" Color="#13507F" />

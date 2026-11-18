@@ -35,3 +35,6 @@ These terms apply to this program and to every work based on it.
 - The shell context menu code (src/DirectoryFable/Shell/ShellContextMenu.cs)
   follows the pattern of Vanara's ShellContextMenu (MIT license). License text:
   licenses/Vanara.txt.
+- The NTFS file table reader of the search (src/DirectoryFable/Search/MftReader.cs)
+  was written after the managed MFT parser of Lertaro (MIT license). License
+  text: licenses/Lertaro.txt.

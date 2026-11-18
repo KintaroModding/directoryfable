@@ -173,6 +173,13 @@
                         <TextBlock Text="Explorer" />
                     </StackPanel>
                 </Button>
+                <Button Style="{StaticResource QuickButton}" Click="QuickSearch_Click"
+                        ToolTip="SonnetSearch in this folder and its subfolders (Ctrl+F)">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource QuickIcon}" Text="&#xE721;" />
+                        <TextBlock Text="SonnetSearch" />
+                    </StackPanel>
+                </Button>
             </StackPanel>
         </Border>
 

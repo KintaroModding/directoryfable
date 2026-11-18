@@ -5,7 +5,7 @@ using System.Windows.Media;
 namespace DirectoryFable.Editor;
 
 /// <summary>
-/// Frame-synced dragging for the Notepad# minimap and scroll bar.
+/// Frame-synced dragging for the Notepad# minimap and scroll bar and the SonnetSearch scroll rail.
 /// WPF handles each mouse move whenever it arrives, so during a very fast drag some frames see no
 /// new mouse position (the text stands still for a frame) and the next frame jumps twice as far:
 /// visible stutter. Like a browser, the drag instead reads the cursor once per frame, just before

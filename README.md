@@ -1,15 +1,19 @@
 # DirectoryFable
 
-A two-pane file manager for Windows with a built-in text editor, Notepad#, and
-an image viewer, AstraViewer.
+A two-pane file manager for Windows with a built-in text editor, Notepad#, an
+image viewer, AstraViewer, and a fast file search, SonnetSearch.
 Dark, dense and made for the keyboard. Written in C# with WPF on .NET 10.
 
 ![DirectoryFable: two panes with tabs, folder tree and favorites bar](docs/screenshot-explorer.png)
 
-## Status
+## Download
 
-There is no release yet: build it from source (see [Build](#build)). The first
-release follows when the default settings are ready for everyone.
+Get `DirectoryFable_<version>.zip` from the
+[latest release](https://github.com/KintaroModding/directoryfable/releases/latest),
+unpack it into a folder of its own and start `DirectoryFable.exe`. It needs the
+[.NET 10 Desktop Runtime (x64)](https://dotnet.microsoft.com/download/dotnet/10.0).
+Later versions come through the `Update` button in the title bar. To build it
+yourself, see [Build](#build).
 
 ## Explorer
 
@@ -34,7 +38,8 @@ release follows when the default settings are ready for everyone.
 - **The Windows context menu** in dark mode, so your shell extensions work.
 - **Quick actions bar** in each pane: Folder path, File path, 7z (7-Zip's "Add
   to archive" window), Duplicate, Copy to other, Move to other, Terminal
-  (Command Prompt or PowerShell), Explorer.
+  (Command Prompt or PowerShell), Explorer, SonnetSearch (search this folder
+  and its subfolders, like `Ctrl+F`).
 - **Archives as folders**: ZIP read and write; 7z and RAR read only, through an
   installed [7-Zip](https://www.7-zip.org/).
 - **Properties window** with the details Windows knows for the file type (for
@@ -103,6 +108,52 @@ release follows when the default settings are ready for everyone.
   JPEG XR; HEIC and AVIF with the matching Windows codecs). Animated GIFs show
   their first frame.
 
+## SonnetSearch
+
+- The fourth view in the title bar, `[SonnetSearch]`. `Ctrl+F` in the explorer
+  searches the shown folder and its subfolders.
+- **Whole drives in seconds**: run as administrator, DirectoryFable reads each
+  NTFS drive's file table directly (millions of files in a few seconds; it only
+  reads). Without administrator rights, and on other drives, it walks the
+  folders instead (slower).
+- **Name search while you type**: words in any order, `*` and `?` wildcards
+  (`*.sav`), "quoted text", match case, regular expressions.
+- **Places**: drive toggles in the bar, plus a drop-down list of drives (total
+  size, free space, % free) and added folders, each with a tick box and a
+  folder tree to tick subfolders. Ticked folders show in the bar.
+- `Reset` empties the text and the filters (places and the mark stay).
+- **Filters**: type (files, folders, images, text, own extensions), size, and
+  a date range for Last Modified, Creation Date, Last Accessed or any of them.
+- **Time mark**: `Set mark` remembers the moment; "Since the mark" then shows
+  only what changed after it (for example where a game wrote its save file).
+- Columns: `#` (row number), Name, Containing Path, Size, Last Modified,
+  Last Accessed, Creation Date, Type; every second row is a little lighter.
+  Click a header to sort (size and dates: biggest / newest first). The results open, drag, copy and have the Windows menu like
+  the files in the explorer.
+- **Scroll rail** instead of a scroll bar: the thumb stays big enough to grab
+  with millions of results, and a click anywhere jumps there. With the mouse
+  on the rail, a panel shows where each part of the sort order starts
+  (`Today`, `Oct 2026`, `≥ 1 GB`, `A`, `C:\Users`, `.txt`) and a bubble shows
+  the value and row at the cursor. Click a label to go to the start of that
+  part.
+- A drive is read once; typing and filters search what was read. `Enter`,
+  `F5` or `Search` read the drives again, so new files show.
+
+## Updates
+
+- `Update` in the title bar, left of the window buttons, opens a drop-down. It
+  asks GitHub for the newest release and shows what changed: the release notes
+  of every release since your version.
+- `Update to <version>` downloads the release zip, checks its size, checksum
+  and version, puts the new `DirectoryFable.exe` in place of the old one and
+  starts again. Settings, favorites and the session stay.
+- A quiet check a few seconds after the start shows a green checkmark on the
+  button when you are up to date, or `Update <version>` (green) when a new
+  version is out. The check sends only the app's name and version to GitHub.
+- In the drop-down: switch the check at start on or off, or remove the update
+  check entirely (asks first; the button leaves the title bar). The settings
+  page, section Updates, has both switches and brings the button back.
+
 ## Requirements
 
 - Windows 11, x64. Windows 10 is not tested.
@@ -152,6 +203,7 @@ DirectoryFable.exe [leftFolder] [rightFolder] [--multi] [--taskbar|--tray] [--da
 | `Ctrl+Z` | Undo the last file operation |
 | `Alt+Enter` | Properties window |
 | `Ctrl+E` | Open the selected files in Notepad# |
+| `Ctrl+F` | Search in the shown folder |
 | Notepad#: `Ctrl+N` / `Ctrl+O` / `Ctrl+W` | New / open / close a file |
 | Notepad#: `Ctrl+S` / `Ctrl+Shift+S` / `Ctrl+Alt+S` | Save / save all / save as |
 | Notepad#: `Ctrl+F`, then `F3` / `Shift+F3` | Search, next / previous match |
@@ -160,6 +212,8 @@ DirectoryFable.exe [leftFolder] [rightFolder] [--multi] [--taskbar|--tray] [--da
 | AstraViewer: `Left` / `Right`, `Home` / `End` | Previous / next, first / last image |
 | AstraViewer: `F` / `1` / `+` / `-` | Fit / 100 % / zoom in / zoom out |
 | AstraViewer: `R` / `Shift+R`, `Ctrl+C`, `F5` | Rotate the view, copy the image, read the folder again |
+| SonnetSearch: `Enter` / `F5`, `Esc` | Read the drives again and search, stop reading |
+| SonnetSearch: `Ctrl+C` / `Ctrl+Shift+C` | Copy the found files / their paths |
 
 ## Build
 
@@ -168,7 +222,12 @@ dotnet build DirectoryFable.sln
 .\build.ps1
 ```
 
-`build.ps1` publishes one framework-dependent `DirectoryFable.exe` into `dist\`.
+`build.ps1` publishes one framework-dependent `DirectoryFable.exe` into `dist\`
+and makes the release zip `dist\release\DirectoryFable_<version>.zip` (the exe,
+`LICENSE`, `NOTICE.md`). The version is `<Version>` in
+`src\DirectoryFable\DirectoryFable.csproj`. A GitHub release tagged `v<version>`
+with this zip attached is what the `Update` button installs; its release notes
+are the changelog the app shows.
 
 ## Solution layout
 
@@ -181,8 +240,10 @@ src/DirectoryFable/
   Shell/           Windows shell: icons, context menu, file operations, undo, archives, 7-Zip.
   Editor/          Notepad#: documents, groups, syntax highlighting, minimap.
   Viewer/          AstraViewer: image loading, thumbnails, image types.
+  Search/          SonnetSearch: NTFS file table reader, folder walk, query and sorting.
+  Updates/         The Update button: GitHub releases, release notes, download, exe swap.
   Themes/          Colors and control styles.
-  Assets/          The app icon.
+  Assets/          The app icon and the icons of the built-in views.
 ```
 
 ## Contributing

@@ -10,6 +10,8 @@ namespace DirectoryFable;
 /// <c>--multi</c> skips the single-instance check, <c>--taskbar</c>/<c>--tray</c> override the
 /// window mode, <c>--data=</c> uses another folder for settings/favorites. Automated UI tests use
 /// all three so they never touch the user's copy, tray icon or files.
+/// Updates: <c>--after-update=pid</c> (set by the restart after an update) waits for the old copy to
+/// end; <c>--update-feed=url</c> reads the release list from another address (tests).
 /// </summary>
 public partial class App : Application
 {
@@ -21,15 +23,24 @@ public partial class App : Application
     private EventWaitHandle? _showSignal;
     private TrayIcon? _tray;
     private MainWindow? _window;
+    private string[] _args = [];
+    private bool _restartAfterExit;
 
     protected override void OnStartup(StartupEventArgs e)
     {
         var folders = e.Args.Where(a => !a.StartsWith("--", StringComparison.Ordinal)).ToArray();
         bool Flag(string name) => e.Args.Contains(name, StringComparer.OrdinalIgnoreCase);
         bool multi = Flag("--multi");
-        string? dataArg = e.Args.FirstOrDefault(a => a.StartsWith("--data=", StringComparison.OrdinalIgnoreCase));
-        if (dataArg is not null)
-            AppSettings.DataFolder = dataArg["--data=".Length..].Trim('"');
+        string? Value(string name) => e.Args.FirstOrDefault(a => a.StartsWith(name, StringComparison.OrdinalIgnoreCase))?[name.Length..].Trim('"');
+        _args = e.Args;
+        if (Value("--data=") is { } dataFolder)
+            AppSettings.DataFolder = dataFolder;
+        if (Value("--update-feed=") is { Length: > 0 } feed)
+            Updates.UpdateSource.FeedOverride = feed;
+        // Started by an update: the old copy is still ending (it holds the single-instance lock until then).
+        if (int.TryParse(Value("--after-update="), out int oldProcess))
+            WaitForExit(oldProcess);
+        CleanUpAfterUpdate();
 
         if (!multi && !TryBecomeSingleInstance())
         {
@@ -99,6 +110,68 @@ public partial class App : Application
         }
     }
 
+    /// <summary>Waits (at most 30 seconds) until the copy that installed an update has ended.</summary>
+    private static void WaitForExit(int processId)
+    {
+        try
+        {
+            using var old = System.Diagnostics.Process.GetProcessById(processId);
+            old.WaitForExit(TimeSpan.FromSeconds(30));
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            // Already gone.
+        }
+    }
+
+    /// <summary>Deletes the old exe an update left behind (in the background: the old copy may still be ending).</summary>
+    private static void CleanUpAfterUpdate()
+    {
+        if (Environment.ProcessPath is not { } exe || !Updates.UpdateSource.CanUpdateItself)
+            return;
+        _ = Task.Run(async () =>
+        {
+            for (int attempt = 0; attempt < 5 && !Updates.SelfUpdate.CleanUp(exe); attempt++)
+                await Task.Delay(TimeSpan.FromSeconds(2));
+        });
+    }
+
+    /// <summary>
+    /// After an update put the new exe in place: closes the window (the session is saved as on every exit) and
+    /// starts the new exe when the app has ended. False when closing was cancelled (unsaved Notepad# files).
+    /// </summary>
+    internal bool RestartAfterUpdate()
+    {
+        _restartAfterExit = true;
+        ExitApp();
+        if (_window is { IsClosed: false })
+        {
+            _restartAfterExit = false;
+            return false;
+        }
+        return true;
+    }
+
+    /// <summary>Starts the (new) exe with this copy's options, not its folders: the session restores the tabs.</summary>
+    private void StartNewCopy()
+    {
+        if (Environment.ProcessPath is not { } exe)
+            return;
+        var start = new System.Diagnostics.ProcessStartInfo(exe) { UseShellExecute = false };
+        foreach (string arg in _args.Where(a => a.StartsWith("--", StringComparison.Ordinal)
+                     && !a.StartsWith("--after-update=", StringComparison.OrdinalIgnoreCase)))
+            start.ArgumentList.Add(arg);
+        start.ArgumentList.Add($"--after-update={Environment.ProcessId}");
+        try
+        {
+            System.Diagnostics.Process.Start(start);
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            // The new version is in place; the next start by hand uses it.
+        }
+    }
+
     private bool TryBecomeSingleInstance()
     {
         _singleInstance = new Mutex(initiallyOwned: true, MutexName, out bool createdNew);
@@ -147,6 +220,8 @@ public partial class App : Application
         if (_ownsSingleInstance)
             _singleInstance?.ReleaseMutex();
         _singleInstance?.Dispose();
+        if (_restartAfterExit)
+            StartNewCopy();
         base.OnExit(e);
     }
 }

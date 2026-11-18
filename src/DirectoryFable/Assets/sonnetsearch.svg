@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>SonnetSearch</title>
+  <defs>
+    <linearGradient id="blue" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0" stop-color="#087DE0"/><stop offset="1" stop-color="#0041B8"/></linearGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0" stop-color="#27CCD9"/><stop offset="1" stop-color="#0099B8"/></linearGradient>
+  </defs>
+  <path fill="url(#blue)" d="M 35,34 L 85,34 Q 93,34 98,41 L 112,60 L 195,60 Q 211,60 211,76 L 211,178 Q 211,194 195,194 L 35,194 Q 19,194 19,178 L 19,50 Q 19,34 35,34 Z"/>
+  <path fill="#27CCD9" d="M 35,74 L 187,74 Q 192,74 192,79 Q 192,84 187,84 L 35,84 Q 30,84 30,79 Q 30,74 35,74 Z"/>
+  <path fill="#092D64" d="M 223,156 A 62,62 0 1 1 99,156 A 62,62 0 1 1 223,156 Z"/>
+  <path fill="url(#cyan)" d="M 195,184 L 239,224 Q 245,230 239,236 L 234,241 Q 228,247 222,241 L 182,197 Z"/>
+  <path fill="url(#cyan)" fill-rule="evenodd" d="M 215,156 A 54,54 0 1 1 107,156 A 54,54 0 1 1 215,156 Z M 198,156 A 37,37 0 1 1 124,156 A 37,37 0 1 1 198,156 Z"/>
+  <path fill="#E8F9FF" d="M 139,143 L 175,143 Q 180,143 180,148 Q 180,153 175,153 L 139,153 Q 134,153 134,148 Q 134,143 139,143 Z M 139,163 L 164,163 Q 169,163 169,168 Q 169,173 164,173 L 139,173 Q 134,173 134,168 Q 134,163 139,163 Z"/>
+</svg>

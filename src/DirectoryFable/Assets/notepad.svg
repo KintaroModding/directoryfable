@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>Notepad#</title>
+  <defs>
+    <linearGradient id="blue" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0" stop-color="#087DE0"/><stop offset="1" stop-color="#0041B8"/></linearGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0" stop-color="#27CCD9"/><stop offset="1" stop-color="#0099B8"/></linearGradient>
+  </defs>
+  <path fill="url(#blue)" d="M 58,20 L 168,20 L 212,64 L 212,220 Q 212,236 196,236 L 58,236 Q 42,236 42,220 L 42,36 Q 42,20 58,20 Z"/>
+  <path fill="url(#cyan)" d="M 58,20 L 72,20 L 72,236 L 58,236 Q 42,236 42,220 L 42,36 Q 42,20 58,20 Z"/>
+  <path fill="#A9EDF5" d="M 168,20 L 212,64 L 180,64 Q 168,64 168,52 Z"/>
+  <path fill="#E8F9FF" d="M 116,83 L 130,83 L 113,169 L 99,169 Z M 151,83 L 165,83 L 148,169 L 134,169 Z"/>
+  <path fill="#E8F9FF" d="M 94,103 L 177,103 L 177,117 L 94,117 Z M 89,135 L 172,135 L 172,149 L 89,149 Z"/>
+  <path fill="#27CCD9" d="M 95,191 L 178,191 Q 183,191 183,196 Q 183,201 178,201 L 95,201 Q 90,201 90,196 Q 90,191 95,191 Z"/>
+</svg>

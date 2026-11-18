@@ -104,13 +104,15 @@
     <!-- File row: 20 DIP, blue selection, gray 1 px focus rectangle. -->
     <Style x:Key="FileRowStyle" TargetType="ListViewItem">
         <Setter Property="Foreground" Value="{StaticResource ListTextBrush}" />
+        <!-- The row's resting color; hover and selection draw over it (template triggers). -->
+        <Setter Property="Background" Value="Transparent" />
         <Setter Property="Height" Value="20" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListViewItem">
-                    <Border x:Name="Bd" Background="Transparent" BorderBrush="Transparent"
+                    <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="Transparent"
                             BorderThickness="1" SnapsToDevicePixels="True">
                         <GridViewRowPresenter x:Name="Cells" VerticalAlignment="Center"
                                               Columns="{TemplateBinding GridView.ColumnCollection}" />
@@ -145,6 +147,15 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <!-- File rows with every second row a little lighter (set AlternationCount="2" on the list). -->
+    <Style x:Key="AlternatingFileRowStyle" TargetType="ListViewItem" BasedOn="{StaticResource FileRowStyle}">
+        <Style.Triggers>
+            <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+                <Setter Property="Background" Value="{StaticResource ListAlternateRowBrush}" />
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <!-- Tab header: fixed width, black when inactive, dark gray when selected, no close button. -->
@@ -494,6 +505,15 @@
 
     <!-- Title bar view tab ([folder] [Notepad#]): highlighted while its view is shown.
          Hit-testable inside the WindowChrome caption. -->
+    <!-- Icon left of a view tab's name (16 px, like the app icon at the left of the title bar). -->
+    <Style x:Key="TitleTabIcon" TargetType="Image">
+        <Setter Property="Width" Value="16" />
+        <Setter Property="Height" Value="16" />
+        <Setter Property="Margin" Value="0,0,6,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="RenderOptions.BitmapScalingMode" Value="HighQuality" />
+    </Style>
+
     <Style x:Key="TitleTabButton" TargetType="ToggleButton">
         <Setter Property="Height" Value="24" />
         <Setter Property="Padding" Value="10,0" />

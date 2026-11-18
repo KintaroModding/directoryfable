@@ -69,6 +69,39 @@ public sealed class NotepadFileState
     public string? CachedEncoding { get; set; }
 }
 
+/// <summary>Search: the chosen drives / place, the text, filters, sorting and the time mark.</summary>
+public sealed class SearchState
+{
+    /// <summary>Roots of the chosen drives ("C:\"); null = the default (all fixed drives).</summary>
+    public List<string>? Drives { get; set; }
+
+    /// <summary>Older sessions: one folder to search in (now part of <see cref="CheckedFolders"/>).</summary>
+    public string? Place { get; set; }
+
+    /// <summary>Folders pinned to the location list (ticked or not).</summary>
+    public List<string>? Folders { get; set; }
+
+    /// <summary>Ticked folders (searched).</summary>
+    public List<string>? CheckedFolders { get; set; }
+
+    public string Text { get; set; } = "";
+    public bool MatchCase { get; set; }
+    public bool UseRegex { get; set; }
+    public int Type { get; set; }
+    public string Extensions { get; set; } = "";
+    public int Size { get; set; }
+    public int DateColumn { get; set; }
+    public int Range { get; set; }
+    public int Sort { get; set; }
+    public bool Descending { get; set; }
+
+    /// <summary>Result columns in display order with widths (key = column tag); null = default.</summary>
+    public List<ColumnState>? Columns { get; set; }
+
+    /// <summary>The time mark (UTC FILETIME); null = none.</summary>
+    public long? Mark { get; set; }
+}
+
 /// <summary>AstraViewer: the image history (newest first) and the shown image.</summary>
 public sealed class ViewerState
 {
@@ -134,6 +167,12 @@ public sealed class SessionState
 
     /// <summary>AstraViewer's history and shown image.</summary>
     public ViewerState? Viewer { get; set; }
+
+    /// <summary>True when Search was the shown view.</summary>
+    public bool SearchShown { get; set; }
+
+    /// <summary>Search: drives, text, filters, mark (the results are not kept).</summary>
+    public SearchState? Search { get; set; }
 
     private static string FilePath => System.IO.Path.Combine(AppSettings.DataFolder, FileName);
 

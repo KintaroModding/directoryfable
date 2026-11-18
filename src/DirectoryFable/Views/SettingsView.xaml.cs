@@ -27,6 +27,9 @@ public partial class SettingsView : UserControl
     /// <summary>"Close" button or Esc.</summary>
     public event Action? CloseRequested;
 
+    /// <summary>The update settings changed (the title bar's Update button follows at once).</summary>
+    public event Action<AppSettings>? UpdateSettingsChanged;
+
     /// <summary>Reads settings.json again (it may have been edited by hand) and shows it.</summary>
     public void Open()
     {
@@ -39,6 +42,9 @@ public partial class SettingsView : UserControl
             TaskbarMode.IsChecked = !_settings.IsTrayMode;
             StartMaximized.IsChecked = _settings.StartMaximized;
             RestoreSession.IsChecked = _settings.RestoreSession;
+            ShowUpdateButton.IsChecked = _settings.UpdateButton;
+            UpdateCheckAtStart.IsChecked = _settings.UpdateCheckAtStart;
+            UpdateCheckAtStart.IsEnabled = _settings.UpdateButton;
             LeftPath.Text = _settings.LeftPath;
             RightPath.Text = _settings.RightPath;
             SevenZipFolder.Text = _settings.SevenZipFolder;
@@ -93,6 +99,22 @@ public partial class SettingsView : UserControl
             s.StartMaximized = maximized;
             s.RestoreSession = restore;
         });
+    }
+
+    // ---------- Updates ----------
+
+    private void Update_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_filling)
+            return;
+        bool button = ShowUpdateButton.IsChecked == true, atStart = UpdateCheckAtStart.IsChecked == true;
+        UpdateCheckAtStart.IsEnabled = button;
+        Save(s =>
+        {
+            s.UpdateButton = button;
+            s.UpdateCheckAtStart = atStart;
+        });
+        UpdateSettingsChanged?.Invoke(_settings);
     }
 
     // ---------- Start folders ----------
