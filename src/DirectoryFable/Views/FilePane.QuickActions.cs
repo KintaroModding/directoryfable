@@ -71,7 +71,17 @@ public partial class FilePane
         QuickDuplicate.IsEnabled = any;
         QuickCopyOther.IsEnabled = any;
         QuickMoveOther.IsEnabled = any;
+        QuickDelete.IsEnabled = any;
+        QuickDeletePermanent.IsEnabled = any;
     }
+
+    // ---------- Delete ----------
+
+    /// <summary>The same as the Delete key: to the Recycle Bin at once (inside a ZIP file: asks, no Recycle Bin there).</summary>
+    private void QuickDelete_Click(object sender, RoutedEventArgs e) => _ = RunSafeAsync(() => DeleteSelectedAsync(permanent: false));
+
+    /// <summary>The same as Shift+Delete: DirectoryFable's question, then permanently.</summary>
+    private void QuickDeletePermanent_Click(object sender, RoutedEventArgs e) => _ = RunSafeAsync(() => DeleteSelectedAsync(permanent: true));
 
     // ---------- Paths as text ----------
 
@@ -274,12 +284,24 @@ public partial class FilePane
         menu.IsOpen = true;
     }
 
-    /// <summary>PowerShell 7 (pwsh) when installed, else Windows PowerShell.</summary>
+    /// <summary>
+    /// PowerShell 7 (pwsh) when installed, else Windows PowerShell. The MSI installs it in Program Files; the
+    /// Store / winget package only gives the app alias in the user's WindowsApps folder.
+    /// </summary>
     private static (string Exe, string Name) FindPowerShell()
     {
         string programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-        string pwsh = Path.Combine(programFiles, "PowerShell", "7", "pwsh.exe");
-        return File.Exists(pwsh) ? (pwsh, "PowerShell 7") : ("powershell.exe", "Windows PowerShell");
+        string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        foreach (string pwsh in new[]
+                 {
+                     Path.Combine(programFiles, "PowerShell", "7", "pwsh.exe"),
+                     Path.Combine(localAppData, "Microsoft", "WindowsApps", "pwsh.exe"),
+                 })
+        {
+            if (File.Exists(pwsh))
+                return (pwsh, "PowerShell 7");
+        }
+        return ("powershell.exe", "Windows PowerShell");
     }
 
     private void StartTerminal(string folder, bool powerShell)

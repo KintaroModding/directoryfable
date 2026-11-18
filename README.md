@@ -89,7 +89,8 @@ yourself, see [Build](#build).
 - **The Windows context menu** in dark mode, so your shell extensions work.
 - **Quick actions bar** in each pane, in two rows. First: Folder path, File
   path, 7z (7-Zip's "Add to archive" window), Duplicate, Copy to other, Move to
-  other. Second: Terminal (Command Prompt or PowerShell), Explorer,
+  other, Delete (to the Recycle Bin, as the `Delete` key; the arrow next to it
+  deletes permanently after a question, as `Shift+Delete`). Second: Terminal (Command Prompt or PowerShell), Explorer,
   SonnetSearch (search this folder and its subfolders, like `Ctrl+F`), Space
   (the Space view), and the quick filter box. "Quick bar: icons only" on the
   settings page hides the labels for narrow panes.
@@ -101,7 +102,11 @@ yourself, see [Build](#build).
   attributes; drives: capacity, used, free, file system), then the details
   Windows knows for the file type (for example image size, artist, page count).
   Read-only, Hidden, System and Archive are check boxes that change the item at
-  once.
+  once. Size on disk is counted as Windows counts it: the space the file system
+  has reserved for each file, with its named streams such as the "downloaded
+  from the internet" mark (tiny files and streams that NTFS keeps inside its
+  file table count 0; compressed and sparse files count what is stored; every
+  name of a hard link counts).
 - **Status bar**: selected and total folders, files and size; free space.
 - **Settings page** behind the gear button. A normal window with a taskbar
   button (the default), or tray mode: only a tray icon, and closing the window
