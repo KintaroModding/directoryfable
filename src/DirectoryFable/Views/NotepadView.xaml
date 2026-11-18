@@ -172,18 +172,57 @@
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="&#xE74E;" FontFamily="{StaticResource IconFont}" FontSize="13" Margin="0,1,7,0" VerticalAlignment="Center">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Foreground" Value="{StaticResource GroupChevronBrush}" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsDirty}" Value="True">
-                                                <Setter Property="Foreground" Value="{StaticResource ErrorTextBrush}" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
+                            <!-- Default: a save symbol (red with unsaved changes). A chosen icon (right-click, Icon):
+                                 its picture, or its symbol while the picture is missing; a red dot for unsaved changes. -->
+                            <Grid Width="16" Height="16" Margin="0,1,7,0" VerticalAlignment="Center">
+                                <TextBlock Text="&#xE74E;" FontFamily="{StaticResource IconFont}" FontSize="13"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{StaticResource GroupChevronBrush}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsDirty}" Value="True">
+                                                    <Setter Property="Foreground" Value="{StaticResource ErrorTextBrush}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding HasIcon}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <Image Source="{Binding Icon.Image}" Width="16" Height="16" RenderOptions.BitmapScalingMode="HighQuality" />
+                                <TextBlock Text="{Binding Icon.Glyph}" Foreground="{Binding Icon.Brush}" FontFamily="{StaticResource IconFont}"
+                                           FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Icon.HasImage}" Value="False">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <Ellipse Width="6" Height="6" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-2,-1"
+                                         Fill="{StaticResource ErrorTextBrush}" Stroke="{StaticResource ListBackgroundBrush}" StrokeThickness="1">
+                                    <Ellipse.Style>
+                                        <Style TargetType="Ellipse">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding HasIcon}" Value="True" />
+                                                        <Condition Binding="{Binding IsDirty}" Value="True" />
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </MultiDataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Ellipse.Style>
+                                </Ellipse>
+                            </Grid>
                             <!-- A file that is gone: name and extension red, plus a dismiss button. -->
                             <TextBlock Grid.Column="1" Text="{Binding Stem}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center">
                                 <TextBlock.Style>

@@ -510,7 +510,7 @@ public partial class FilePane : UserControl
     {
         try
         {
-            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            Process.Start(Shell.ShellLaunch.For(path));
         }
         catch (Exception)
         {

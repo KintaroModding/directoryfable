@@ -239,6 +239,26 @@ public sealed class EditorDocument : ObservableObject
         set => SetField(ref _isDragging, value);
     }
 
+    private string? _iconId;
+
+    /// <summary>The icon chosen for this file in the list (right-click, Icon); null = the default symbol.</summary>
+    public string? IconId
+    {
+        get => _iconId;
+        set
+        {
+            if (SetField(ref _iconId, FileIcons.Find(value)?.Id))
+            {
+                OnPropertyChanged(nameof(Icon));
+                OnPropertyChanged(nameof(HasIcon));
+            }
+        }
+    }
+
+    public FileIcon? Icon => FileIcons.Find(_iconId);
+
+    public bool HasIcon => Icon is not null;
+
     /// <summary>The syntax highlighting of this file (Language menu); null = normal text.</summary>
     public IHighlightingDefinition? Highlighting
     {

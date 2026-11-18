@@ -16,7 +16,7 @@
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <!-- The app's version: the update check compares it with the GitHub release tags (v<Version>),
          and build.ps1 names the release zip after it. -->
-    <Version>1.0.1</Version>
+    <Version>1.1.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -31,6 +31,8 @@
     <Resource Include="Assets\notepad.ico" />
     <Resource Include="Assets\astraviewer.ico" />
     <Resource Include="Assets\sonnetsearch.ico" />
+    <!-- Icons for files in the Notepad# list (right-click, Icon): <id>-<size>.png, see Editor/FileIcons.cs. -->
+    <Resource Include="Assets\NotepadIcons\*.png" />
     <!-- Notepad# syntax definitions (AutoHotkey, INI): loaded by Editor/EditorHighlighting.cs. -->
     <EmbeddedResource Include="Editor\Syntax\*.xshd" />
     <!-- Technical Notes: a TextMate grammar (from its VS Code language mode), read by Editor/TextMateLine.cs. -->

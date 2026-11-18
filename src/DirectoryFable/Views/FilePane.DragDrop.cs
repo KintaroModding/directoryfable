@@ -26,17 +26,29 @@ public partial class FilePane
 
         _dragStart = null;
         _selectOnMouseUp = null;
+        EndMarquee();
         if (e.ChangedButton == MouseButton.Right)
             _suppressContextMenu = false;
         if (RowAt(e.OriginalSource) is not { DataContext: FileItem { IsRenaming: false } item } row)
         {
             // Empty list space: clear the selection, like Explorer.
             // Not on the scroll bar, a column header or a group header; Ctrl/Shift keep it.
-            if (Keyboard.Modifiers == ModifierKeys.None && FileList.SelectedItems.Count > 0 &&
-                !IsOnListChrome(e.OriginalSource))
+            bool chrome = IsOnListChrome(e.OriginalSource);
+            if (Keyboard.Modifiers == ModifierKeys.None && FileList.SelectedItems.Count > 0 && !chrome)
             {
                 FileList.SelectedItems.Clear();
             }
+            // Holding the left button here and dragging draws a selection rectangle.
+            if (e.ChangedButton == MouseButton.Left && !chrome && RowAt(e.OriginalSource) is null)
+                MarqueeCandidate(e);
+            return;
+        }
+
+        // A row outside its Name cell: a click selects it as usual, a drag draws a selection rectangle
+        // (as in Explorer); the Name cell drags the files.
+        if (e.ChangedButton == MouseButton.Left && e.ClickCount == 1 && !IsOnNameCell(e.OriginalSource))
+        {
+            MarqueeCandidate(e);
             return;
         }
 
@@ -69,6 +81,16 @@ public partial class FilePane
 
     private void FileList_PreviewMouseUp(object sender, MouseButtonEventArgs e)
     {
+        if (e.ChangedButton == MouseButton.Left && _marqueeStart is not null)
+        {
+            bool drawn = _marqueeActive;
+            EndMarquee();
+            if (drawn)
+            {
+                e.Handled = true;
+                return;
+            }
+        }
         if (e.ChangedButton == MouseButton.Left && _selectOnMouseUp is { } item)
         {
             // It was a click, not a drag: now select only this row.
@@ -81,6 +103,8 @@ public partial class FilePane
 
     private void FileList_PreviewMouseMove(object sender, MouseEventArgs e)
     {
+        if (MarqueeMove(e))
+            return;
         if (_dragStart is not { } start ||
             (e.LeftButton != MouseButtonState.Pressed && e.RightButton != MouseButtonState.Pressed))
             return;

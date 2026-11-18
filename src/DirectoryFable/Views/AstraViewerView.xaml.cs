@@ -527,7 +527,7 @@ public partial class AstraViewerView : UserControl
     {
         try
         {
-            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            Process.Start(Shell.ShellLaunch.For(path));
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)
         {

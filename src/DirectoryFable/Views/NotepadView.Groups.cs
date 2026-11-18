@@ -258,6 +258,50 @@ public partial class NotepadView
 
     // ---------- Context menus ----------
 
+    /// <summary>"Icon": the icons in a grid of six, the file's current one ticked; a click gives it to the file.</summary>
+    private MenuItem IconMenu(EditorDocument document)
+    {
+        var menu = new MenuItem { Header = "Icon" };
+        var grid = new FrameworkElementFactory(typeof(System.Windows.Controls.Primitives.UniformGrid));
+        grid.SetValue(System.Windows.Controls.Primitives.UniformGrid.ColumnsProperty, 6);
+        menu.ItemsPanel = new ItemsPanelTemplate(grid);
+        foreach (var icon in FileIcons.All)
+        {
+            var item = new MenuItem
+            {
+                Header = IconVisual(icon, 24),
+                ToolTip = icon.Name,
+                IsChecked = document.IconId == icon.Id,
+                Padding = new Thickness(6, 4, 6, 4),
+                HorizontalContentAlignment = HorizontalAlignment.Center,
+            };
+            item.Click += (_, _) => SetIcon(document, icon.Id);
+            menu.Items.Add(item);
+        }
+        return menu;
+    }
+
+    /// <summary>The icon's picture, or its stand-in symbol while the picture files are missing.</summary>
+    private static FrameworkElement IconVisual(FileIcon icon, double size) =>
+        icon.ImageFor(size) is { } image
+            ? new Image { Source = image, Width = size, Height = size }
+            : new TextBlock
+            {
+                Text = icon.Glyph,
+                FontFamily = (FontFamily)Application.Current.FindResource("IconFont"),
+                FontSize = size * 0.8,
+                Foreground = icon.Brush,
+                Width = size,
+                Height = size,
+                TextAlignment = TextAlignment.Center,
+            };
+
+    private void SetIcon(EditorDocument document, string? id)
+    {
+        document.IconId = id;
+        ScheduleBackup(); // The icon is part of the session.
+    }
+
     /// <summary>Right-click: a file, a group header, or empty space. Menus are built in code
     /// (click handlers on menu items inside a style break WPF's XAML loader).</summary>
     private void FileList_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
@@ -293,6 +337,9 @@ public partial class NotepadView
                             break;
                     }
                 });
+                menu.Items.Add(new Separator());
+                menu.Items.Add(IconMenu(document));
+                Add(menu, "Default icon", "", () => SetIcon(document, null), enabled: document.HasIcon);
                 menu.Items.Add(new Separator());
 
                 var moveTo = new MenuItem { Header = "Move to group" };
@@ -521,6 +568,7 @@ public partial class NotepadView
                 DiskLength = d.DiskLength,
                 Group = GroupOf(d) is { IsAuto: false } own ? own.Name : null,
                 Language = d.Highlighting?.Name ?? "",
+                Icon = d.IconId,
                 Caret = d.CaretOffset,
                 VerticalOffset = d.VerticalOffset,
                 CachedEncoding = kept.Contains(d) ? d.EncodingKey : null,
@@ -603,6 +651,7 @@ public partial class NotepadView
             // Language "" = the user chose Normal Text; null = by extension (already set).
             if (file.Language is not null)
                 document.Highlighting = file.Language.Length == 0 ? null : EditorHighlighting.ByName(file.Language);
+            document.IconId = file.Icon;
             document.CaretOffset = file.Caret;
             document.VerticalOffset = file.VerticalOffset;
         }

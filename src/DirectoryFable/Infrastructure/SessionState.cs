@@ -62,6 +62,9 @@ public sealed class NotepadFileState
 
     /// <summary>Language name; "" = Normal Text.</summary>
     public string? Language { get; set; }
+
+    /// <summary>The icon chosen in the file list (Editor/FileIcons.cs id); null = the default symbol.</summary>
+    public string? Icon { get; set; }
     public int Caret { get; set; }
     public double VerticalOffset { get; set; }
 

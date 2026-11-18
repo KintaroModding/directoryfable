@@ -32,6 +32,9 @@ yourself, see [Build](#build).
 - **File operations through Windows** (progress window, conflict questions,
   Recycle Bin, elevation). **Undo** (`Ctrl+Z`) for copy, move, rename,
   duplicate and delete to the Recycle Bin.
+- **Rectangle selection**: hold the left button on empty list space, or on a
+  row outside its name, and drag; `Ctrl` adds to the selection. The list
+  scrolls when you drag past its top or bottom.
 - **Drag and drop** between the panes, tabs, the tree, the favorites and other
   programs. A right-button drag asks what to do; dropped into the same folder,
   it makes a copy under a new name.
@@ -60,6 +63,10 @@ yourself, see [Build](#build).
   state.
 - **Open files in a vertical list**, in groups of your own and in automatic
   groups (by type or by folder). Drag files and groups to order them.
+- **Icons for files**: right-click a file in the list, `Icon`, and pick one of
+  24 (star, flag, bug, to-do list ...). A red dot on it shows unsaved changes.
+  `Default icon` goes back to the normal symbol. The icons are kept in the
+  session.
 - **Editor** based on [AvalonEdit](https://github.com/icsharpcode/AvalonEdit):
   line numbers, syntax highlighting for the languages AvalonEdit knows plus
   AutoHotkey, INI and Technical Notes, chosen per file, and word wrap (`Alt+Z`).
