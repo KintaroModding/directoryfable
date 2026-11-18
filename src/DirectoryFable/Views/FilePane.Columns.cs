@@ -17,6 +17,9 @@ public partial class FilePane
     private ListCollectionView? _view;
     private TabViewModel? _viewOwner;
 
+    /// <summary>Set by the main window: folder sizes on / off for all panes (saved in settings.json).</summary>
+    public static Action<bool>? SetFolderSizes { get; set; }
+
     /// <summary>All columns in display order (hidden ones are removed from the GridView).</summary>
     private List<(GridViewColumn Column, SortColumn Key, string Title)> _allColumns = [];
 
@@ -120,6 +123,7 @@ public partial class FilePane
         {
             _viewOwner.ItemsResetStarting -= OnItemsResetStarting;
             _viewOwner.ItemsResetFinished -= OnItemsResetFinished;
+            _viewOwner.FolderSizesChanged -= OnFolderSizesChanged;
         }
         _viewOwner = tab;
         _view?.DetachFromSourceCollection();
@@ -133,9 +137,22 @@ public partial class FilePane
         ApplyColumnLayout(tab);
         _view = new ListCollectionView(tab.Items);
         ApplySortAndGroup();
+        ApplyFilter();
         FileList.ItemsSource = _view;
         tab.ItemsResetStarting += OnItemsResetStarting;
         tab.ItemsResetFinished += OnItemsResetFinished;
+        tab.FolderSizesChanged += OnFolderSizesChanged;
+    }
+
+    /// <summary>Folder sizes arrived: a list sorted by size sorts again (not while a name is edited).</summary>
+    private void OnFolderSizesChanged()
+    {
+        if (_view is null || _viewOwner is not { SortColumn: SortColumn.Size } tab || tab.Items.Any(i => i.IsRenaming))
+            return;
+        bool hadFocus = FileList.IsKeyboardFocusWithin;
+        _view.Refresh();
+        if (hadFocus)
+            Dispatcher.BeginInvoke(FocusList, System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     // A folder load replaces all items. A sorted view would re-sort on every Add, and WPF
@@ -154,6 +171,7 @@ public partial class FilePane
             return;
         _view = new ListCollectionView(_viewOwner.Items);
         ApplySortAndGroup();
+        ApplyFilter();
         FileList.ItemsSource = _view;
     }
 
@@ -231,6 +249,16 @@ public partial class FilePane
             ApplySortAndGroup();
         };
         menu.Items.Add(group);
+        // The same switch as on the settings page (all panes, saved).
+        var sizes = new MenuItem
+        {
+            Header = "Folder sizes",
+            IsCheckable = true,
+            IsChecked = Search.FolderSizes.Enabled,
+            ToolTip = "Folders show the size of all files below them (NTFS drives, as administrator). Off: no drive is read for it.",
+        };
+        sizes.Click += (_, _) => SetFolderSizes?.Invoke(!Search.FolderSizes.Enabled);
+        menu.Items.Add(sizes);
         menu.Items.Add(new Separator());
 
         foreach (var (column, _, title) in _allColumns.Skip(1)) // Name is always shown.
@@ -244,12 +272,14 @@ public partial class FilePane
 
     private void ToggleColumn(GridViewColumn column)
     {
-        if (Columns.Columns.Remove(column))
-            return;
-
-        // Re-insert at its place in the default order.
-        int order = _allColumns.FindIndex(c => c.Column == column);
-        int index = Columns.Columns.Count(c => _allColumns.FindIndex(a => a.Column == c) < order);
-        Columns.Columns.Insert(index, column);
+        if (!Columns.Columns.Remove(column))
+        {
+            // Re-insert at its place in the default order.
+            int order = _allColumns.FindIndex(c => c.Column == column);
+            int index = Columns.Columns.Count(c => _allColumns.FindIndex(a => a.Column == c) < order);
+            Columns.Columns.Insert(index, column);
+        }
+        if (column == SizeColumn)
+            _ = _viewOwner?.UpdateFolderSizesAsync(); // Folder sizes only while the Size column is shown.
     }
 }

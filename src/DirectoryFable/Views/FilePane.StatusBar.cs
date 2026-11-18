@@ -39,11 +39,12 @@ public partial class FilePane
 
         var selected = FileList.SelectedItems.Cast<FileItem>().ToList();
         int selectedFolders = selected.Count(i => i.IsDirectory);
-        long selectedSize = selected.Where(i => !i.IsDirectory).Sum(i => i.Size ?? 0);
+        long selectedSize = selected.Sum(i => i.SortSize ?? 0); // Folders count with their size when it is known.
 
         StatusFolders.Text = $"{selectedFolders:N0} / {tab.FolderCount:N0}";
         StatusFiles.Text = $"{selected.Count - selectedFolders:N0} / {tab.FileCount:N0}";
         StatusSizes.Text = $"{DisplayFormat.Size(selectedSize)} / {DisplayFormat.Size(tab.TotalSize)}";
+        UpdateFilterBox();
 
         if (tab.DriveFree is long free && tab.DriveTotal is long total && total > 0)
         {

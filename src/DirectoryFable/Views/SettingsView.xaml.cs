@@ -30,6 +30,12 @@ public partial class SettingsView : UserControl
     /// <summary>The update settings changed (the title bar's Update button follows at once).</summary>
     public event Action<AppSettings>? UpdateSettingsChanged;
 
+    /// <summary>Folder sizes were switched on or off (the panes follow at once).</summary>
+    public event Action<bool>? FolderSizesChanged;
+
+    /// <summary>"Quick bar: icons only" was switched (the panes follow at once).</summary>
+    public event Action<bool>? IconsOnlyChanged;
+
     /// <summary>Reads settings.json again (it may have been edited by hand) and shows it.</summary>
     public void Open()
     {
@@ -42,6 +48,7 @@ public partial class SettingsView : UserControl
             TaskbarMode.IsChecked = !_settings.IsTrayMode;
             StartMaximized.IsChecked = _settings.StartMaximized;
             RestoreSession.IsChecked = _settings.RestoreSession;
+            FolderSizes.IsChecked = _settings.FolderSizes;
             ShowUpdateButton.IsChecked = _settings.UpdateButton;
             UpdateCheckAtStart.IsChecked = _settings.UpdateCheckAtStart;
             UpdateCheckAtStart.IsEnabled = _settings.UpdateButton;
@@ -50,6 +57,7 @@ public partial class SettingsView : UserControl
             SevenZipFolder.Text = _settings.SevenZipFolder;
             ShowSevenZipStatus();
             ArchiveBackground.Text = _settings.ArchiveBackground;
+            IconsOnly.IsChecked = _settings.QuickBarIconsOnly;
             ShowSwatch(_settings.ArchiveBackground);
             SaveStatus.Text = "";
             ColumnsStatus.Text = "";
@@ -99,6 +107,28 @@ public partial class SettingsView : UserControl
             s.StartMaximized = maximized;
             s.RestoreSession = restore;
         });
+    }
+
+    // ---------- Quick bar ----------
+
+    private void IconsOnly_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_filling)
+            return;
+        bool on = IconsOnly.IsChecked == true;
+        Save(s => s.QuickBarIconsOnly = on);
+        IconsOnlyChanged?.Invoke(on);
+    }
+
+    // ---------- Folder sizes ----------
+
+    private void FolderSizes_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_filling)
+            return;
+        bool on = FolderSizes.IsChecked == true;
+        Save(s => s.FolderSizes = on);
+        FolderSizesChanged?.Invoke(on);
     }
 
     // ---------- Updates ----------

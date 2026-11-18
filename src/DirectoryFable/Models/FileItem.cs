@@ -9,6 +9,8 @@ public sealed class FileItem : ObservableObject
     private bool _isRenaming;
     private bool _isDropTarget;
     private long? _size;
+    private long? _folderSize;
+    private bool _folderSizePending;
     private DateTime _dateCreated;
     private DateTime _dateModified;
     private bool _isHidden;
@@ -24,6 +26,31 @@ public sealed class FileItem : ObservableObject
         get => _size;
         init => _size = value;
     }
+
+    /// <summary>A folder's size: all files below it, from the drive's file table (null = unknown).</summary>
+    public long? FolderSize
+    {
+        get => _folderSize;
+        set
+        {
+            if (SetField(ref _folderSize, value))
+                OnPropertyChanged(nameof(SizeText));
+        }
+    }
+
+    /// <summary>True while the drive is read for the first time: the folder's Size shows "…".</summary>
+    public bool FolderSizePending
+    {
+        get => _folderSizePending;
+        set
+        {
+            if (SetField(ref _folderSizePending, value))
+                OnPropertyChanged(nameof(SizeText));
+        }
+    }
+
+    /// <summary>Sorting by size: a file's size, a folder's total (unknown = smallest).</summary>
+    public long? SortSize => IsDirectory ? _folderSize : _size;
 
     public DateTime DateCreated
     {
@@ -91,8 +118,10 @@ public sealed class FileItem : ObservableObject
     /// <summary>File extension without the dot ("txt"); empty for folders.</summary>
     public string Extension => IsDirectory ? "" : System.IO.Path.GetExtension(Name).TrimStart('.');
 
-    /// <summary>Empty for folders.</summary>
-    public string SizeText => Size is long bytes ? DisplayFormat.Size(bytes) : "";
+    /// <summary>Folders: their total when known ("…" while the drive is read), else empty.</summary>
+    public string SizeText => IsDirectory
+        ? _folderSize is long total ? DisplayFormat.Size(total) : _folderSizePending ? "…" : ""
+        : Size is long bytes ? DisplayFormat.Size(bytes) : "";
 
     public string DateCreatedText => DisplayFormat.Date(DateCreated);
 

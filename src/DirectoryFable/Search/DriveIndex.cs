@@ -49,6 +49,15 @@ public sealed class DriveIndex
     /// <summary>Number of real entries (files and folders).</summary>
     public int EntryCount { get; internal set; }
 
+    private Task<FolderTotals>? _tree;
+
+    /// <summary>The folder tree with totals (folder sizes); built in the background on first use, then kept.</summary>
+    public Task<FolderTotals> TotalsAsync()
+    {
+        lock (_pathLock)
+            return _tree ??= Task.Run(() => FolderTotals.Build(this));
+    }
+
     public bool IsEntry(int i) => i >= 0 && i < _count;
 
     public bool IsDirectory(int i) => (Attributes[i] & 0x10) != 0;

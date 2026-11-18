@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows.Threading;
 using DirectoryFable.Infrastructure;
 using DirectoryFable.Models;
+using DirectoryFable.Search;
 using DirectoryFable.Shell;
 
 namespace DirectoryFable.ViewModels;
@@ -78,12 +79,72 @@ public sealed class TabViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(FolderIcon));
             IsInArchive = ZipBrowser.IsInArchive(value);
             OnPropertyChanged(nameof(IsInArchive));
+            IsNetwork = IsNetworkPath(value);
+            OnPropertyChanged(nameof(IsNetwork));
+            OnPropertyChanged(nameof(IsThisPc));
+            OnPropertyChanged(nameof(CanShowSpace));
+            if (_spaceMode && !CanShowSpace)
+                SpaceMode = false; // This PC, a ZIP file, a server: the normal view.
         }
+    }
+
+    // ---------- Quick filter ----------
+
+    private string _filter = "";
+
+    /// <summary>
+    /// Quick filter of the list: only names with these words stay visible (typed in the list or the
+    /// filter box; same rules as SonnetSearch's names). Cleared when the tab opens another folder.
+    /// </summary>
+    public string Filter
+    {
+        get => _filter;
+        set => SetField(ref _filter, value ?? "");
+    }
+
+    // ---------- Space view ----------
+
+    private bool _spaceMode;
+
+    /// <summary>The pane shows the Space view (what takes the space, sorted by size) instead of the file list.</summary>
+    public bool SpaceMode
+    {
+        get => _spaceMode;
+        set => SetField(ref _spaceMode, value);
+    }
+
+    /// <summary>A folder on a drive or share (not This PC, a ZIP file or a server's share list).</summary>
+    public bool CanShowSpace =>
+        CurrentPath.Length > 0 && !PathHelper.IsThisPc(CurrentPath) && !IsInArchive && !PathHelper.IsServerPath(CurrentPath);
+
+    /// <summary>The tab shows This PC: the drives view instead of the file list.</summary>
+    public bool IsThisPc => PathHelper.IsThisPc(CurrentPath);
+
+    /// <summary>True on a network path: "\\server\share\..." or a mapped network drive (the address bar is blue).</summary>
+    public bool IsNetwork { get; private set; }
+
+    private static bool IsNetworkPath(string path)
+    {
+        if (path.StartsWith(@"\\", StringComparison.Ordinal))
+            return !path.StartsWith(@"\\?\", StringComparison.Ordinal) && !path.StartsWith(@"\\.\", StringComparison.Ordinal);
+        if (path.Length >= 2 && path[1] == ':' && char.IsAsciiLetter(path[0]))
+        {
+            try
+            {
+                return new System.IO.DriveInfo(path[..1]).DriveType == System.IO.DriveType.Network;
+            }
+            catch (ArgumentException)
+            {
+                return false;
+            }
+        }
+        return false;
     }
 
     /// <summary>Icon for the tab and the address bar: network icons for a server or share root.</summary>
     public System.Windows.Media.ImageSource? FolderIcon =>
-        ZipBrowser.TrySplit(CurrentPath, out string zip, out string inner) && inner.Length == 0
+        PathHelper.IsThisPc(CurrentPath) ? ShellInfo.GetThisPcIcon()
+        : ZipBrowser.TrySplit(CurrentPath, out string zip, out string inner) && inner.Length == 0
             ? ShellInfo.GetIcon(zip, isDirectory: false)
             : ShellInfo.GetFolderIconFast(CurrentPath);
 
@@ -251,6 +312,9 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanGoBack));
         OnPropertyChanged(nameof(CanGoForward));
 
+        // Another folder: the quick filter starts empty (before the list is rebuilt).
+        if (commitHistory is not null && !PathHelper.IsSamePath(path, CurrentPath))
+            Filter = "";
         CurrentPath = path;
         // The view sorts and groups; it is rebuilt around the bulk swap (else every Add re-sorts).
         ItemsResetStarting?.Invoke();
@@ -272,6 +336,7 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         Navigated?.Invoke(this, new NavigatedEventArgs(selectPaths, focusPath));
         // .exe/.lnk/.ico rows: their own icons replace the extension icon in the background.
         _ = ShellInfo.LoadOwnIconsAsync(entries, cts.Token);
+        _ = UpdateFolderSizesAsync();
         return true;
     }
 
@@ -279,7 +344,7 @@ public sealed class TabViewModel : ObservableObject, IDisposable
 
     private void UpdateWatcher()
     {
-        string want = IsSelected ? CurrentPath : "";
+        string want = IsSelected && !PathHelper.IsThisPc(CurrentPath) ? CurrentPath : ""; // This PC: the drives view updates itself.
         if (string.Equals(want, _watchedPath, StringComparison.OrdinalIgnoreCase) && (_watcher is not null) == (want.Length > 0))
             return;
 
@@ -291,7 +356,11 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         // Inside a ZIP: watch the ZIP file (its folder, filtered to the file name).
         _watcher = ZipBrowser.TrySplit(want, out string zipFile, out _)
             ? new FolderWatcher(Path.GetDirectoryName(zipFile)!, _dispatcher, () => _ = MergeRefreshAsync(), Path.GetFileName(zipFile))
-            : new FolderWatcher(want, _dispatcher, () => _ = MergeRefreshAsync());
+            : new FolderWatcher(want, _dispatcher, () =>
+            {
+                FolderSizes.NoteChange(want); // The folder sizes of this drive are read again soon.
+                _ = MergeRefreshAsync();
+            });
     }
 
     /// <summary>
@@ -355,6 +424,7 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         UpdateStatus();
         if (needIcons.Count > 0)
             _ = ShellInfo.LoadOwnIconsAsync(needIcons, _loadCts?.Token ?? CancellationToken.None);
+        _ = UpdateFolderSizesAsync();
     }
 
     /// <summary>Makes <see cref="Items"/> equal to <paramref name="final"/> with few collection changes.</summary>
@@ -393,7 +463,7 @@ public sealed class TabViewModel : ObservableObject, IDisposable
     {
         for (string? p = PathHelper.GetParent(path); p is not null; p = PathHelper.GetParent(p))
         {
-            if (Directory.Exists(p))
+            if (Directory.Exists(p) || PathHelper.IsThisPc(p)) // A drive that is gone: This PC.
                 return p;
         }
         return null;
@@ -402,6 +472,7 @@ public sealed class TabViewModel : ObservableObject, IDisposable
     public TabViewModel()
     {
         FileClipboard.CutChanged += UpdateCutState;
+        FolderSizes.Changed += OnFolderSizesRenewed;
     }
 
     /// <summary>Fades the rows that are on the clipboard as "cut" (and un-fades the others).</summary>
@@ -414,6 +485,7 @@ public sealed class TabViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         FileClipboard.CutChanged -= UpdateCutState;
+        FolderSizes.Changed -= OnFolderSizesRenewed;
         _loadCts?.Cancel();
         _watcher?.Dispose();
         _watcher = null;
@@ -436,11 +508,85 @@ public sealed class TabViewModel : ObservableObject, IDisposable
 
     private void UpdateStatus()
     {
+        UpdateTotals();
+        _ = UpdateDriveSpaceAsync();
+    }
+
+    /// <summary>Counts and the total size (files, plus the folders whose size is known).</summary>
+    private void UpdateTotals()
+    {
         FolderCount = Items.Count(i => i.IsDirectory);
         FileCount = Items.Count - FolderCount;
-        TotalSize = Items.Where(i => !i.IsDirectory).Sum(i => i.Size ?? 0);
+        TotalSize = Items.Sum(i => i.SortSize ?? 0);
         TotalsChanged?.Invoke();
-        _ = UpdateDriveSpaceAsync();
+    }
+
+    // ---------- Folder sizes ----------
+
+    /// <summary>Folder sizes arrived or changed (a list sorted by size sorts again).</summary>
+    public event Action? FolderSizesChanged;
+
+    private int _sizeVersion;
+
+    private bool ShowsSizeColumn => ColumnLayout is null || ColumnLayout.Any(c => c.Key == nameof(SortColumn.Size));
+
+    /// <summary>
+    /// Fills the Size of the folder rows from the drive's file table (see <see cref="FolderSizes"/>):
+    /// at once when the drive was read before, else after its first read ("…" meanwhile).
+    /// </summary>
+    public async Task UpdateFolderSizesAsync()
+    {
+        string path = CurrentPath;
+        int version = ++_sizeVersion;
+        FolderSizeResult? result = null;
+        if (FolderSizes.Enabled && ShowsSizeColumn && path.Length > 0 && !PathHelper.IsThisPc(path))
+        {
+            try
+            {
+                result = await FolderSizes.ForFolderAsync(path, reading: () =>
+                {
+                    if (version != _sizeVersion)
+                        return;
+                    foreach (var item in Items)
+                    {
+                        if (item.IsDirectory && item.FolderSize is null)
+                            item.FolderSizePending = true;
+                    }
+                });
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+            {
+                result = null;
+            }
+            if (version != _sizeVersion || !PathHelper.IsSamePath(path, CurrentPath))
+                return;
+        }
+
+        bool changed = false;
+        foreach (var item in Items)
+        {
+            if (!item.IsDirectory)
+                continue;
+            item.FolderSizePending = false;
+            long? size = result is not null && result.Sizes.TryGetValue(item.Name, out long bytes) ? bytes : null;
+            if (item.FolderSize != size)
+            {
+                item.FolderSize = size;
+                changed = true;
+            }
+        }
+        if (changed)
+        {
+            UpdateTotals();
+            FolderSizesChanged?.Invoke();
+        }
+    }
+
+    /// <summary>A drive was read again: the visible tab of a folder on it takes the new sizes.</summary>
+    private void OnFolderSizesRenewed(string root)
+    {
+        if (IsSelected && CurrentPath.StartsWith(root[..2], StringComparison.OrdinalIgnoreCase))
+            _ = UpdateFolderSizesAsync();
     }
 
     /// <summary>Free space is read off the UI thread: a network share can take a moment.</summary>
@@ -461,6 +607,9 @@ public sealed class TabViewModel : ObservableObject, IDisposable
 
     private static List<FileItem> ReadFolder(string path, CancellationToken ct)
     {
+        // This PC has no files: the pane shows its drives view.
+        if (PathHelper.IsThisPc(path))
+            return [];
         // "\\SERVER": list its shares as folders (opening one goes to "\\SERVER\share").
         if (PathHelper.IsServerPath(path))
         {

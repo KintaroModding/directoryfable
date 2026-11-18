@@ -82,6 +82,25 @@ public sealed class FolderTreeViewModel : ObservableObject
             return;
         int version = ++_syncVersion;
 
+        // This PC: its own node.
+        if (PathHelper.IsThisPc(path))
+        {
+            IsSyncing = true;
+            try
+            {
+                if (Selected is not null && Selected != ThisPc)
+                    Selected.IsSelected = false;
+                ThisPc.IsSelected = true;
+                Selected = ThisPc;
+            }
+            finally
+            {
+                IsSyncing = false;
+            }
+            Synced?.Invoke([ThisPc]);
+            return;
+        }
+
         await Task.WhenAll(ThisPc.LoadChildrenAsync(), FavoritesNode.LoadChildrenAsync());
         if (version != _syncVersion)
             return;

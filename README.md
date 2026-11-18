@@ -24,10 +24,35 @@ yourself, see [Build](#build).
   active pane. The tree shows Home, Favorites, Desktop and This PC. It follows
   the active pane, or stays where it is (toggle in its header). "Collapse all"
   goes back to the overview.
-- **Address bar** with clickable parts. Type a path with `Ctrl+L`, `Alt+D` or
+- **Address bar** with clickable parts; it turns blue on a network path
+  (`\\server\share` or a mapped network drive). Type a path with `Ctrl+L`, `Alt+D` or
   `F4`; environment variables like `%APPDATA%` work.
+- **This PC**: the drives with a usage bar (red from 90 % used), file system,
+  how full and free of total, in "Devices and drives" and "Network locations"
+  (with the share). Open it from the tree, by typing `This PC`, or with Up from
+  a drive. Double-click or `Enter` opens a drive, a middle click opens it in a
+  new tab, right-click shows Windows' menu for it ("Space usage" opens the Space
+  view); the values update while you look.
 - **Details view** with group dividers by file type. Sort, resize and reorder
   the columns. Hidden and system files are always shown.
+- **Folder sizes** in the Size column (NTFS drives, run as administrator): the
+  first folder on a drive reads its file table once (about a second for a
+  system drive), then every folder on it shows its size at once; sorting by
+  size and the status bar count them too. After a change in a shown folder the
+  drive is read again in the background (at most once a minute), `F5` reads it
+  at once. Only reading, nothing is written to the drive. Switch it off on the
+  settings page or in the column header's right-click menu.
+- **Space view** (`Space` button in the quick bar): what takes the space in the
+  shown folder, biggest first. Folders show the size, files and folders of
+  everything below them, and every row has a bar for its share; at a drive
+  root also files, other used space and free space. Open a folder to go deeper
+  (Back, Up and the address bar work as usual), `Esc` returns to the list, `F5`
+  reads again. NTFS drives as administrator are read from their file table;
+  network folders and other drives with a folder walk.
+- **Quick filter**: type in the list and only the names that match stay
+  (words in any order, `*` and `?` as wildcards); the box at the right end of
+  the quick bar shows the text and "shown / all". `Backspace` takes back a
+  character, `Esc` shows all again, another folder starts without a filter.
 - **Auto-refresh**: the lists and the tree follow changes on disk.
 - **File operations through Windows** (Recycle Bin, elevation).
 - **Own question for names that are taken**: before a copy or move starts,
@@ -48,10 +73,12 @@ yourself, see [Build](#build).
   programs. A right-button drag asks what to do; dropped into the same folder,
   it makes a copy under a new name.
 - **The Windows context menu** in dark mode, so your shell extensions work.
-- **Quick actions bar** in each pane: Folder path, File path, 7z (7-Zip's "Add
-  to archive" window), Duplicate, Copy to other, Move to other, Terminal
-  (Command Prompt or PowerShell), Explorer, SonnetSearch (search this folder
-  and its subfolders, like `Ctrl+F`).
+- **Quick actions bar** in each pane, in two rows. First: Folder path, File
+  path, 7z (7-Zip's "Add to archive" window), Duplicate, Copy to other, Move to
+  other. Second: Terminal (Command Prompt or PowerShell), Explorer,
+  SonnetSearch (search this folder and its subfolders, like `Ctrl+F`), Space
+  (the Space view), and the quick filter box. "Quick bar: icons only" on the
+  settings page hides the labels for narrow panes.
 - **Archives as folders**: ZIP read and write; 7z and RAR read only, through an
   installed [7-Zip](https://www.7-zip.org/).
 - **Properties window** (`Alt+Enter` or the info button on a row): first

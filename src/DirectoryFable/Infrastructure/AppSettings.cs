@@ -33,6 +33,15 @@ public sealed class AppSettings
     public bool UpdateCheckAtStart { get; set; } = true;
 
     /// <summary>
+    /// Folder sizes in the Size column, from the drive's file table (NTFS drives, as administrator).
+    /// The first folder on a drive reads the whole drive once (a few seconds); then sizes show at once.
+    /// </summary>
+    public bool FolderSizes { get; set; } = true;
+
+    /// <summary>The quick bar of each pane shows only the icons of its buttons (no labels).</summary>
+    public bool QuickBarIconsOnly { get; set; }
+
+    /// <summary>
     /// File list background while inside a ZIP file ("#RRGGBB"). Default almost pure dark
     /// (the normal list is #191919).
     /// </summary>
@@ -172,6 +181,10 @@ public sealed class AppSettings
           "updateButton": {{Json(s.UpdateButton)}},
           // true: ask GitHub for a new version a few seconds after each start.
           "updateCheckAtStart": {{Json(s.UpdateCheckAtStart)}},
+          // true: folders show their size (all files below) in the Size column. Needs an NTFS drive and administrator rights.
+          "folderSizes": {{Json(s.FolderSizes)}},
+          // true: the quick bar of each pane shows only the icons of its buttons (the tooltips name them).
+          "quickBarIconsOnly": {{Json(s.QuickBarIconsOnly)}},
           // File list background while inside a ZIP file ("#RRGGBB"; normal list: "#191919").
           "archiveBackground": {{Json(s.ArchiveBackground)}},
           // Folder of 7-Zip (7zG.exe, 7z.exe) for the "7z" button and 7z / RAR archives; "" = find it automatically.

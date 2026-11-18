@@ -44,7 +44,7 @@ public sealed class FileItemComparer(SortColumn column, bool descending, bool gr
         int result = column switch
         {
             SortColumn.Type => string.Compare(a.TypeName, b.TypeName, StringComparison.CurrentCultureIgnoreCase),
-            SortColumn.Size => Nullable.Compare(a.Size, b.Size),
+            SortColumn.Size => Nullable.Compare(a.SortSize, b.SortSize),
             SortColumn.Created => a.DateCreated.CompareTo(b.DateCreated),
             SortColumn.Modified => a.DateModified.CompareTo(b.DateModified),
             SortColumn.Extension => string.Compare(a.Extension, b.Extension, StringComparison.CurrentCultureIgnoreCase),

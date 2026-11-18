@@ -14,6 +14,8 @@ public static class PathHelper
     public static string Normalize(string input, string? basePath = null)
     {
         string path = Environment.ExpandEnvironmentVariables(input.Trim().Trim('"'));
+        if (IsThisPc(path))
+            return ThisPc;
 
         // "\\SERVER" is not a folder; Path.GetFullPath rejects it ("should be \\server\share").
         if (IsServerPath(path))
@@ -34,6 +36,21 @@ public static class PathHelper
         return path;
     }
 
+    /// <summary>
+    /// "This PC": the drives (Views/DrivesView). It is no folder, so it has its own "path"; typing "This PC",
+    /// "shell:MyComputerFolder" or Windows' id for it in the address bar opens it too.
+    /// </summary>
+    public const string ThisPc = "This PC";
+
+    public static bool IsThisPc(string path) =>
+        path.Equals(ThisPc, StringComparison.OrdinalIgnoreCase)
+        || path.Equals("shell:MyComputerFolder", StringComparison.OrdinalIgnoreCase)
+        || path.Equals("::{20D04FE0-3AEA-1069-A2D8-08002B30309D}", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>"C:\" (a drive's root folder).</summary>
+    public static bool IsDriveRoot(string path) =>
+        path.Length is 2 or 3 && path[1] == ':' && char.IsAsciiLetter(path[0]) && (path.Length == 2 || path[2] == '\\');
+
     public static bool IsSamePath(string a, string b) =>
         string.Equals(a.TrimEnd('\\'), b.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase);
 
@@ -43,6 +60,8 @@ public static class PathHelper
     /// </summary>
     public static string GetName(string path)
     {
+        if (IsThisPc(path))
+            return ThisPc;
         string trimmed = path.TrimEnd('\\');
         if (IsServerPath(trimmed))
             return trimmed;
@@ -60,13 +79,15 @@ public static class PathHelper
     }
 
     /// <summary>
-    /// Parent folder, or null at a drive root or a server. A share root ("\\server\share")
-    /// goes up to its server ("\\server").
+    /// Parent folder, or null at This PC or a server. A drive root goes up to This PC (as in Explorer); a share
+    /// root ("\\server\share") goes up to its server ("\\server").
     /// </summary>
     public static string? GetParent(string path)
     {
-        if (string.IsNullOrEmpty(path) || IsServerPath(path))
+        if (string.IsNullOrEmpty(path) || IsServerPath(path) || IsThisPc(path))
             return null;
+        if (IsDriveRoot(path))
+            return ThisPc;
         if (path.StartsWith(@"\\", StringComparison.Ordinal) && IsSamePath(Path.GetPathRoot(path) ?? "", path))
             return path.TrimEnd('\\')[..path.TrimEnd('\\').LastIndexOf('\\')];
         return Path.GetDirectoryName(path);
@@ -77,6 +98,8 @@ public static class PathHelper
     {
         if (string.IsNullOrEmpty(path))
             return "";
+        if (IsThisPc(path))
+            return ThisPc;
         if (IsServerPath(path))
             return path;
 
@@ -99,6 +122,11 @@ public static class PathHelper
     public static List<BreadcrumbSegment> GetSegments(string path)
     {
         var list = new List<BreadcrumbSegment>();
+        if (IsThisPc(path))
+        {
+            list.Add(new BreadcrumbSegment(ThisPc, ThisPc));
+            return list;
+        }
         if (IsServerPath(path))
         {
             list.Add(new BreadcrumbSegment(path.TrimEnd('\\'), path.TrimEnd('\\')));

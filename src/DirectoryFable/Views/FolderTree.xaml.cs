@@ -51,7 +51,7 @@ public partial class FolderTree : UserControl
         _viewModel.SetSelected(node);
 
         // Selections made by the tree itself (following the pane) must not navigate again.
-        if (_viewModel.IsSyncing || node.IsVirtual || node.IsPlaceholder)
+        if (_viewModel.IsSyncing || node.IsPlaceholder || OpenPath(node) is not { } target)
             return;
 
         // Collapsing a folder that contains the selected one makes WPF select the collapsed
@@ -63,9 +63,13 @@ public partial class FolderTree : UserControl
         {
             bool selectedByCollapse = old is not null && !node.IsExpanded && node.ContainsLoaded(old);
             if (!selectedByCollapse && node.IsSelected)
-                OpenRequested?.Invoke(node.Path, false);
+                OpenRequested?.Invoke(target, false);
         });
     }
+
+    /// <summary>What a click on a node opens: its folder, This PC for the This PC node, nothing for other virtual nodes.</summary>
+    private string? OpenPath(FolderNodeViewModel node) =>
+        node == _viewModel?.ThisPc ? Infrastructure.PathHelper.ThisPc : node.IsVirtual ? null : node.Path;
 
     /// <summary>Row that was already selected when the left button went down on it (not on its expander).</summary>
     private FolderNodeViewModel? _pressedSelected;
@@ -81,8 +85,8 @@ public partial class FolderTree : UserControl
     {
         var pressed = _pressedSelected;
         _pressedSelected = null;
-        if (pressed is { IsVirtual: false, IsPlaceholder: false } && NodeAt(e.OriginalSource) == pressed)
-            OpenRequested?.Invoke(pressed.Path, false);
+        if (pressed is { IsPlaceholder: false } && NodeAt(e.OriginalSource) == pressed && OpenPath(pressed) is { } target)
+            OpenRequested?.Invoke(target, false);
     }
 
     private static bool IsOnExpander(object source)

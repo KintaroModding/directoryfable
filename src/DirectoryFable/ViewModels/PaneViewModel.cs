@@ -88,6 +88,7 @@ public sealed class PaneViewModel : ObservableObject
         GroupByType = t.GroupByType,
         Columns = CopyColumns(t.ColumnLayout),
         CollapsedGroups = t.CollapsedGroups.Count > 0 ? [.. t.CollapsedGroups] : null,
+        Space = t.SpaceMode,
     };
 
     /// <summary>Sort order, columns and closed groups of a saved tab (before its list is created).</summary>
@@ -99,6 +100,7 @@ public sealed class PaneViewModel : ObservableObject
         t.ColumnLayout = CopyColumns(saved.Columns);
         foreach (string group in saved.CollapsedGroups ?? [])
             t.CollapsedGroups.Add(group);
+        t.SpaceMode = saved.Space;
     }
 
     // ---------- Closed tabs (Ctrl+Shift+T) ----------
@@ -155,7 +157,7 @@ public sealed class PaneViewModel : ObservableObject
     {
         for (string? p = PathHelper.GetParent(path); p is not null; p = PathHelper.GetParent(p))
         {
-            if (Directory.Exists(p))
+            if (Directory.Exists(p) || PathHelper.IsThisPc(p)) // A drive that is gone: This PC.
                 return p;
         }
         return null;

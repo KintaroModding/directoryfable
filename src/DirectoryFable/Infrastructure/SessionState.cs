@@ -21,6 +21,8 @@ public sealed class TabState
     public List<ColumnState>? Columns { get; set; }
     /// <summary>Closed group dividers (type names).</summary>
     public List<string>? CollapsedGroups { get; set; }
+    /// <summary>The tab showed the Space view.</summary>
+    public bool Space { get; set; }
 }
 
 /// <summary>One pane (left or right) as saved in session.json.</summary>
@@ -176,6 +178,9 @@ public sealed class SessionState
 
     /// <summary>Search: drives, text, filters, mark (the results are not kept).</summary>
     public SearchState? Search { get; set; }
+
+    /// <summary>Column widths of the Space view (both panes).</summary>
+    public List<ColumnState>? SpaceColumns { get; set; }
 
     private static string FilePath => System.IO.Path.Combine(AppSettings.DataFolder, FileName);
 

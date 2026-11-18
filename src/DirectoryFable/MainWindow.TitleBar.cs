@@ -27,9 +27,13 @@ public partial class MainWindow
 
     private bool _maxPressed;
 
+    /// <summary>How many characters of a usual folder name the explorer tab has room for.</summary>
+    private const int ExplorerTabCharacters = 28;
+
     private void InitTitleBar()
     {
         Title = AppName;
+        ExplorerTabText.Width = TypicalTextWidth(ExplorerTabCharacters);
         StateChanged += (_, _) => UpdateMaximizedLayout();
         DpiChanged += (_, _) => UpdateMaximizedLayout();
         UpdateMaximizedLayout();
@@ -51,6 +55,7 @@ public partial class MainWindow
             folder = name.Length == 2 && name[1] == ':' ? name + "\\" : name;
         }
         ExplorerTabText.Text = folder;
+        ExplorerTab.ToolTip = string.IsNullOrEmpty(path) ? "Explorer" : path; // The full path (the tab may show "...").
         string? file = NotepadPage.Active?.FileName;
         string? image = AstraViewerPage.CurrentPath is { } shown ? System.IO.Path.GetFileName(shown) : null;
         string search = SearchPage.TitleText;
@@ -61,6 +66,19 @@ public partial class MainWindow
             MainView.Search => search.Length == 0 ? "SonnetSearch" : $"SonnetSearch: {search}",
             _ => folder,
         };
+    }
+
+    /// <summary>
+    /// The width of <paramref name="characters"/> characters of usual text in the tab's font (a mix of small and
+    /// capital letters and digits), so the explorer tab keeps one size whatever the folder name is.
+    /// </summary>
+    private double TypicalTextWidth(int characters)
+    {
+        const string sample = "Documents Program Files 2026 Steam Library";
+        var typeface = new Typeface(ExplorerTabText.FontFamily, ExplorerTabText.FontStyle, ExplorerTabText.FontWeight, ExplorerTabText.FontStretch);
+        var text = new FormattedText(sample, System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, typeface,
+            ExplorerTabText.FontSize, Brushes.White, VisualTreeHelper.GetDpi(this).PixelsPerDip);
+        return Math.Ceiling(text.WidthIncludingTrailingWhitespace / sample.Length * characters);
     }
 
     protected override void OnSourceInitialized(EventArgs e)

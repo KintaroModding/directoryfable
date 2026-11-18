@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -34,10 +33,7 @@ public partial class SearchView : UserControl
 
     private static readonly bool IsAdministrator = new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
 
-    // Read drives and folders (kept until read again).
-    private readonly Dictionary<string, Task<DriveIndex>> _loads = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ConcurrentDictionary<string, double> _progress = new(StringComparer.OrdinalIgnoreCase);
-    private CancellationTokenSource _loadCancel = new();
+    // Read drives and folders are kept in DriveIndexCache (shared with the folder sizes and the Space view).
     private CancellationTokenSource? _queryCancel;
     private readonly System.Windows.Threading.DispatcherTimer _debounce;
     private readonly System.Windows.Threading.DispatcherTimer _progressTimer;
@@ -517,7 +513,7 @@ public partial class SearchView : UserControl
         }
         catch (OperationCanceledException)
         {
-            if (_loadCancel.IsCancellationRequested)
+            if (DriveIndexCache.WasCancelled)
                 StatusText.Text = "Stopped.";
         }
         catch (Exception ex)
@@ -527,45 +523,28 @@ public partial class SearchView : UserControl
         }
     }
 
-    /// <summary>
-    /// A drive (its file table when possible, else a folder walk) or a folder (walk); one read at
-    /// a time per target: a search while it is read waits for it.
-    /// </summary>
+    /// <summary>A drive or folder from the shared cache (one read at a time per target; a search while it is read waits for it).</summary>
     private Task<DriveIndex> Load(string target, bool reread, bool walkFolder)
     {
-        if (_loads.TryGetValue(target, out var known) && !known.IsFaulted && !known.IsCanceled && (!reread || !known.IsCompleted))
-            return known;
-        if (_loadCancel.IsCancellationRequested)
-            _loadCancel = new CancellationTokenSource();
-        var token = _loadCancel.Token;
-        _progress[target] = 0;
-        _progressTimer.Start();
-        ShowProgress();
-        var task = Task.Run(() =>
+        var task = DriveIndexCache.Load(target, reread, walkFolder, owner: this); // Kept for the next search.
+        if (DriveIndexCache.IsReading)
         {
-            try
-            {
-                if (!walkFolder && MftReader.CanRead(target))
-                    return MftReader.Read(target, p => _progress[target] = p, token);
-                return FolderWalker.Walk(target, n => _progress[target] = -n, token);
-            }
-            finally
-            {
-                _progress.TryRemove(target, out _);
-            }
-        }, token);
-        _loads[target] = task;
+            _progressTimer.Start();
+            ShowProgress();
+        }
         return task;
     }
 
     private void ShowProgress()
     {
-        if (_progress.IsEmpty)
+        var progress = DriveIndexCache.Progress;
+        if (progress.IsEmpty)
         {
             _progressTimer.Stop();
+            ShowStatusLine(); // Reads that ended after the search (another pane's folder sizes).
             return;
         }
-        var parts = _progress.OrderBy(p => p.Key).Select(p => p.Value >= 0
+        var parts = progress.OrderBy(p => p.Key).Select(p => p.Value >= 0
             ? $"{p.Key.TrimEnd('\\')} {p.Value * 100:0} %"
             : $"{p.Key.TrimEnd('\\')} {-p.Value:N0} objects");
         StatusText.Text = "Reading " + string.Join("  ·  ", parts) + "   (Esc stops)";
@@ -579,8 +558,14 @@ public partial class SearchView : UserControl
         EmptyText.Text = result.Items.Length == 0 && result.Searched > 0 ? "Nothing found." : "";
         if (result.Items.Length == 0 && result.Searched == 0 && EmptyText.Text.Length == 0)
             EmptyText.Text = "Press Enter to search.";
-        if (!_progress.IsEmpty)
-            return;
+        if (!DriveIndexCache.IsReading)
+            ShowStatusLine();
+    }
+
+    /// <summary>The status line of the shown result (objects, sources, age).</summary>
+    private void ShowStatusLine()
+    {
+        var result = _result;
         if (result.Searched == 0)
         {
             StatusText.Text = "";
@@ -810,10 +795,10 @@ public partial class SearchView : UserControl
                 e.Handled = true;
                 LocationsPopup.IsOpen = false;
             }
-            else if (!_progress.IsEmpty)
+            else if (DriveIndexCache.IsReading)
             {
                 e.Handled = true;
-                _loadCancel.Cancel();
+                DriveIndexCache.CancelReads();
             }
             return;
         }

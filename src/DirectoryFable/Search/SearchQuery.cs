@@ -137,7 +137,12 @@ public sealed class SearchQuery
             if (!recent)
                 return false;
         }
-        var name = index.Name(i);
+        return MatchesName(index.Name(i));
+    }
+
+    /// <summary>Only the text part (after <see cref="Compile"/>): also the quick filter of the file list.</summary>
+    public bool MatchesName(ReadOnlySpan<char> name)
+    {
         foreach (var test in _tests!)
         {
             if (!test(name))

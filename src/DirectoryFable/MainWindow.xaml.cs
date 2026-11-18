@@ -86,6 +86,25 @@ public partial class MainWindow : Window
         StateChanged += Window_StateChanged;
         Closing += Window_Closing;
 
+        Views.SpaceView.SavedColumns = session?.SpaceColumns;
+        Search.FolderSizes.Enabled = settings.FolderSizes;
+        Views.FilePane.IconsOnly = settings.QuickBarIconsOnly;
+        SettingsPage.IconsOnlyChanged += on => Views.FilePane.IconsOnly = on;
+        SettingsPage.FolderSizesChanged += ApplyFolderSizes;
+        // "Folder sizes" in the column header menu: saved like the settings page does.
+        Views.FilePane.SetFolderSizes = on =>
+        {
+            try
+            {
+                AppSettings.Update(s => s.FolderSizes = on);
+            }
+            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+            {
+                // Not saved: it still applies until the app closes.
+            }
+            ApplyFolderSizes(on);
+        };
+
         Loaded += async (_, _) =>
         {
             string defaultLeft = Environment.ExpandEnvironmentVariables(settings.LeftPath);
@@ -126,6 +145,18 @@ public partial class MainWindow : Window
                     ActivePaneView.FocusList();
             }, System.Windows.Threading.DispatcherPriority.ContextIdle);
         };
+    }
+
+    /// <summary>Folder sizes on / off: the visible tabs fill or clear them at once.</summary>
+    private void ApplyFolderSizes(bool on)
+    {
+        Search.FolderSizes.Enabled = on;
+        foreach (var pane in new[] { _left, _right })
+        {
+            // Off: every tab clears them. On: the visible tabs read; hidden ones catch up when shown.
+            foreach (var tab in pane.Tabs.Where(t => !on || t.IsSelected))
+                _ = tab.UpdateFolderSizesAsync();
+        }
     }
 
     // ---------- Session ----------
@@ -183,6 +214,7 @@ public partial class MainWindow : Window
             Viewer = AstraViewerPage.CaptureState(),
             SearchShown = SearchShown,
             Search = SearchPage.CaptureState(),
+            SpaceColumns = Views.SpaceView.SavedColumns,
             Left = _left.CaptureState(),
             Right = _right.CaptureState(),
         }.Save();

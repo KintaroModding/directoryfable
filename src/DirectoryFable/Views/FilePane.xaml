@@ -15,7 +15,7 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Navigation bar. A lighter background marks the active pane.
+        <!-- Navigation bar. A lighter background marks the active pane; on a network path it is blue.
              Framed by fine lines: #404040 outside, then #1E1E1E, then #363636. -->
         <Border Grid.Row="0" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1">
         <Border BorderBrush="{StaticResource LineDarkBrush}" BorderThickness="0,1,0,1">
@@ -27,6 +27,16 @@
                         <DataTrigger Binding="{Binding IsActive}" Value="True">
                             <Setter Property="Background" Value="{StaticResource NavBarActiveBrush}" />
                         </DataTrigger>
+                        <DataTrigger Binding="{Binding IsNetwork}" Value="True">
+                            <Setter Property="Background" Value="{StaticResource NetworkNavBarInactiveBrush}" />
+                        </DataTrigger>
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding IsNetwork}" Value="True" />
+                                <Condition Binding="{Binding IsActive}" Value="True" />
+                            </MultiDataTrigger.Conditions>
+                            <Setter Property="Background" Value="{StaticResource NetworkNavBarActiveBrush}" />
+                        </MultiDataTrigger>
                     </Style.Triggers>
                 </Style>
             </Border.Style>
@@ -107,79 +117,124 @@
         </Border>
         </Border>
 
-        <!-- Quick actions: path to the clipboard, then file operations on the
-             selection. Buttons act on this pane; see FilePane.QuickActions.cs. -->
-        <Border Grid.Row="1" Height="24" Padding="3,0" Background="{StaticResource QuickBarBrush}"
+        <!-- Quick actions in two rows. Row 1: paths to the clipboard, file operations on the selection.
+             Row 2: terminal, Explorer, SonnetSearch, Space, and the quick filter. Buttons act on this pane;
+             see FilePane.QuickActions.cs. Settings "Quick bar: icons only" hides the labels. -->
+        <Border x:Name="QuickBar" Grid.Row="1" Padding="3,0" Background="{StaticResource QuickBarBrush}"
                 BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <Button Style="{StaticResource QuickButton}" Click="QuickFolderPath_Click"
-                        ToolTip="Copy the path of this folder to the clipboard">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource QuickIcon}" Text="&#xE8B7;" />
-                        <TextBlock Text="Folder path" />
+            <StackPanel>
+                <StackPanel x:Name="QuickButtons" Orientation="Horizontal" Height="24" VerticalAlignment="Center" ClipToBounds="True">
+                    <Button Style="{StaticResource QuickButton}" Click="QuickFolderPath_Click"
+                            ToolTip="Copy the path of this folder to the clipboard">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource QuickIcon}" Text="&#xE8B7;" />
+                            <TextBlock Text="Folder path" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="QuickFilePath" Style="{StaticResource QuickButton}" Click="QuickFilePath_Click"
+                            ToolTip="Copy the full path of the selected items to the clipboard (one per line)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource QuickIcon}" Text="&#xE8A5;" />
+                            <TextBlock Text="File path" />
+                        </StackPanel>
+                    </Button>
+                    <Rectangle Width="1" Height="14" Margin="6,0" Fill="{StaticResource LineBrush}" />
+                    <!-- No Copy / Cut / Paste (the keys do that); 7-Zip "Add to archive" window instead. -->
+                    <Button x:Name="Quick7z" Style="{StaticResource QuickButton}" Click="Quick7z_Click"
+                            ToolTip="7-Zip: add the selection to an archive (choose format and compression)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource QuickIcon}" Text="&#xE7B8;" />
+                            <TextBlock Text="7z" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="QuickDuplicate" Style="{StaticResource QuickButton}" Click="QuickDuplicate_Click"
+                            ToolTip="Duplicate: copy into this folder under a new name">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource QuickIcon}" Text="&#xE70F;" />
+                            <TextBlock Text="Duplicate" />
+                        </StackPanel>
+                    </Button>
+                    <Rectangle Width="1" Height="14" Margin="6,0" Fill="{StaticResource LineBrush}" />
+                    <!-- Tooltips name the other pane's folder (set when they open). -->
+                    <Button x:Name="QuickCopyOther" Style="{StaticResource QuickButton}" Click="QuickCopyOther_Click"
+                            ToolTip="Copy the selection to the other pane" ToolTipOpening="QuickOther_ToolTipOpening">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource QuickIcon}" Text="&#xE8C8;" />
+                            <TextBlock Text="Copy to other" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="QuickMoveOther" Style="{StaticResource QuickButton}" Click="QuickMoveOther_Click"
+                            ToolTip="Move the selection to the other pane" ToolTipOpening="QuickOther_ToolTipOpening">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource QuickIcon}" Text="&#xE8DE;" />
+                            <TextBlock Text="Move to other" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+                <Rectangle Height="1" Fill="{StaticResource LineDarkBrush}" Margin="-3,0" />
+                <DockPanel Height="24" LastChildFill="True">
+                <!-- Quick filter: typing in the list types here; only matching names stay in the list. -->
+                <Grid x:Name="FilterBox" DockPanel.Dock="Right" Width="210" Margin="8,0,1,0" VerticalAlignment="Center"
+                      ToolTip="Quick filter: type in the list (words in any order, * and ? as wildcards). Esc shows all again.">
+                    <TextBox x:Name="FilterEdit" MinHeight="0" Height="20" Padding="20,0,22,0" FontSize="12"
+                             VerticalContentAlignment="Center" Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged}"
+                             KeyDown="FilterEdit_KeyDown" />
+                    <TextBlock Text="&#xE71C;" FontFamily="{StaticResource IconFont}" FontSize="11" Margin="6,0,0,0"
+                               VerticalAlignment="Center" HorizontalAlignment="Left" IsHitTestVisible="False"
+                               Foreground="{StaticResource SecondaryTextBrush}" x:Name="FilterIcon" />
+                    <TextBlock x:Name="FilterHint" Text="Type to filter" Margin="21,0,0,0" VerticalAlignment="Center"
+                               IsHitTestVisible="False" Foreground="{StaticResource SecondaryTextBrush}" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,3,0">
+                        <TextBlock x:Name="FilterCount" VerticalAlignment="Center" Margin="0,0,4,0" IsHitTestVisible="False"
+                                   Foreground="{StaticResource SecondaryTextBrush}" />
+                        <Button x:Name="FilterClear" Style="{StaticResource SubtleButton}" Padding="3,1" Visibility="Collapsed"
+                                ToolTip="Show all (Esc)" Click="FilterClear_Click">
+                            <TextBlock Text="&#xE711;" FontFamily="{StaticResource IconFont}" FontSize="9"
+                                       Foreground="{StaticResource BreadcrumbTextBrush}" />
+                        </Button>
                     </StackPanel>
-                </Button>
-                <Button x:Name="QuickFilePath" Style="{StaticResource QuickButton}" Click="QuickFilePath_Click"
-                        ToolTip="Copy the full path of the selected items to the clipboard (one per line)">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource QuickIcon}" Text="&#xE8A5;" />
-                        <TextBlock Text="File path" />
+                </Grid>
+                    <StackPanel x:Name="QuickButtons2" Orientation="Horizontal" VerticalAlignment="Center" ClipToBounds="True">
+                    <Button x:Name="QuickTerminal" Style="{StaticResource QuickButton}" Click="QuickTerminal_Click"
+                            ToolTip="Open a terminal in this folder (Command Prompt or PowerShell)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource QuickIcon}" Text="&#xE756;" />
+                            <TextBlock Text="Terminal" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource QuickButton}" Click="QuickExplorer_Click"
+                            ToolTip="Open this folder in Windows Explorer">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource QuickIcon}" Text="&#xE8A7;" />
+                            <TextBlock Text="Explorer" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource QuickButton}" Click="QuickSearch_Click"
+                            ToolTip="SonnetSearch in this folder and its subfolders (Ctrl+F)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource QuickIcon}" Text="&#xE721;" />
+                            <TextBlock Text="SonnetSearch" />
+                        </StackPanel>
+                    </Button>
+                    <!-- Space view on / off (highlighted while on). -->
+                    <Button x:Name="QuickSpace" Click="QuickSpace_Click"
+                            ToolTip="Space: what takes the space in this folder, biggest first (Esc: back to the list)">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource QuickButton}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SpaceMode}" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource TreeSelectedBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource QuickIcon}" Text="&#xEB05;" />
+                            <TextBlock Text="Space" />
+                        </StackPanel>
+                    </Button>
                     </StackPanel>
-                </Button>
-                <Rectangle Width="1" Height="14" Margin="6,0" Fill="{StaticResource LineBrush}" />
-                <!-- No Copy / Cut / Paste (the keys do that); 7-Zip "Add to archive" window instead. -->
-                <Button x:Name="Quick7z" Style="{StaticResource QuickButton}" Click="Quick7z_Click"
-                        ToolTip="7-Zip: add the selection to an archive (choose format and compression)">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource QuickIcon}" Text="&#xE7B8;" />
-                        <TextBlock Text="7z" />
-                    </StackPanel>
-                </Button>
-                <Button x:Name="QuickDuplicate" Style="{StaticResource QuickButton}" Click="QuickDuplicate_Click"
-                        ToolTip="Duplicate: copy into this folder under a new name">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource QuickIcon}" Text="&#xE70F;" />
-                        <TextBlock Text="Duplicate" />
-                    </StackPanel>
-                </Button>
-                <Rectangle Width="1" Height="14" Margin="6,0" Fill="{StaticResource LineBrush}" />
-                <!-- Tooltips name the other pane's folder (set when they open). -->
-                <Button x:Name="QuickCopyOther" Style="{StaticResource QuickButton}" Click="QuickCopyOther_Click"
-                        ToolTip="Copy the selection to the other pane" ToolTipOpening="QuickOther_ToolTipOpening">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource QuickIcon}" Text="&#xE8C8;" />
-                        <TextBlock Text="Copy to other" />
-                    </StackPanel>
-                </Button>
-                <Button x:Name="QuickMoveOther" Style="{StaticResource QuickButton}" Click="QuickMoveOther_Click"
-                        ToolTip="Move the selection to the other pane" ToolTipOpening="QuickOther_ToolTipOpening">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource QuickIcon}" Text="&#xE8DE;" />
-                        <TextBlock Text="Move to other" />
-                    </StackPanel>
-                </Button>
-                <Rectangle Width="1" Height="14" Margin="6,0" Fill="{StaticResource LineBrush}" />
-                <Button x:Name="QuickTerminal" Style="{StaticResource QuickButton}" Click="QuickTerminal_Click"
-                        ToolTip="Open a terminal in this folder (Command Prompt or PowerShell)">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource QuickIcon}" Text="&#xE756;" />
-                        <TextBlock Text="Terminal" />
-                    </StackPanel>
-                </Button>
-                <Button Style="{StaticResource QuickButton}" Click="QuickExplorer_Click"
-                        ToolTip="Open this folder in Windows Explorer">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource QuickIcon}" Text="&#xE8A7;" />
-                        <TextBlock Text="Explorer" />
-                    </StackPanel>
-                </Button>
-                <Button Style="{StaticResource QuickButton}" Click="QuickSearch_Click"
-                        ToolTip="SonnetSearch in this folder and its subfolders (Ctrl+F)">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource QuickIcon}" Text="&#xE721;" />
-                        <TextBlock Text="SonnetSearch" />
-                    </StackPanel>
-                </Button>
+                </DockPanel>
             </StackPanel>
         </Border>
 
@@ -194,9 +249,11 @@
                   VirtualizingPanel.VirtualizationMode="Recycling"
                   VirtualizingPanel.IsVirtualizingWhenGrouping="True"
                   VirtualizingPanel.ScrollUnit="Pixel"
+                  IsTextSearchEnabled="False"
                   GridViewColumnHeader.Click="ColumnHeader_Click"
                   MouseDoubleClick="FileList_MouseDoubleClick"
                   KeyDown="FileList_KeyDown"
+                  PreviewTextInput="FileList_PreviewTextInput"
                   AllowDrop="True"
                   PreviewMouseDown="FileList_PreviewMouseDown"
                   PreviewMouseUp="FileList_PreviewMouseUp"
@@ -278,6 +335,17 @@
                 </GridView>
             </ListView.View>
         </ListView>
+
+        <!-- The quick filter hides every row. -->
+        <TextBlock x:Name="FilterEmptyText" Grid.Row="2" Margin="20,60,20,0" HorizontalAlignment="Center" VerticalAlignment="Top"
+                   TextAlignment="Center" FontSize="13" Foreground="{StaticResource SecondaryTextBrush}"
+                   IsHitTestVisible="False" Visibility="Collapsed" />
+
+        <!-- This PC: the drives instead of the file list (Views/DrivesView). -->
+        <local:DrivesView x:Name="Drives" Grid.Row="2" Visibility="Collapsed" />
+
+        <!-- Space view: what takes the space, instead of the file list (Views/SpaceView). -->
+        <local:SpaceView x:Name="Space" Grid.Row="2" Visibility="Collapsed" />
 
         <!-- Status bar:
              folders sel/total | files sel/total | size sel/total ... message ... (i) free space + bar.

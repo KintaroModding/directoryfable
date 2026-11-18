@@ -26,6 +26,40 @@ public partial class FilePane
     {
         FileList.SelectionChanged += (_, _) => UpdateQuickActions();
         UpdateQuickActions();
+        ApplyIconsOnly();
+        IconsOnlyChanged += ApplyIconsOnly; // The panes live as long as the window.
+    }
+
+    // ---------- Icons only (settings) ----------
+
+    private static bool _iconsOnly;
+
+    /// <summary>Raised when <see cref="IconsOnly"/> changes; every pane follows.</summary>
+    private static event Action? IconsOnlyChanged;
+
+    /// <summary>Settings "Quick bar: icons only": the buttons show only their icons (the tooltips say what they do).</summary>
+    public static bool IconsOnly
+    {
+        get => _iconsOnly;
+        set
+        {
+            if (_iconsOnly == value)
+                return;
+            _iconsOnly = value;
+            IconsOnlyChanged?.Invoke();
+        }
+    }
+
+    private void ApplyIconsOnly()
+    {
+        foreach (var button in QuickButtons.Children.OfType<Button>().Concat(QuickButtons2.Children.OfType<Button>()))
+        {
+            if (button.Content is StackPanel { Children.Count: >= 2 } panel && panel.Children[0] is TextBlock icon)
+            {
+                panel.Children[1].Visibility = _iconsOnly ? Visibility.Collapsed : Visibility.Visible;
+                icon.Margin = _iconsOnly ? new Thickness(0, 1, 0, 0) : new Thickness(0, 1, 5, 0);
+            }
+        }
     }
 
     /// <summary>The file buttons need a selection.</summary>
@@ -212,7 +246,7 @@ public partial class FilePane
         string path = _viewModel?.CurrentPath ?? "";
         if (ZipBrowser.TrySplit(path, out string zipFile, out _))
             path = Path.GetDirectoryName(zipFile) ?? "";
-        return path.Length > 0 && !PathHelper.IsServerPath(path) ? path : null;
+        return path.Length > 0 && !PathHelper.IsServerPath(path) && !PathHelper.IsThisPc(path) ? path : null;
     }
 
     /// <summary>Asks which shell to open: cmd or PowerShell.</summary>
@@ -296,6 +330,8 @@ public partial class FilePane
         string path = _viewModel?.CurrentPath ?? "";
         if (path.Length == 0)
             return;
+        if (PathHelper.IsThisPc(path))
+            path = "shell:MyComputerFolder"; // Windows' own This PC.
         try
         {
             // Explorer opens ZIP folders and \\server too.

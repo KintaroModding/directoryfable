@@ -169,6 +169,22 @@
                 </Grid>
             </Border>
 
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Style="{StaticResource SettingName}" Text="Folder sizes" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="Folders show the size of all files below them in the Size column. Needs an NTFS drive and administrator rights: the first folder on a drive reads the whole drive once (a few seconds), then sizes show at once and are read again in the background after changes. F5 reads them again." />
+                    </StackPanel>
+                    <CheckBox x:Name="FolderSizes" Grid.Column="1" VerticalAlignment="Center" Content="Show"
+                              Checked="FolderSizes_Changed" Unchecked="FolderSizes_Changed" />
+                </Grid>
+            </Border>
+
             <!-- ===== Tools ===== -->
             <TextBlock Style="{StaticResource SectionTitle}" Text="Tools" />
 
@@ -234,6 +250,22 @@
 
             <!-- ===== Appearance ===== -->
             <TextBlock Style="{StaticResource SectionTitle}" Text="Appearance" />
+
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Style="{StaticResource SettingName}" Text="Quick bar: icons only" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="The bar below the address bar shows only the icons of its buttons (Folder path, 7z, Copy to other, ...), for narrow panes. Point at a button to see its name. Applies at once." />
+                    </StackPanel>
+                    <CheckBox x:Name="IconsOnly" Grid.Column="1" VerticalAlignment="Center" Content="Icons only"
+                              Checked="IconsOnly_Changed" Unchecked="IconsOnly_Changed" />
+                </Grid>
+            </Border>
 
             <Border Style="{StaticResource SettingRow}">
                 <Grid>

@@ -49,7 +49,8 @@
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                 <ToggleButton x:Name="ExplorerTab" Style="{StaticResource TitleTabButton}" IsChecked="True"
                               ToolTip="Explorer" Click="ExplorerTab_Click">
-                    <TextBlock x:Name="ExplorerTabText" Text="DirectoryFable" TextTrimming="CharacterEllipsis" MaxWidth="420" />
+                    <!-- Fixed width (about 28 characters, set in MainWindow.TitleBar.cs): the tabs never move; longer names end in "...". -->
+                    <TextBlock x:Name="ExplorerTabText" Text="DirectoryFable" TextTrimming="CharacterEllipsis" />
                 </ToggleButton>
                 <ToggleButton x:Name="NotepadTab" Style="{StaticResource TitleTabButton}" Margin="4,0,0,0"
                               ToolTip="Notepad# (text editor)" Click="NotepadTab_Click">

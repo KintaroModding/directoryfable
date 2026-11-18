@@ -6,6 +6,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using DirectoryFable.Infrastructure;
 using DirectoryFable.Models;
+using DirectoryFable.Search;
 using DirectoryFable.Shell;
 using DirectoryFable.ViewModels;
 
@@ -38,6 +39,16 @@ public partial class FilePane : UserControl
     /// <summary>Moves keyboard focus into the file list, back to the last focused row.</summary>
     public void FocusList()
     {
+        if (_viewModel?.IsThisPc == true)
+        {
+            Drives.FocusList();
+            return;
+        }
+        if (Space.Visibility == Visibility.Visible)
+        {
+            Space.FocusList();
+            return;
+        }
         object? item = _lastFocusedItem is not null && FileList.Items.Contains(_lastFocusedItem)
             ? _lastFocusedItem
             : FileList.SelectedItem ?? (FileList.Items.Count > 0 ? FileList.Items[0] : null);
@@ -56,18 +67,55 @@ public partial class FilePane : UserControl
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
         if (_viewModel is not null)
+        {
             _viewModel.Navigated -= ViewModel_Navigated;
+            _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+        }
         _viewModel = DataContext as TabViewModel;
         if (_viewModel is not null)
+        {
             _viewModel.Navigated += ViewModel_Navigated;
+            _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+        }
         AttachView(_viewModel);
         AttachStatusBar(_viewModel);
+        ShowContent(tabChanged: true);
+    }
+
+    private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        switch (e.PropertyName)
+        {
+            case nameof(TabViewModel.IsThisPc) or nameof(TabViewModel.SpaceMode) or nameof(TabViewModel.CanShowSpace):
+                ShowContent(tabChanged: false);
+                break;
+            case nameof(TabViewModel.Filter):
+                ApplyFilter();
+                break;
+        }
     }
 
     // ---------- Selection after a folder loads ----------
 
     private void ViewModel_Navigated(object? sender, NavigatedEventArgs e)
     {
+        if (_viewModel?.IsThisPc == true)
+        {
+            if (AddressEdit.Visibility == Visibility.Visible)
+                EndAddressEdit(focusList: false);
+            Drives.Show(e.FocusPath); // Up from a drive: that drive is selected.
+            if (_viewModel.IsActive)
+                Dispatcher.BeginInvoke(Drives.FocusList, System.Windows.Threading.DispatcherPriority.Loaded);
+            return;
+        }
+        if (Space.Visibility == Visibility.Visible)
+        {
+            if (AddressEdit.Visibility == Visibility.Visible)
+                EndAddressEdit(focusList: false);
+            Space.Show(_viewModel!.CurrentPath, e.FocusPath); // Up: the folder one came from is selected.
+            if (_viewModel.IsActive)
+                Dispatcher.BeginInvoke(Space.FocusList, System.Windows.Threading.DispatcherPriority.Loaded);
+        }
         // Any navigation (keys, buttons) closes a half-typed address.
         if (AddressEdit.Visibility == Visibility.Visible)
             EndAddressEdit(focusList: false);
@@ -164,7 +212,14 @@ public partial class FilePane : UserControl
         else if (modifiers == ModifierKeys.None && key == Key.F5)
         {
             e.Handled = true;
-            await RefreshKeepSelectionAsync();
+            await RefreshPaneAsync();
+        }
+        else if (modifiers == ModifierKeys.None && key == Key.Space && _viewModel.Filter.Length > 0 &&
+                 FileList.IsKeyboardFocusWithin && Keyboard.FocusedElement is not System.Windows.Controls.Primitives.TextBoxBase)
+        {
+            // A space between filter words (the list would take the key for its selection).
+            e.Handled = true;
+            _viewModel.Filter += " ";
         }
     }
 
@@ -241,10 +296,20 @@ public partial class FilePane : UserControl
             e.Handled = true;
             OpenInNewTabRequested?.Invoke(item.FullPath);
         }
+        else if (e.Key == Key.Back && _viewModel.Filter.Length > 0 && modifiers is ModifierKeys.None or ModifierKeys.Control)
+        {
+            // Backspace edits the quick filter (Ctrl+Backspace clears it); without one it goes up.
+            e.Handled = true;
+            _viewModel.Filter = modifiers == ModifierKeys.Control ? "" : _viewModel.Filter[..^1];
+        }
         else if (e.Key == Key.Back && modifiers == ModifierKeys.None)
         {
             e.Handled = true;
             await _viewModel.GoUpAsync();
+        }
+        else if (e.Key == Key.Escape && modifiers == ModifierKeys.None && ClearFilter())
+        {
+            e.Handled = true;
         }
     }
 
@@ -256,7 +321,21 @@ public partial class FilePane : UserControl
 
     private async void Up_Click(object sender, RoutedEventArgs e) => await _viewModel!.GoUpAsync();
 
-    private async void Refresh_Click(object sender, RoutedEventArgs e) => await RefreshKeepSelectionAsync();
+    private async void Refresh_Click(object sender, RoutedEventArgs e) => await RefreshPaneAsync();
+
+    /// <summary>F5 / the refresh button: the folder again, and its drive's folder sizes (or the Space view) read again.</summary>
+    private async Task RefreshPaneAsync()
+    {
+        if (_viewModel is null)
+            return;
+        if (Space.Visibility == Visibility.Visible)
+        {
+            Space.Reread();
+            return;
+        }
+        FolderSizes.Reread(_viewModel.CurrentPath);
+        await RefreshKeepSelectionAsync();
+    }
 
     private async void Home_Click(object sender, RoutedEventArgs e) => await _viewModel!.GoHomeAsync();
 

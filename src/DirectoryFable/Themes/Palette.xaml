@@ -22,6 +22,9 @@
 
     <SolidColorBrush x:Key="NavBarActiveBrush" Color="#111111" />
     <SolidColorBrush x:Key="NavBarInactiveBrush" Color="#000000" />
+    <!-- Navigation bar on a network path (\\server\share or a mapped network drive): blue. -->
+    <SolidColorBrush x:Key="NetworkNavBarActiveBrush" Color="#245A8C" />
+    <SolidColorBrush x:Key="NetworkNavBarInactiveBrush" Color="#1A4268" />
     <SolidColorBrush x:Key="BreadcrumbTextBrush" Color="#D2D2D2" />
 
     <SolidColorBrush x:Key="ColumnHeaderBackgroundBrush" Color="#202020" />
