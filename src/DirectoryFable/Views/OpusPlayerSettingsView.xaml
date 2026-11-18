@@ -1,0 +1,162 @@
+<UserControl x:Class="DirectoryFable.Views.OpusPlayerSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             FontFamily="{StaticResource UiFont}" FontSize="13"
+             Foreground="{StaticResource ListTextBrush}"
+             Background="{StaticResource WindowBackgroundBrush}">
+    <!-- OpusHC settings: only the player's own settings. Saved at once. -->
+    <UserControl.Resources>
+        <Style x:Key="SectionTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource GroupChevronBrush}" />
+            <Setter Property="Margin" Value="0,26,0,6" />
+        </Style>
+        <Style x:Key="SettingHelp" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,3,0,0" />
+        </Style>
+        <Style x:Key="SettingRow" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="Padding" Value="0,12" />
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="40,24,40,40" MaxWidth="900" HorizontalAlignment="Left">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Close (Esc)" MinWidth="100" VerticalAlignment="Center" Click="Close_Click" />
+                <TextBlock Text="OpusHC settings" FontSize="24" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </DockPanel>
+            <TextBlock x:Name="SaveStatus" Style="{StaticResource SettingHelp}" Margin="0,6,0,0"
+                       Text="Changes are saved at once to settings.json." />
+
+            <TextBlock Style="{StaticResource SectionTitle}" Text="Playing" />
+
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Text="Resume where you stopped" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="A video you left in the middle starts there again (the last 300 videos are kept). Home goes back to the start. Not in the first 10 seconds and not in the last minute, so a video watched to its end starts from the beginning." />
+                    </StackPanel>
+                    <CheckBox x:Name="ResumeBox" Grid.Column="1" VerticalAlignment="Center" Content="Resume" Checked="Flag_Changed" Unchecked="Flag_Changed" />
+                </Grid>
+            </Border>
+
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Text="At the end of a video" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="Play the next video of the folder (in name order, as the explorer lists them), for example the next episode of a series." />
+                    </StackPanel>
+                    <CheckBox x:Name="AutoNextBox" Grid.Column="1" VerticalAlignment="Center" Content="Play the next one" Checked="Flag_Changed" Unchecked="Flag_Changed" />
+                </Grid>
+            </Border>
+
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Text="Filmstrip" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="A row of small pictures of the whole video above the timeline: point at it (or at the timeline) to see the picture of that moment bigger, click to jump there. The pictures are made in the background when a video starts and kept in memory only." />
+                    </StackPanel>
+                    <CheckBox x:Name="FilmstripBox" Grid.Column="1" VerticalAlignment="Center" Content="Show the filmstrip" Checked="Flag_Changed" Unchecked="Flag_Changed" />
+                </Grid>
+            </Border>
+
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Text="Filmstrip pictures" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="How many pictures the filmstrip has: more pictures show more moments (and a finer preview on hover), but take longer to make (about 3 seconds per 40 for a 1080p video) and more memory (about 130 KB each, the last 5 videos are kept). Applies at once." />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <Slider x:Name="StripCountSlider" Minimum="0" Maximum="9" TickFrequency="1" IsSnapToTickEnabled="True"
+                                TickPlacement="BottomRight" Width="320" HorizontalAlignment="Left" ValueChanged="StripCount_Changed" />
+                        <TextBlock x:Name="StripCountText" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <TextBlock Style="{StaticResource SectionTitle}" Text="Open from the explorer" />
+
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.RowSpan="3" Margin="0,0,24,0">
+                        <TextBlock Text="Video types" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="A double-click (or Enter) on these video types in DirectoryFable opens them here. Only inside DirectoryFable: the Windows defaults are not changed. The list also decides which files count for previous / next." />
+                    </StackPanel>
+                    <CheckBox x:Name="OpensTypes" Grid.Column="1" Content="Open these video types in OpusHC"
+                              Checked="OpensTypes_Changed" Unchecked="OpensTypes_Changed" />
+                    <TextBox x:Name="TypesBox" Grid.Row="1" Grid.Column="1" Margin="0,8,0,0" MinHeight="0" Height="60"
+                             Padding="6,4" TextWrapping="Wrap" AcceptsReturn="False" VerticalContentAlignment="Top"
+                             LostKeyboardFocus="TypesBox_LostFocus" />
+                    <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button Content="Default list" MinWidth="110" Click="TypesDefault_Click" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <TextBlock Style="{StaticResource SectionTitle}" Text="VLC's video engine" />
+
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Text="Engine" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="OpusHC plays with VLC's engine (libVLC, VideoLAN project). It is downloaded once from download.videolan.org into DirectoryFable's data folder; nothing is installed in Windows. Remove deletes that folder." />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock x:Name="EngineState" TextWrapping="Wrap" />
+                        <TextBox x:Name="EngineFolder" Margin="0,4,0,0" IsReadOnly="True" BorderThickness="0" Background="Transparent"
+                                 Foreground="{StaticResource GroupChevronBrush}" Padding="0" MinHeight="0" TextWrapping="Wrap" />
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <Button x:Name="RemoveButton" Content="Remove" MinWidth="110" Click="Remove_Click" />
+                            <Button x:Name="OpenFolderButton" Content="Open the folder" MinWidth="130" Margin="8,0,0,0" Click="OpenFolder_Click" />
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <TextBlock Style="{StaticResource SectionTitle}" Text="Keys and mouse" />
+            <TextBlock Style="{StaticResource SettingHelp}" LineHeight="20"
+                       Text="Space or a click: play / pause. Left / Right: 5 seconds back / on (Ctrl: 30 seconds). Drag the timeline: the picture follows. Up / Down or the mouse wheel: volume. M: mute. F, F11, Alt+Enter or a double-click: full screen (Esc leaves). Page Up / Page Down: previous / next video of the folder. Home: from the start." />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -22,6 +22,9 @@ public sealed class SpaceRow
     public required string FullPath { get; init; }
     public bool IsFolder { get; init; }
 
+    /// <summary>The entry in the drive read (for the block chart).</summary>
+    public int Entry { get; init; }
+
     /// <summary>A file's size; a folder's total (all files below it).</summary>
     public long Size { get; init; }
 
@@ -70,7 +73,13 @@ public partial class SpaceView : UserControl
     /// <summary>Column widths, shared by both panes and saved in the session.</summary>
     public static List<ColumnState>? SavedColumns { get; set; }
 
-    private sealed record SpaceData(DriveIndex Index, List<SpaceRow>? Rows, long Total, int Files, int Folders);
+    /// <summary>The block chart is shown (both panes; saved in the session).</summary>
+    public static bool ShowBlocks { get; set; } = true;
+
+    /// <summary>The block chart's share of the height, 0.15 .. 0.85 (saved in the session).</summary>
+    public static double BlocksShare { get; set; } = 0.45;
+
+    private sealed record SpaceData(DriveIndex Index, List<SpaceRow>? Rows, long Total, int Files, int Folders, FolderTotals? Tree, int Entry);
 
     private readonly DispatcherTimer _progressTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private readonly Dictionary<string, string> _labels = [];
@@ -85,6 +94,8 @@ public partial class SpaceView : UserControl
     private List<SpaceRow> _rows = [];
     private bool _applyingColumns;
     private bool _columnsApplied;
+    private FolderTotals? _shownTree;
+    private int _shownEntry = -1;
 
     public SpaceView()
     {
@@ -98,6 +109,20 @@ public partial class SpaceView : UserControl
             widthProperty.AddValueChanged(column, (_, _) => StoreColumns());
         Columns.Columns.CollectionChanged += (_, _) => StoreColumns();
         DriveIndexCache.Loaded += OnIndexLoaded;
+        List.SelectionChanged += (_, _) => Blocks.Select((List.SelectedItem as SpaceRow)?.Entry ?? -3);
+        Blocks.HoverChanged += text => HintText.Text = text ?? "Point at a box to see what it is. Click: select it in the list; double-click: open.";
+        Blocks.ItemClicked += SelectFromBlocks;
+        Blocks.ItemOpened += entry =>
+        {
+            if (_shownTree is { } tree)
+                OpenRequested?.Invoke(tree.Index.FullPath(entry), tree.Index.IsDirectory(entry), false);
+        };
+        Blocks.ItemMenu += (entry, screen) =>
+        {
+            if (_shownTree is { } tree)
+                ShowMenu([tree.Index.FullPath(entry)], tree.Index.IsDirectory(entry), screen);
+        };
+        ApplyBlocksLayout();
         // Closed (Esc, another view): the drive read is let go; opening the view again reads it again.
         IsVisibleChanged += (_, _) =>
         {
@@ -107,6 +132,8 @@ public partial class SpaceView : UserControl
             _progressTimer.Stop();
             Clear();
             _shownIndex = null;
+            _shownTree = null;
+            Blocks.Show(null, -1);
             DriveIndexCache.Release(this);
         };
     }
@@ -124,6 +151,7 @@ public partial class SpaceView : UserControl
     public void Show(string folder, string? focusPath)
     {
         ApplySavedColumns();
+        ApplyBlocksLayout();
         _folder = folder;
         _focusPath = focusPath;
         _ = LoadAsync(reread: false);
@@ -216,7 +244,7 @@ public partial class SpaceView : UserControl
     {
         var index = tree.Index;
         if (tree.Find(folder) is not int entry)
-            return new SpaceData(index, null, 0, 0, 0);
+            return new SpaceData(index, null, 0, 0, 0, null, -1);
         long total = tree.Total(entry);
         string prefix = folder.EndsWith('\\') ? folder : folder + "\\";
         var rows = new List<SpaceRow>();
@@ -229,6 +257,7 @@ public partial class SpaceView : UserControl
                 Name = name,
                 FullPath = prefix + name,
                 IsFolder = index.IsDirectory(c),
+                Entry = c,
                 Size = size,
                 Files = tree.Files(c),
                 Folders = tree.Folders(c),
@@ -236,7 +265,7 @@ public partial class SpaceView : UserControl
                 Share = total > 0 ? (double)size / total : 0,
             });
         }
-        return new SpaceData(index, rows, total, tree.Files(entry), tree.Folders(entry));
+        return new SpaceData(index, rows, total, tree.Files(entry), tree.Folders(entry), tree, entry);
     }
 
     private static DateTime ToLocal(long fileTime) =>
@@ -254,6 +283,7 @@ public partial class SpaceView : UserControl
 
     private void Clear()
     {
+        Blocks.Show(null, -1);
         List.ItemsSource = null;
         _rows = [];
         _shownFolder = null;
@@ -286,6 +316,9 @@ public partial class SpaceView : UserControl
         }
 
         _rows = data.Rows;
+        _shownTree = data.Tree;
+        _shownEntry = data.Entry;
+        Blocks.Show(data.Tree, data.Entry);
         TotalRun.Text = DisplayFormat.Size(data.Total);
         CountsRun.Text = $"   in {SpaceRow.Count(data.Files, "file")} and {SpaceRow.Count(data.Folders, "folder")}";
         ShowDrive(data.Total, space);
@@ -499,21 +532,72 @@ public partial class SpaceView : UserControl
         if (!List.SelectedItems.Contains(row))
             List.SelectedItem = row;
         var selected = List.SelectedItems.Cast<SpaceRow>().ToList();
+        ShowMenu([.. selected.Select(r => r.FullPath)], selected is [{ IsFolder: true }], PointToScreen(e.GetPosition(this)));
+    }
+
+    /// <summary>Windows' menu for items of one folder (+ "Open in new tab" for a single folder).</summary>
+    private void ShowMenu(List<string> paths, bool singleFolder, Point screen)
+    {
+        if (paths.Count == 0)
+            return;
         IntPtr hwnd = Window.GetWindow(this) is { } window ? new WindowInteropHelper(window).Handle : IntPtr.Zero;
-        Point screen = PointToScreen(e.GetPosition(this));
-        var extras = selected is [{ IsFolder: true }] ? new List<(int, string)> { (CmdOpenInNewTab, "Open in new tab") } : [];
+        var extras = singleFolder && paths.Count == 1 ? new List<(int, string)> { (CmdOpenInNewTab, "Open in new tab") } : [];
+        string folder = Path.GetDirectoryName(paths[0].TrimEnd('\\')) ?? _folder;
         try
         {
-            var result = ShellContextMenu.Show(hwnd, _folder, [.. selected.Select(r => r.FullPath)], (int)screen.X, (int)screen.Y, extras,
+            var result = ShellContextMenu.Show(hwnd, folder, paths, (int)screen.X, (int)screen.Y, extras,
                 extendedVerbs: Keyboard.Modifiers.HasFlag(ModifierKeys.Shift),
                 ctrlDown: Keyboard.Modifiers.HasFlag(ModifierKeys.Control),
                 shiftDown: Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
             if (result.Outcome == ShellMenuOutcome.Extra && result.ExtraCommandId == CmdOpenInNewTab)
-                Open(selected[0], newTab: true);
+                OpenRequested?.Invoke(paths[0], true, true);
         }
         catch (Exception)
         {
             // A failing shell extension must not take the app down.
         }
+    }
+
+    // ---------- Block chart ----------
+
+    /// <summary>A click on a box: the row of the shown folder that holds it is selected.</summary>
+    private void SelectFromBlocks(int entry)
+    {
+        if (_shownTree is not { } tree)
+            return;
+        var parents = tree.Index.Parent;
+        int top = entry;
+        for (int guard = 0; guard < 4096 && top >= 0 && parents[top] != _shownEntry; guard++)
+            top = parents[top];
+        if (top < 0 || List.ItemsSource is not IEnumerable<SpaceRow> rows || rows.FirstOrDefault(r => r.Entry == top) is not { } row)
+            return;
+        List.SelectedItem = row;
+        List.ScrollIntoView(row);
+    }
+
+    private void BlocksToggle_Click(object sender, RoutedEventArgs e)
+    {
+        ShowBlocks = BlocksToggle.IsChecked == true;
+        ApplyBlocksLayout();
+    }
+
+    /// <summary>The chart's row: hidden, or its saved share of the height.</summary>
+    private void ApplyBlocksLayout()
+    {
+        BlocksToggle.IsChecked = ShowBlocks;
+        double share = Math.Clamp(BlocksShare, 0.15, 0.85);
+        ListRow.Height = new GridLength(ShowBlocks ? 1 - share : 1, GridUnitType.Star);
+        BlocksRow.Height = ShowBlocks ? new GridLength(share, GridUnitType.Star) : new GridLength(0);
+        BlocksRow.MinHeight = ShowBlocks ? 60 : 0;
+        SplitterRow.Height = new GridLength(ShowBlocks ? 5 : 0);
+        Splitter.Visibility = BlocksPanel.Visibility = ShowBlocks ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void Splitter_DragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
+    {
+        double list = ListRow.ActualHeight, blocks = BlocksRow.ActualHeight;
+        if (list + blocks > 0)
+            BlocksShare = Math.Clamp(blocks / (list + blocks), 0.15, 0.85);
+        ApplyBlocksLayout();
     }
 }

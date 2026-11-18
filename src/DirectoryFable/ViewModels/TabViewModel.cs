@@ -312,9 +312,12 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanGoBack));
         OnPropertyChanged(nameof(CanGoForward));
 
-        // Another folder: the quick filter starts empty (before the list is rebuilt).
+        // Another folder: the quick filter starts empty (before the list is rebuilt); This PC lists it as recent.
         if (commitHistory is not null && !PathHelper.IsSamePath(path, CurrentPath))
+        {
             Filter = "";
+            Infrastructure.RecentFolders.Note(path); // (RecentFolders here is this tab's own Back list.)
+        }
         CurrentPath = path;
         // The view sorts and groups; it is rebuilt around the bulk swap (else every Add re-sorts).
         ItemsResetStarting?.Invoke();
@@ -523,8 +526,8 @@ public sealed class TabViewModel : ObservableObject, IDisposable
 
     // ---------- Folder sizes ----------
 
-    /// <summary>Folder sizes arrived or changed (a list sorted by size sorts again).</summary>
-    public event Action? FolderSizesChanged;
+    /// <summary>Folder sizes arrived (true: the first ones; a list sorted by size sorts again) or changed (false).</summary>
+    public event Action<bool>? FolderSizesChanged;
 
     private int _sizeVersion;
 
@@ -562,7 +565,7 @@ public sealed class TabViewModel : ObservableObject, IDisposable
                 return;
         }
 
-        bool changed = false;
+        bool changed = false, arrived = false;
         foreach (var item in Items)
         {
             if (!item.IsDirectory)
@@ -571,6 +574,7 @@ public sealed class TabViewModel : ObservableObject, IDisposable
             long? size = result is not null && result.Sizes.TryGetValue(item.Name, out long bytes) ? bytes : null;
             if (item.FolderSize != size)
             {
+                arrived |= item.FolderSize is null;
                 item.FolderSize = size;
                 changed = true;
             }
@@ -578,7 +582,7 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         if (changed)
         {
             UpdateTotals();
-            FolderSizesChanged?.Invoke();
+            FolderSizesChanged?.Invoke(arrived);
         }
     }
 

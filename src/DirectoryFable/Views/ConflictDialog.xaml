@@ -82,6 +82,12 @@
                     <TextBlock x:Name="ReplaceHint" Text="The new one takes its place." FontSize="12" Opacity="0.85" />
                 </StackPanel>
             </Button>
+            <Button x:Name="NewerButton" Margin="0,8,0,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="14,8" Click="ReplaceIfNewer_Click">
+                <StackPanel>
+                    <TextBlock Text="Replace if newer" FontWeight="SemiBold" />
+                    <TextBlock x:Name="NewerHint" FontSize="12" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" />
+                </StackPanel>
+            </Button>
             <Button Margin="0,8,0,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="14,8" Click="Skip_Click">
                 <StackPanel>
                     <TextBlock Text="Skip" FontWeight="SemiBold" />

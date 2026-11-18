@@ -12,7 +12,9 @@ namespace DirectoryFable.Views;
 /// Own file properties window (row "ⓘ" button, Alt+Enter): first "General" as Windows' General tab
 /// (<see cref="GeneralProperties"/>: type, location, size and size on disk, what a folder contains, dates,
 /// attributes; a folder is counted in the background), then the "Details" tab of Windows' properties, read by
-/// <see cref="FileProperties"/>. Not modal, so several can stay open.
+/// <see cref="FileProperties"/>. Below the name, the attributes Read-only, Hidden, System and Archive as check boxes
+/// that change the item at once (a folder: only the folder itself, without Read-only). Not modal, so several can
+/// stay open.
 /// </summary>
 public partial class PropertiesWindow : Window
 {
@@ -35,6 +37,7 @@ public partial class PropertiesWindow : Window
         if (Directory.Exists(path) && Path.GetPathRoot(path)?.TrimEnd('\\') != path.TrimEnd('\\'))
             _totals = new GeneralProperties.FolderTotals();
         ShowGeneral();
+        ShowAttributes();
         Closed += (_, _) =>
         {
             _closing.Cancel();
@@ -59,6 +62,62 @@ public partial class PropertiesWindow : Window
             _groups[0] = general;
         else
             _groups.Insert(0, general);
+    }
+
+    // ---------- Attributes ----------
+
+    private bool _isFolder;
+
+    /// <summary>The check boxes from the item's attributes (not for drive roots, which have none to change).</summary>
+    private void ShowAttributes()
+    {
+        FileAttributes attributes;
+        try
+        {
+            if (Path.GetPathRoot(_path)?.TrimEnd('\\') == _path.TrimEnd('\\'))
+                return;
+            attributes = File.GetAttributes(_path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return;
+        }
+        _isFolder = (attributes & FileAttributes.Directory) != 0;
+        AttributesPanel.Visibility = Visibility.Visible;
+        ReadOnlyBox.Visibility = _isFolder ? Visibility.Collapsed : Visibility.Visible;
+        ReadOnlyBox.IsChecked = (attributes & FileAttributes.ReadOnly) != 0;
+        HiddenBox.IsChecked = (attributes & FileAttributes.Hidden) != 0;
+        SystemBox.IsChecked = (attributes & FileAttributes.System) != 0;
+        ArchiveBox.IsChecked = (attributes & FileAttributes.Archive) != 0;
+    }
+
+    /// <summary>A click on an attribute: set or clear it on the item now; on an error the box goes back.</summary>
+    private void Attribute_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.CheckBox { Tag: string tag } box || !Enum.TryParse(tag, out FileAttributes flag))
+            return;
+        bool on = box.IsChecked == true;
+        try
+        {
+            var attributes = File.GetAttributes(_path);
+            attributes = on ? attributes | flag : attributes & ~flag;
+            File.SetAttributes(_path, attributes);
+            ShowStatus($"{box.Content} {(on ? "set" : "cleared")}.", error: false);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            box.IsChecked = !on;
+            ShowStatus($"Cannot change \"{box.Content}\": {ex.Message}", error: true);
+        }
+        ShowAttributes();
+        ShowGeneral(); // The "Attributes" line follows.
+    }
+
+    private void ShowStatus(string text, bool error)
+    {
+        AttributesStatus.Text = text;
+        AttributesStatus.Foreground = (Brush)FindResource(error ? "ErrorTextBrush" : "SecondaryTextBrush");
+        AttributesStatus.Visibility = Visibility.Visible;
     }
 
     private void StartCounting()

@@ -73,6 +73,13 @@
                         <TextBlock Text="SonnetSearch" VerticalAlignment="Center" />
                     </StackPanel>
                 </ToggleButton>
+                <ToggleButton x:Name="PlayerTab" Style="{StaticResource TitleTabButton}" Margin="4,0,0,0"
+                              ToolTip="OpusHC (videos)" Click="PlayerTab_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <Image Source="Assets/opushc.ico" Style="{StaticResource TitleTabIcon}" />
+                        <TextBlock Text="OpusHC" VerticalAlignment="Center" />
+                    </StackPanel>
+                </ToggleButton>
             </StackPanel>
             <StackPanel Grid.Column="2" Orientation="Horizontal">
                 <!-- Update: GitHub's newest release, what changed, update on a click (MainWindow.Update.cs). -->
@@ -134,6 +141,10 @@
         <!-- SonnetSearch: covers everything below the title bar while shown (title bar tabs). -->
         <views:SearchView x:Name="SearchPage" Grid.Row="1" Grid.RowSpan="3" Grid.ColumnSpan="5"
                           Visibility="Collapsed" />
+
+        <!-- OpusHC: covers everything below the title bar while shown (title bar tabs; full screen: all of it). -->
+        <views:OpusPlayerView x:Name="PlayerPage" Grid.Row="1" Grid.RowSpan="3" Grid.ColumnSpan="5"
+                              Visibility="Collapsed" />
     </Grid>
     </Border>
 </Window>

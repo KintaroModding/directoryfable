@@ -18,6 +18,7 @@ public partial class FilePane
     private const int CmdAddFavorite = ShellContextMenu.ExtraCommandFirst + 4;
     private const int CmdOpenInNotepad = ShellContextMenu.ExtraCommandFirst + 5;
     private const int CmdOpenInViewer = ShellContextMenu.ExtraCommandFirst + 6;
+    private const int CmdOpenInPlayer = ShellContextMenu.ExtraCommandFirst + 7;
 
     /// <summary>Set when a right-button drag started; the next right-button release opens no menu.</summary>
     private bool _suppressContextMenu;
@@ -93,6 +94,9 @@ public partial class FilePane
         // One image (of the AstraViewer types, not inside an archive): open it in AstraViewer.
         if (selected is [{ IsDirectory: false } image] && !InArchive && Viewer.ImageFileTypes.IsImage(image.FullPath))
             extras.Add((CmdOpenInViewer, "Open in AstraViewer"));
+        // One video (of the OpusHC types, not inside an archive): play it there.
+        if (selected is [{ IsDirectory: false } video] && !InArchive && Player.VideoFileTypes.IsVideo(video.FullPath))
+            extras.Add((CmdOpenInPlayer, "Open in OpusHC"));
 
         // The folder background menu from the shell lacks the items Explorer adds itself.
         if (selected.Count == 0)
@@ -143,6 +147,9 @@ public partial class FilePane
                 break;
             case ShellMenuOutcome.Extra when result.ExtraCommandId == CmdOpenInViewer && selected is [var picked]:
                 OpenInViewer?.Invoke(picked.FullPath);
+                break;
+            case ShellMenuOutcome.Extra when result.ExtraCommandId == CmdOpenInPlayer && selected is [var toPlay]:
+                OpenInPlayer?.Invoke(toPlay.FullPath);
                 break;
             case ShellMenuOutcome.Extra when result.ExtraCommandId == CmdAddFavorite:
                 FavoritesViewModel.Current?.Add(selected.Count == 1 ? selected[0].FullPath : _viewModel.CurrentPath);

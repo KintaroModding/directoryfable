@@ -12,9 +12,10 @@ using DirectoryFable.Shell;
 namespace DirectoryFable.Views;
 
 /// <summary>
-/// The dark copy / move progress window: from / to, the current item, progress, current and average speed,
-/// elapsed and remaining time, items and size left; Pause and Cancel. Closing the window cancels. Several
-/// operations at once each get a window, placed one below the other.
+/// The dark copy / move / delete progress window: from / to, the current item, progress, current and average
+/// speed (bytes per second; items per second for a delete), elapsed and remaining time, items and size left;
+/// Pause and Cancel. Closing the window cancels. Several operations at once each get a window, placed one below
+/// the other.
 /// </summary>
 public partial class FileProgressWindow : Window
 {
@@ -26,6 +27,7 @@ public partial class FileProgressWindow : Window
     private readonly OperationProgress _progress;
     private readonly DispatcherTimer _timer;
     private bool _finished;
+    private IntPtr _question;
 
     internal FileProgressWindow(OperationProgress progress)
     {
@@ -115,18 +117,51 @@ public partial class FileProgressWindow : Window
         Close();
     }
 
+    /// <summary>A question of Windows opened while this window is shown: it goes in front of this window.</summary>
+    private void KeepQuestionInFront()
+    {
+        IntPtr question = _progress.OpenQuestion();
+        if (question != IntPtr.Zero && question != _question)
+        {
+            IntPtr self = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            SetWindowPos(self, question, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010); // SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE
+            SetForegroundWindow(question);
+        }
+        _question = question;
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool SetWindowPos(IntPtr hwnd, IntPtr insertAfter, int x, int y, int cx, int cy, uint flags);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hwnd);
+
     private void Refresh()
     {
+        KeepQuestionInFront();
         var s = _progress.Snapshot();
-        string verb = s.Move ? "Moving" : "Copying";
+        bool deleting = s.Kind is OperationKind.Recycle or OperationKind.Delete;
+        string verb = s.Kind switch
+        {
+            OperationKind.Move => "Moving",
+            OperationKind.Recycle => "Moving to the Recycle Bin",
+            OperationKind.Delete => "Deleting",
+            _ => "Copying",
+        };
         string count = s.ItemsTotal == 1 ? "1 item" : $"{s.ItemsTotal:N0} items";
-        double share = s.SizeTotal > 0 ? Math.Min(1, (double)s.SizeDone / s.SizeTotal)
+        // A delete moves no data: its progress is the items.
+        double share = !deleting && s.SizeTotal > 0 ? Math.Min(1, (double)s.SizeDone / s.SizeTotal)
             : s.ItemsTotal > 0 ? Math.Min(1, (double)s.ItemsDone / s.ItemsTotal) : 0;
-        HeadText.Text = s.Paused ? $"Paused - {verb.ToLowerInvariant()} {count}"
-            : s.Counting ? $"{verb} - counting items..." : $"{verb} {count}";
-        Title = s.Counting ? verb : $"{share:P0} - {verb}";
+        string head = s.Kind == OperationKind.Recycle ? $"Moving {count} to the Recycle Bin" : $"{verb} {count}";
+        HeadText.Text = s.Paused ? $"Paused - {char.ToLowerInvariant(head[0])}{head[1..]}"
+            : s.Counting ? $"{verb} - counting items..." : head;
+        string shortVerb = s.Kind == OperationKind.Recycle ? "Recycle Bin" : verb;
+        Title = s.Counting ? shortVerb : $"{share:P0} - {shortVerb}";
         FromRun.Text = s.From.Length > 0 ? s.From : "...";
-        ToRun.Text = s.To.Length > 0 ? s.To : "...";
+        ToLabel.Text = deleting ? "" : "  to ";
+        ToRun.Text = s.Kind == OperationKind.Recycle ? "  to the Recycle Bin" : deleting ? "" : s.To.Length > 0 ? s.To : "...";
+        ToPathText.Visibility = deleting ? Visibility.Collapsed : Visibility.Visible;
+        ToPathLabel.Visibility = ToPathText.Visibility;
         FromPathText.Text = s.FromPath.Length > 0 ? s.FromPath : s.From;
         ToPathText.Text = s.ToPath.Length > 0 ? s.ToPath : s.To;
         string itemPath = s.ItemPath.Length > 0 ? s.ItemPath : s.Item;
@@ -142,18 +177,22 @@ public partial class FileProgressWindow : Window
         TaskbarItemInfo.ProgressValue = share;
 
         SpeedText.Text = s.Counting || s.Elapsed.TotalSeconds < 0.5 ? "..."
+            : deleting ? $"{ItemSpeed(s.Paused ? 0 : s.ItemsPerSecond)} now   ·   {ItemSpeed(s.AverageItemsPerSecond)} average"
             : $"{Speed(s.Paused ? 0 : s.CurrentSpeed)} now   ·   {Speed(s.AverageSpeed)} average";
         // Remaining time from the speed of the last seconds (the average reacts too slowly when it changes):
         // by bytes and by items, the longer one (many small files are slow although they hold few bytes).
         double speed = s.CurrentSpeed > 0 ? s.CurrentSpeed : s.AverageSpeed;
-        double byBytes = speed > 0 && s.SizeTotal > s.SizeDone ? (s.SizeTotal - s.SizeDone) / speed : 0;
+        double byBytes = !deleting && speed > 0 && s.SizeTotal > s.SizeDone ? (s.SizeTotal - s.SizeDone) / speed : 0;
         double byItems = s.ItemsPerSecond > 0 && s.ItemsTotal > s.ItemsDone ? (s.ItemsTotal - s.ItemsDone) / s.ItemsPerSecond : 0;
         double left = Math.Max(byBytes, byItems);
         string remaining = s.Counting || left <= 0 ? "..." : "about " + Duration(TimeSpan.FromSeconds(Math.Ceiling(left)));
         TimeText.Text = $"{Duration(s.Elapsed)} elapsed   ·   {remaining} left";
         ulong itemsLeft = s.ItemsTotal > s.ItemsDone ? s.ItemsTotal - s.ItemsDone : 0;
-        ItemsText.Text = s.Counting ? "..." : $"{itemsLeft:N0} {(itemsLeft == 1 ? "item" : "items")} ({DisplayFormat.Size((long)(s.SizeTotal - Math.Min(s.SizeTotal, s.SizeDone)))})";
-        DoneText.Text = s.Counting ? "..." : $"{DisplayFormat.Size((long)s.SizeDone)} of {DisplayFormat.Size((long)s.SizeTotal)}";
+        string sizeLeft = s.SizeTotal > 0 ? $" ({DisplayFormat.Size((long)(s.SizeTotal - Math.Min(s.SizeTotal, s.SizeDone)))})" : "";
+        ItemsText.Text = s.Counting ? "..." : $"{itemsLeft:N0} {(itemsLeft == 1 ? "item" : "items")}{sizeLeft}";
+        DoneText.Text = s.Counting ? "..."
+            : deleting ? $"{s.ItemsDone:N0} of {s.ItemsTotal:N0} items"
+            : $"{DisplayFormat.Size((long)s.SizeDone)} of {DisplayFormat.Size((long)s.SizeTotal)}";
 
         PauseText.Text = s.Paused ? "Resume" : "Pause";
         PauseIcon.Text = s.Paused ? "" : ""; // Play / Pause
@@ -173,6 +212,8 @@ public partial class FileProgressWindow : Window
     }
 
     private static string Speed(double bytesPerSecond) => DisplayFormat.Size((long)Math.Max(0, bytesPerSecond)) + "/s";
+
+    private static string ItemSpeed(double itemsPerSecond) => $"{Math.Max(0, itemsPerSecond):N0} items/s";
 
     private static string Duration(TimeSpan time) =>
         time.TotalHours >= 1 ? $"{(int)time.TotalHours}:{time.Minutes:00}:{time.Seconds:00}" : $"{time.Minutes}:{time.Seconds:00}";

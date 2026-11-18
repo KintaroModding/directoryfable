@@ -16,13 +16,25 @@ public partial class SettingsView : UserControl
 {
     private const string DefaultArchiveBackground = "#0C0C0C";
 
+    private static readonly int[] RecentCounts = [0, 5, 10, 15, 20, 30, 50, 100];
+    private static readonly int[] CheckSeconds = [5, 10, 30, 60, 120, 300];
     private AppSettings _settings = new();
     private bool _filling;
 
     public SettingsView()
     {
         InitializeComponent();
+        foreach (int count in RecentCounts)
+            RecentCountBox.Items.Add(count.ToString(System.Globalization.CultureInfo.CurrentCulture));
+        foreach (int seconds in CheckSeconds)
+            CheckSecondsBox.Items.Add(seconds.ToString(System.Globalization.CultureInfo.CurrentCulture));
     }
+
+    /// <summary>The seconds between two journal checks changed (the folder sizes follow at once).</summary>
+    public event Action<int>? CheckSecondsChanged;
+
+    /// <summary>The number of recent folders changed (This PC follows at once).</summary>
+    public event Action<int>? RecentFoldersCountChanged;
 
     /// <summary>"Close" button or Esc.</summary>
     public event Action? CloseRequested;
@@ -49,6 +61,8 @@ public partial class SettingsView : UserControl
             StartMaximized.IsChecked = _settings.StartMaximized;
             RestoreSession.IsChecked = _settings.RestoreSession;
             FolderSizes.IsChecked = _settings.FolderSizes;
+            CheckSecondsBox.Text = _settings.FolderSizesCheckSeconds.ToString(System.Globalization.CultureInfo.CurrentCulture);
+            RecentCountBox.Text = _settings.RecentFoldersCount.ToString(System.Globalization.CultureInfo.CurrentCulture);
             ShowUpdateButton.IsChecked = _settings.UpdateButton;
             UpdateCheckAtStart.IsChecked = _settings.UpdateCheckAtStart;
             UpdateCheckAtStart.IsEnabled = _settings.UpdateButton;
@@ -107,6 +121,84 @@ public partial class SettingsView : UserControl
             s.StartMaximized = maximized;
             s.RestoreSession = restore;
         });
+    }
+
+    // ---------- Folder sizes: journal checks ----------
+
+    private void CheckSeconds_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_filling && CheckSecondsBox.SelectedItem is string text)
+            ApplyCheckSeconds(text);
+    }
+
+    private void CheckSeconds_LostFocus(object sender, KeyboardFocusChangedEventArgs e) => ApplyCheckSeconds(CheckSecondsBox.Text);
+
+    private void CheckSeconds_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            e.Handled = true;
+            ApplyCheckSeconds(CheckSecondsBox.Text);
+        }
+    }
+
+    private void ApplyCheckSeconds(string text)
+    {
+        if (_filling)
+            return;
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        if (!int.TryParse(text, System.Globalization.NumberStyles.Integer, culture, out int seconds) || seconds < 2 || seconds > 600)
+        {
+            SaveStatus.Text = "Folder sizes: use a number of seconds from 2 to 600.";
+            CheckSecondsBox.Text = _settings.FolderSizesCheckSeconds.ToString(culture);
+            return;
+        }
+        if (seconds == _settings.FolderSizesCheckSeconds)
+            return;
+        Save(s => s.FolderSizesCheckSeconds = seconds);
+        CheckSecondsChanged?.Invoke(seconds);
+    }
+
+    // ---------- This PC: recent folders ----------
+
+    private void RecentCount_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_filling && RecentCountBox.SelectedItem is string text)
+            ApplyRecentCount(text);
+    }
+
+    private void RecentCount_LostFocus(object sender, KeyboardFocusChangedEventArgs e) => ApplyRecentCount(RecentCountBox.Text);
+
+    private void RecentCount_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            e.Handled = true;
+            ApplyRecentCount(RecentCountBox.Text);
+        }
+    }
+
+    private void ApplyRecentCount(string text)
+    {
+        if (_filling)
+            return;
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        if (!int.TryParse(text, System.Globalization.NumberStyles.Integer, culture, out int count) || count < 0 || count > 100)
+        {
+            SaveStatus.Text = "Recent folders: use a number from 0 to 100.";
+            RecentCountBox.Text = _settings.RecentFoldersCount.ToString(culture);
+            return;
+        }
+        if (count == _settings.RecentFoldersCount)
+            return;
+        Save(s => s.RecentFoldersCount = count);
+        RecentFoldersCountChanged?.Invoke(count);
+    }
+
+    private void ClearRecent_Click(object sender, RoutedEventArgs e)
+    {
+        RecentFolders.Clear();
+        SaveStatus.Text = $"Recent folders cleared at {DateTime.Now:HH:mm:ss}";
     }
 
     // ---------- Quick bar ----------

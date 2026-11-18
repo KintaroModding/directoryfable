@@ -553,6 +553,11 @@ public partial class FilePane : UserControl
             // Image types open in AstraViewer (settings; only inside DirectoryFable, Windows' defaults stay).
             OpenInViewer(item.FullPath);
         }
+        else if (Player.VideoFileTypes.OpensInPlayer(item.FullPath) && OpenInPlayer is not null)
+        {
+            // Video types play in OpusHC (settings; only inside DirectoryFable, Windows' defaults stay).
+            OpenInPlayer(item.FullPath);
+        }
         else if (Editor.EditorFileTypes.OpensInNotepad(item.FullPath) && OpenInNotepad is not null)
         {
             // Text types open in Notepad# (settings; only inside DirectoryFable, Windows' defaults stay).

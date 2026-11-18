@@ -78,6 +78,8 @@ public static class MftReader
         var extents = MftExtents(record0, bytesPerCluster);
 
         long recordCount = Math.Min(mftValidLength / recordSize, int.MaxValue - 1);
+        // The change journal's position before the read: changes from here on can be followed (UsnJournal).
+        var journal = UsnJournal.Query(volume);
         var reader = new RecordParser(root, (int)recordCount, bytesPerSector);
         int chunkRecords = Math.Max(1, (4 << 20) / recordSize);
         var buffer = new byte[chunkRecords * recordSize];
@@ -103,10 +105,16 @@ public static class MftReader
         var index = reader.Finish();
         index.ReadTime = watch.Elapsed;
         index.ReadAt = DateTime.Now;
+        if (journal is { } j)
+        {
+            index.JournalId = j.JournalId;
+            index.StartUsn = j.NextUsn;
+            index.HasJournal = true;
+        }
         return index;
     }
 
-    private static SafeFileHandle OpenVolume(string root) =>
+    internal static SafeFileHandle OpenVolume(string root) =>
         CreateFileW(@"\\.\" + root.TrimEnd('\\'), 0x80000000 /* GENERIC_READ */, 7 /* share read, write, delete */,
             IntPtr.Zero, 3 /* OPEN_EXISTING */, 0, IntPtr.Zero);
 
@@ -332,6 +340,7 @@ public static class MftReader
             var source = _index;
             var packed = new DriveIndex(source.Root, source.Method);
             packed.Allocate(entries);
+            packed.Record = new int[entries];
             var map = new int[_count];
             long nameChars = 0;
             for (int i = 0, n = 0; i < _count; i++)
@@ -355,6 +364,7 @@ public static class MftReader
                 packed.Modified[n] = source.Modified[i];
                 packed.Accessed[n] = source.Accessed[i];
                 packed.Attributes[n] = source.Attributes[i];
+                packed.Record[n] = i; // The parser keeps entries at their MFT record number.
             }
             packed.EntryCount = entries;
             return packed;

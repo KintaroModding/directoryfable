@@ -9,7 +9,8 @@ namespace DirectoryFable.Views;
 
 /// <summary>
 /// "The name is already taken": the new and the existing item side by side (size, modified; the newer and the
-/// larger one marked), and Replace / Skip / Keep both, with "do the same for the other conflicts". Asked by
+/// larger one marked), and Replace / Replace if newer / Skip / Keep both, with "do the same for the other
+/// conflicts" ("if newer" is then decided for each item by its own dates). Asked by
 /// DirectoryFable before a copy or move starts, so the Windows copy engine never shows its own dialog.
 /// </summary>
 public partial class ConflictDialog : Window
@@ -46,6 +47,11 @@ public partial class ConflictDialog : Window
 
         ReplaceButton.IsEnabled = !conflict.TypeMismatch;
         ReplaceHint.Text = conflict.TypeMismatch ? "Not possible: a file cannot replace a folder (or a folder a file)." : "The new one takes its place.";
+        NewerButton.IsEnabled = !conflict.TypeMismatch;
+        NewerHint.Text = conflict.TypeMismatch ? "Not possible here."
+            : sourceNewer ? "Only when the new one is newer, else skip. Here: it replaces (the new one is newer)."
+            : targetNewer ? "Only when the new one is newer, else skip. Here: it is skipped (the one there is newer)."
+            : "Only when the new one is newer, else skip. Here: it is skipped (same date).";
         string folder = Path.GetDirectoryName(conflict.Target) ?? "";
         KeepBothHint.Text = $"The new one is named \"{ConflictPlanner.FreeName(folder, name)}\".";
         int others = count - number;
@@ -94,6 +100,8 @@ public partial class ConflictDialog : Window
     }
 
     private void Replace_Click(object sender, RoutedEventArgs e) => Choose(ConflictChoice.Replace);
+
+    private void ReplaceIfNewer_Click(object sender, RoutedEventArgs e) => Choose(ConflictChoice.ReplaceIfNewer);
 
     private void Skip_Click(object sender, RoutedEventArgs e) => Choose(ConflictChoice.Skip);
 

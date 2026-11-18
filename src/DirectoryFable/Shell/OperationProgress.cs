@@ -4,13 +4,23 @@ using System.Windows.Threading;
 
 namespace DirectoryFable.Shell;
 
+/// <summary>What the progress window shows: a copy, a move, a delete to the Recycle Bin or a permanent delete.</summary>
+public enum OperationKind
+{
+    Copy,
+    Move,
+    Recycle,
+    Delete,
+}
+
 /// <summary>
-/// DirectoryFable's own progress window for a copy or move, put into the Windows copy engine in place of its
+/// DirectoryFable's own progress window for a copy, move or delete, put into the Windows copy engine in place of its
 /// white progress dialog (IFileOperation.SetProgressDialog). The engine reports bytes, items and locations
 /// here, and asks <see cref="GetOperationStatus"/> whether to go on or cancel. Pause: the engine stops a
 /// copy with this window when it is told "paused" (measured), so instead its progress report waits until
-/// Resume (or Cancel); the engine reports after every piece it copies. Conflict questions,
-/// elevation and undo stay with Windows. Calls come from the engine's threads; the window
+/// Resume (or Cancel); the engine reports after every piece it copies. Windows' own questions (too big for the
+/// Recycle Bin, file in use, permission) stay with Windows: while one is open the window does not appear, or it
+/// goes behind the question (<see cref="OpenQuestion"/>). Calls come from the engine's threads; the window
 /// (<see cref="Views.FileProgressWindow"/>) reads <see cref="Snapshot"/> a few times a second on the UI thread.
 /// </summary>
 [ComVisible(true)]
@@ -27,7 +37,7 @@ internal sealed class OperationProgress : OperationProgress.IOperationsProgressD
 
     private readonly Lock _lock = new();
     private readonly Dispatcher _ui;
-    private readonly bool _move;
+    private readonly OperationKind _kind;
     private readonly Stopwatch _clock = new();   // Runs while copying (Windows pauses it for its questions, we for Pause).
     private readonly Queue<(double Seconds, ulong Bytes, ulong Items)> _samples = new();
     private readonly ManualResetEventSlim _running = new(true);   // Reset while paused.
@@ -41,16 +51,49 @@ internal sealed class OperationProgress : OperationProgress.IOperationsProgressD
     private string _from = "", _fromPath = "", _to = "", _toPath = "", _item = "", _itemPath = "";
     private bool _enginePaused;
 
-    public OperationProgress(Dispatcher ui, bool move)
+    public OperationProgress(Dispatcher ui, OperationKind kind)
     {
         _ui = ui;
-        _move = move;
+        _kind = kind;
     }
 
+    /// <summary>The thread that runs the operation (its question dialogs belong to it); set by the runner.</summary>
+    public uint EngineThread { get; set; }
+
+    /// <summary>A question dialog of the engine that is open now (a "#32770" window of its thread), or zero.</summary>
+    public IntPtr OpenQuestion()
+    {
+        if (EngineThread == 0)
+            return IntPtr.Zero;
+        IntPtr found = IntPtr.Zero;
+        EnumThreadWindows(EngineThread, (hwnd, _) =>
+        {
+            var name = new System.Text.StringBuilder(32);
+            if (IsWindowVisible(hwnd) && GetClassName(hwnd, name, name.Capacity) > 0 && name.ToString() == "#32770")
+            {
+                found = hwnd;
+                return false;
+            }
+            return true;
+        }, IntPtr.Zero);
+        return found;
+    }
+
+    private delegate bool EnumWindowsProc(IntPtr hwnd, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumThreadWindows(uint threadId, EnumWindowsProc callback, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr hwnd);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetClassName(IntPtr hwnd, System.Text.StringBuilder name, int size);
+
     /// <summary>What the window shows, read on the UI thread.</summary>
-    public sealed record State(bool Move, bool Counting, bool Paused, ulong SizeDone, ulong SizeTotal, ulong ItemsDone, ulong ItemsTotal,
+    public sealed record State(OperationKind Kind, bool Counting, bool Paused, ulong SizeDone, ulong SizeTotal, ulong ItemsDone, ulong ItemsTotal,
         string From, string FromPath, string To, string ToPath, string Item, string ItemPath, TimeSpan Elapsed, double CurrentSpeed, double AverageSpeed,
-        double ItemsPerSecond);
+        double ItemsPerSecond, double AverageItemsPerSecond);
 
     public State Snapshot()
     {
@@ -66,8 +109,9 @@ internal sealed class OperationProgress : OperationProgress.IOperationsProgressD
             double span = seconds - first.Seconds;
             double current = span > 0.4 ? (_sizeDone - first.Bytes) / span : average;
             double items = span > 0.4 ? (_itemsDone - first.Items) / span : seconds > 0.5 ? _itemsDone / seconds : 0;
-            return new State(_move, _preflight, _paused, _sizeDone, _sizeTotal, _itemsDone, _itemsTotal,
-                _from, _fromPath, _to, _toPath, _item, _itemPath, _clock.Elapsed, current, average, items);
+            double averageItems = seconds > 0.5 ? _itemsDone / seconds : 0;
+            return new State(_kind, _preflight, _paused, _sizeDone, _sizeTotal, _itemsDone, _itemsTotal,
+                _from, _fromPath, _to, _toPath, _item, _itemPath, _clock.Elapsed, current, average, items, averageItems);
         }
     }
 
@@ -119,6 +163,12 @@ internal sealed class OperationProgress : OperationProgress.IOperationsProgressD
             _showTimer = new DispatcherTimer { Interval = ShowDelay };
             _showTimer.Tick += (_, _) =>
             {
+                // A question of Windows is open: wait, so the window does not cover it.
+                if (OpenQuestion() != IntPtr.Zero)
+                {
+                    _showTimer.Interval = TimeSpan.FromMilliseconds(250);
+                    return;
+                }
                 _showTimer.Stop();
                 if (_status != PDOPS_CANCELLED && _window is null)
                 {

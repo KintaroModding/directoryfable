@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.IO;
+using System.IO.Enumeration;
 using System.Windows;
 using System.Windows.Threading;
 
@@ -9,28 +10,33 @@ namespace DirectoryFable.Search;
 public sealed record FolderSizeResult(Dictionary<string, long> Sizes, long? FolderTotal);
 
 /// <summary>
-/// Folder sizes for the Size column of the file panes, from the drive's file table (NTFS, as
-/// administrator; see <see cref="MftReader"/>). The first folder on a drive starts one read of the
-/// whole drive (a few seconds); only its folders and their totals are kept (<see cref="SizeTree"/>),
-/// so after that every folder on the drive has its sizes at once. The values stay fresh in the
-/// background: a change seen in a shown folder reads the drive again a moment later (at most once a
-/// minute), a visit after ten minutes does the same, F5 reads it again at once, and a new read by
-/// SonnetSearch or the Space view is used too. Other places (network, FAT, no administrator rights,
-/// inside archives) get no folder sizes.
+/// Folder sizes for the Size column of the file panes, from the drive's file table (NTFS, as administrator; see
+/// <see cref="MftReader"/>). The first folder on a drive starts one read of the whole drive (a few seconds); only
+/// its folders and their totals are kept (<see cref="SizeTree"/>), so after that every folder on the drive has its
+/// sizes at once. They stay live through the drive's change journal (<see cref="UsnJournal"/>), checked every few
+/// seconds (a setting, <see cref="CheckInterval"/>) while the window is shown: changed folders are listed again
+/// (only those), new, deleted, moved and renamed folders change the tree. The whole drive is read again only with
+/// F5, when the journal cannot be followed, or after very many changes at once. A drive without a journal is read
+/// again a moment after a change in a shown folder (at most once a minute) and on a visit after ten minutes.
+/// Other places (network, FAT, no administrator rights, inside archives) get no folder sizes.
 /// </summary>
 public static class FolderSizes
 {
     private static readonly TimeSpan MinGap = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan MaxAge = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan ChangeDelay = TimeSpan.FromSeconds(2);
+    private const int ChangeLimit = 200_000;  // More journal records at once: read the drive again instead.
+    private const int FolderLimit = 5_000;    // More changed folders at once: the same.
 
     private static readonly Dictionary<string, bool> TableRoots = new(StringComparer.OrdinalIgnoreCase);
     private static readonly Dictionary<string, Task<SizeTree>> Trees = new(StringComparer.OrdinalIgnoreCase);
     private static readonly Dictionary<string, DispatcherTimer> Pending = new(StringComparer.OrdinalIgnoreCase);
     private static readonly HashSet<string> Stale = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly HashSet<string> Checking = new(StringComparer.OrdinalIgnoreCase);
+    private static DispatcherTimer? _journalTimer;
     private static bool _hooked;
-
     private static bool _enabled = true;
+    private static int _checkSeconds = 10;
 
     /// <summary>Settings: folder sizes in the Size column (default on). Off: nothing is read for them and the kept sizes are let go.</summary>
     public static bool Enabled
@@ -46,6 +52,19 @@ public static class FolderSizes
             Pending.Clear();
             Trees.Clear();
             Stale.Clear();
+            _journalTimer?.Stop();
+        }
+    }
+
+    /// <summary>Settings: seconds between two checks of the change journals (2 to 600, default 10).</summary>
+    public static int CheckInterval
+    {
+        get => _checkSeconds;
+        set
+        {
+            _checkSeconds = Math.Clamp(value, 2, 600);
+            if (_journalTimer is not null)
+                _journalTimer.Interval = TimeSpan.FromSeconds(_checkSeconds);
         }
     }
 
@@ -91,7 +110,7 @@ public static class FolderSizes
     /// <summary>
     /// Sizes of the folders directly in <paramref name="folder"/>. Null: no folder sizes for this place.
     /// The first call for a drive waits for its read (<paramref name="reading"/> is called before it
-    /// starts); later calls answer from the last read.
+    /// starts); later calls answer from the kept tree (and check the journal at once).
     /// </summary>
     public static async Task<FolderSizeResult?> ForFolderAsync(string folder, Action? reading)
     {
@@ -104,7 +123,9 @@ public static class FolderSizes
             if (Trees.TryGetValue(root, out var known) && !known.IsFaulted && !known.IsCanceled)
             {
                 tree = await known;
-                if (Stale.Contains(root) || DateTime.Now - tree.ReadAt > MaxAge)
+                if (tree.HasJournal)
+                    _ = CheckJournalAsync(root, tree); // A visit: the newest changes come a moment later.
+                else if (Stale.Contains(root) || DateTime.Now - tree.ReadAt > MaxAge)
                     Schedule(root, TimeSpan.Zero);
             }
             else
@@ -153,9 +174,19 @@ public static class FolderSizes
         return task;
     }
 
-    /// <summary>Every new file table read of a drive with folder sizes (also by SonnetSearch or the Space view) renews them.</summary>
+    /// <summary>
+    /// Every new file table read of a drive with folder sizes (also by SonnetSearch or the Space view) renews them;
+    /// the journal timer starts.
+    /// </summary>
     private static void Hook()
     {
+        if (_journalTimer is null)
+        {
+            _journalTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(_checkSeconds) };
+            _journalTimer.Tick += (_, _) => CheckAllJournals();
+        }
+        if (!_journalTimer.IsEnabled)
+            _journalTimer.Start();
         if (_hooked)
             return;
         _hooked = true;
@@ -166,13 +197,126 @@ public static class FolderSizes
         };
     }
 
+    // ---------- Change journal ----------
+
+    private static bool WindowShown => Application.Current?.MainWindow is { IsVisible: true, WindowState: not WindowState.Minimized };
+
+    private static void CheckAllJournals()
+    {
+        if (!Enabled || !WindowShown)
+            return; // Hidden or minimized: the journal keeps the changes until the window is back.
+        foreach (var (root, task) in Trees.ToList())
+        {
+            if (task.IsCompletedSuccessfully && task.Result.HasJournal)
+                _ = CheckJournalAsync(root, task.Result);
+        }
+    }
+
+    /// <summary>
+    /// The changes since the last check: folder changes edit the tree, folders whose files changed are listed
+    /// again (in the background) and get their new size. Any trouble: the drive is read again.
+    /// </summary>
+    private static async Task CheckJournalAsync(string root, SizeTree tree)
+    {
+        if (!Checking.Add(root))
+            return;
+        try
+        {
+            var changes = new List<UsnJournal.Change>();
+            long next;
+            try
+            {
+                next = await Task.Run(() => UsnJournal.Read(root, tree.JournalId, tree.NextUsn, changes, ChangeLimit));
+            }
+            catch (Exception ex) when (ex is Win32Exception or IOException or UnauthorizedAccessException)
+            {
+                StartRead(root); // The journal was deleted or its old records dropped.
+                return;
+            }
+            if (!IsCurrent(root, tree))
+                return;
+            if (changes.Count >= ChangeLimit)
+            {
+                StartRead(root);
+                return;
+            }
+
+            bool changed = false;
+            var dirty = new HashSet<int>();
+            foreach (var change in changes)
+            {
+                // A folder: the tree changes. A file that changed, came or went: its folder is listed again.
+                if (change.IsFolder)
+                    changed |= tree.Apply(change);
+                else if (tree.NodeOf(change.ParentRecord) is int folder)
+                    dirty.Add(folder);
+            }
+            tree.NextUsn = next;
+            if (dirty.Count > FolderLimit)
+            {
+                StartRead(root);
+                return;
+            }
+            if (dirty.Count > 0)
+            {
+                var jobs = dirty.Where(tree.IsAlive).Select(f => (Folder: f, Path: tree.PathOf(f))).ToList();
+                var sizes = await Task.Run(() => jobs.Select(j => (j.Folder, j.Path, Size: DirectFilesSize(j.Path))).ToList());
+                if (!IsCurrent(root, tree))
+                    return;
+                foreach (var (folder, path, size) in sizes)
+                {
+                    if (tree.IsAlive(folder) && string.Equals(tree.PathOf(folder), path, StringComparison.OrdinalIgnoreCase))
+                        changed |= tree.SetDirect(folder, Math.Max(0, size));
+                }
+            }
+            if (changed)
+                Changed?.Invoke(root);
+        }
+        finally
+        {
+            Checking.Remove(root);
+        }
+    }
+
+    private static bool IsCurrent(string root, SizeTree tree) =>
+        Trees.TryGetValue(root, out var task) && task.IsCompletedSuccessfully && ReferenceEquals(task.Result, tree);
+
+    /// <summary>The bytes of the files directly in a folder (not below); -1 when it cannot be listed.</summary>
+    private static long DirectFilesSize(string folder)
+    {
+        try
+        {
+            var options = new EnumerationOptions { AttributesToSkip = 0, IgnoreInaccessible = true, RecurseSubdirectories = false };
+            var files = new FileSystemEnumerable<long>(folder, (ref FileSystemEntry entry) => entry.Length, options)
+            {
+                ShouldIncludePredicate = (ref FileSystemEntry entry) => !entry.IsDirectory,
+            };
+            long sum = 0;
+            foreach (long length in files)
+                sum += length;
+            return sum;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return -1;
+        }
+    }
+
+    // ---------- Full reads ----------
+
     private static DateTime? ReadAt(string root) =>
         Trees.TryGetValue(root, out var task) && task.IsCompletedSuccessfully ? task.Result.ReadAt : null;
 
-    /// <summary>A shown folder changed (folder watcher): read its drive again soon (at most once a minute).</summary>
+    private static bool FollowsJournal(string root) =>
+        Trees.TryGetValue(root, out var task) && task.IsCompletedSuccessfully && task.Result.HasJournal;
+
+    /// <summary>
+    /// A shown folder changed (folder watcher). With a journal nothing to do (the next check brings it); without one,
+    /// the drive is read again soon (at most once a minute).
+    /// </summary>
     public static void NoteChange(string folder)
     {
-        if (!Enabled || KnownTableRoot(folder) is not { } root || ReadAt(root) is null)
+        if (!Enabled || KnownTableRoot(folder) is not { } root || ReadAt(root) is null || FollowsJournal(root))
             return;
         if (DriveIndexCache.IsLoading(root))
             Stale.Add(root); // The running read may have missed it.
@@ -203,7 +347,7 @@ public static class FolderSizes
             timer.Stop();
             Pending.Remove(root);
             // Hidden or minimized: no reading in the background; the next visit catches up.
-            if (Application.Current?.MainWindow is not { IsVisible: true, WindowState: not WindowState.Minimized })
+            if (!WindowShown)
                 Stale.Add(root);
             else
                 StartRead(root);

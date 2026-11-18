@@ -185,6 +185,46 @@
                 </Grid>
             </Border>
 
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Style="{StaticResource SettingName}" Text="Folder sizes: check for changes" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="Seconds between two looks at the drive's change journal (Windows' list of file changes): changed folders get their new size. Only reads, and only while the window is shown. 2 to 600." />
+                    </StackPanel>
+                    <ComboBox x:Name="CheckSecondsBox" Grid.Column="1" Width="110" VerticalAlignment="Center" IsEditable="True"
+                              SelectionChanged="CheckSeconds_Changed" LostKeyboardFocus="CheckSeconds_LostFocus" KeyDown="CheckSeconds_KeyDown" />
+                    <TextBlock Grid.Column="2" Margin="10,0,0,0" VerticalAlignment="Center" Style="{StaticResource SettingHelp}" Text="seconds" />
+                </Grid>
+            </Border>
+
+            <!-- ===== This PC ===== -->
+            <TextBlock Style="{StaticResource SectionTitle}" Text="This PC" />
+
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Style="{StaticResource SettingName}" Text="Recent folders" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="This PC shows the folders you opened last (in any pane or tab), the newest first, below the drives. How many are kept: 0 to 100; 0 hides the group." />
+                    </StackPanel>
+                    <ComboBox x:Name="RecentCountBox" Grid.Column="1" Width="110" VerticalAlignment="Center" IsEditable="True"
+                              SelectionChanged="RecentCount_Changed" LostKeyboardFocus="RecentCount_LostFocus" KeyDown="RecentCount_KeyDown" />
+                    <Button Grid.Column="2" Content="Clear list" MinWidth="110" Margin="12,0,0,0" HorizontalAlignment="Left"
+                            VerticalAlignment="Center" Click="ClearRecent_Click" />
+                </Grid>
+            </Border>
+
             <!-- ===== Tools ===== -->
             <TextBlock Style="{StaticResource SectionTitle}" Text="Tools" />
 

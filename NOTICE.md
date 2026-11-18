@@ -32,6 +32,10 @@ These terms apply to this program and to every work based on it.
 
 - AvalonEdit (MIT license), the text editor of Notepad#, used as a NuGet
   package. License text: licenses/AvalonEdit.txt.
+- LibVLCSharp (LGPL-2.1-or-later), the .NET binding of VLC's engine for OpusHC, used as a NuGet package. License text: licenses/LibVLCSharp.txt.
+  VLC's engine itself (libVLC, VideoLAN, GPL-2.0-or-later and LGPL-2.1-or-later)
+  is not part of DirectoryFable: it is downloaded from VideoLAN on first use,
+  together with its license (COPYING.txt in data\vlc\).
 - The shell context menu code (src/DirectoryFable/Shell/ShellContextMenu.cs)
   follows the pattern of Vanara's ShellContextMenu (MIT license). License text:
   licenses/Vanara.txt.

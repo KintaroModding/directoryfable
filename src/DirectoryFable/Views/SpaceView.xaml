@@ -1,6 +1,7 @@
 <UserControl x:Class="DirectoryFable.Views.SpaceView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:DirectoryFable.Views"
              Background="{StaticResource ListBackgroundBrush}"
              Foreground="{StaticResource ListTextBrush}"
              FontFamily="{StaticResource UiFont}" FontSize="{StaticResource UiFontSize}">
@@ -15,13 +16,24 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
+            <RowDefinition x:Name="ListRow" Height="55*" MinHeight="60" />
+            <RowDefinition x:Name="SplitterRow" Height="5" />
+            <RowDefinition x:Name="BlocksRow" Height="45*" MinHeight="60" />
         </Grid.RowDefinitions>
 
         <!-- Summary: total, files, folders; at a drive root also files / other / free as one bar. -->
         <Border Grid.Row="0" Background="{StaticResource QuickBarBrush}" BorderBrush="{StaticResource LineBrush}"
                 BorderThickness="0,0,0,1" Padding="10,5,10,6">
             <DockPanel LastChildFill="True">
+                <!-- The block chart below the list on / off. -->
+                <ToggleButton x:Name="BlocksToggle" DockPanel.Dock="Right" Style="{StaticResource BarToggleButton}" Padding="8,2"
+                              Margin="12,-2,0,0" VerticalAlignment="Top" Click="BlocksToggle_Click"
+                              ToolTip="Block chart: every file and folder as a box, sized by its space">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE80A;" FontFamily="{StaticResource IconFont}" FontSize="12" Margin="0,1,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Blocks" Foreground="{StaticResource BreadcrumbTextBrush}" />
+                    </StackPanel>
+                </ToggleButton>
                 <TextBlock x:Name="AgeText" DockPanel.Dock="Right" Margin="16,0,0,0" VerticalAlignment="Top"
                            Foreground="{StaticResource SecondaryTextBrush}" />
                 <StackPanel>
@@ -151,6 +163,17 @@
                 </GridView>
             </ListView.View>
         </ListView>
+
+        <GridSplitter x:Name="Splitter" Grid.Row="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ResizeDirection="Rows"
+                      Background="{StaticResource LineDarkBrush}" DragCompleted="Splitter_DragCompleted" />
+
+        <!-- Block chart (Views/Treemap.cs) and, below it, what the mouse points at. -->
+        <DockPanel x:Name="BlocksPanel" Grid.Row="3">
+            <TextBlock x:Name="HintText" DockPanel.Dock="Bottom" Padding="8,3" TextTrimming="CharacterEllipsis"
+                       Background="{StaticResource QuickBarBrush}" Foreground="{StaticResource SecondaryTextBrush}"
+                       Text="Point at a box to see what it is. Click: select it in the list; double-click: open." />
+            <local:Treemap x:Name="Blocks" Margin="2" />
+        </DockPanel>
 
         <!-- Reading, errors, an empty folder. -->
         <TextBlock Grid.Row="1" x:Name="MessageText" Margin="20,48,20,0" HorizontalAlignment="Center" VerticalAlignment="Top"

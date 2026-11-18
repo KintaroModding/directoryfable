@@ -1,7 +1,8 @@
 # DirectoryFable
 
 A two-pane file manager for Windows with a built-in text editor, Notepad#, an
-image viewer, AstraViewer, and a fast file search, SonnetSearch.
+image viewer, AstraViewer, a fast file search, SonnetSearch, and a video player,
+OpusHC.
 Dark, dense and made for the keyboard. Written in C# with WPF on .NET 10.
 
 ![DirectoryFable: two panes with tabs, folder tree and favorites bar](docs/screenshot-explorer.png)
@@ -32,23 +33,32 @@ yourself, see [Build](#build).
   (with the share). Open it from the tree, by typing `This PC`, or with Up from
   a drive. Double-click or `Enter` opens a drive, a middle click opens it in a
   new tab, right-click shows Windows' menu for it ("Space usage" opens the Space
-  view); the values update while you look.
+  view); the values update while you look. Below the drives: **Recent folders**,
+  the folders you opened last in any pane or tab (how many: settings page, 0 to
+  100; right-click one to remove it from the list).
 - **Details view** with group dividers by file type. Sort, resize and reorder
   the columns. Hidden and system files are always shown.
 - **Folder sizes** in the Size column (NTFS drives, run as administrator): the
   first folder on a drive reads its file table once (about a second for a
   system drive), then every folder on it shows its size at once; sorting by
-  size and the status bar count them too. After a change in a shown folder the
-  drive is read again in the background (at most once a minute), `F5` reads it
-  at once. Only reading, nothing is written to the drive. Switch it off on the
-  settings page or in the column header's right-click menu.
+  size and the status bar count them too. The sizes stay live: every few
+  seconds (10 by default, a setting) DirectoryFable looks at the drive's change
+  journal (Windows' list of file changes) and lists only the folders that
+  changed again; `F5` reads the whole drive again. Only reading, nothing is
+  written to the drive (a drive without a journal is read again at most once a
+  minute after a change). Switch it off on the settings page or in the column
+  header's right-click menu.
 - **Space view** (`Space` button in the quick bar): what takes the space in the
   shown folder, biggest first. Folders show the size, files and folders of
   everything below them, and every row has a bar for its share; at a drive
   root also files, other used space and free space. Open a folder to go deeper
   (Back, Up and the address bar work as usual), `Esc` returns to the list, `F5`
   reads again. NTFS drives as administrator are read from their file table;
-  network folders and other drives with a folder walk.
+  network folders and other drives with a folder walk. Below the list a **block
+  chart**: every file and folder as a box sized by its space, files coloured by
+  kind (video, images, archives, programs, ...); point at a box to see its path
+  and size, click to select its row, double-click to open. `Blocks` switches it
+  on and off; drag the line above it to change its height.
 - **Quick filter**: type in the list and only the names that match stay
   (words in any order, `*` and `?` as wildcards); the box at the right end of
   the quick bar shows the text and "shown / all". `Backspace` takes back a
@@ -57,13 +67,17 @@ yourself, see [Build](#build).
 - **File operations through Windows** (Recycle Bin, elevation).
 - **Own question for names that are taken**: before a copy or move starts,
   DirectoryFable finds the names that already exist in the target (also inside
-  folders that are merged) and asks in a dark dialog: Replace, Skip or Keep both
-  (`name (2).ext`), with sizes and dates side by side (newer and larger marked)
-  and "do the same for the other conflicts". Cancel changes nothing. **Undo** (`Ctrl+Z`) for copy, move, rename, duplicate and delete
+  folders that are merged) and asks in a dark dialog: Replace, Replace if newer,
+  Skip or Keep both (`name (2).ext`), with sizes and dates side by side (newer
+  and larger marked) and "do the same for the other conflicts" ("if newer" then
+  decides for each item by its own dates). Cancel changes nothing. **Undo** (`Ctrl+Z`) for copy, move, rename, duplicate and delete
   to the Recycle Bin.
-- **Own dark progress window** for copy and move: from / to, the current
-  item, current and average speed, elapsed time and time left, items and size
-  left, Pause / Resume and Cancel (closing the window cancels too). `Details`
+- **Own dark progress window** for copy, move and delete: from / to, the
+  current item, current and average speed (items per second for a delete),
+  elapsed time and time left, items and size left, Pause / Resume and Cancel
+  (closing the window cancels too). `Shift+Delete` asks in a dark dialog; when
+  Windows has a question of its own (an item that cannot go to the Recycle Bin,
+  a file in use), it stays in front of the window. `Details`
   slides open the full paths of from, to and the current item (right-click one
   to copy it). It shows only for operations that take longer than a moment.
 - **Rectangle selection**: hold the left button on empty list space, or on a
@@ -86,6 +100,8 @@ yourself, see [Build](#build).
   the exact bytes, what a folder contains - counted while you look -, dates,
   attributes; drives: capacity, used, free, file system), then the details
   Windows knows for the file type (for example image size, artist, page count).
+  Read-only, Hidden, System and Archive are check boxes that change the item at
+  once.
 - **Status bar**: selected and total folders, files and size; free space.
 - **Settings page** behind the gear button. A normal window with a taskbar
   button (the default), or tray mode: only a tray icon, and closing the window
@@ -191,6 +207,35 @@ yourself, see [Build](#build).
 - A drive is read once; typing and filters search what was read. `Enter`,
   `F5` or `Search` read the drives again, so new files show.
 
+## OpusHC
+
+- The fifth view in the title bar. A double-click (or `Enter`) on a video in
+  the explorer plays it here; the types are a setting (MP4, MKV, MOV, AVI, WebM,
+  ... by default). Only inside DirectoryFable: Windows' defaults stay.
+- **VLC's engine, portable**: it plays with libVLC from the VideoLAN project,
+  which is not part of the download. Until it is there, OpusHC shows why it is
+  needed, the exact address it comes from and the exact folder it goes to, with
+  a Download button: the official VLC zip from download.videolan.org (about 79
+  MB), checked against VideoLAN's SHA-256 checksum; only the engine files (about
+  140 MB) are kept in `data\vlc\` next to the exe. Nothing is installed in
+  Windows; `Remove` in the player's settings (or deleting the folder) takes it
+  away.
+- Timeline with scrubbing (drag it and the picture follows; the time under the
+  mouse shows above it), play / pause, previous / next video in the folder,
+  volume and mute, audio track and subtitles, full screen (the controls hide
+  while the mouse rests).
+- **Filmstrip** above the timeline: the whole video as a row of small pictures
+  (made in the background in a few seconds, kept in memory only). Point at it,
+  or at the timeline, to see the picture of that moment bigger; click to jump
+  there. In the player's settings: on / off, and a slider for how many
+  pictures (20 to 200; 40 by default).
+- **Resume**: a video starts where you left it (the last 300 videos). At the end
+  the next video of the folder plays (for series). Both are settings.
+- Keys: `Space` play / pause, `Left` / `Right` 5 s (`Ctrl`: 30 s), `Up` /
+  `Down` or the mouse wheel volume, `M` mute, `F`, `F11`, `Alt+Enter` or a
+  double-click full screen (`Esc` leaves), `Page Up` / `Page Down` previous /
+  next video, `Home` from the start.
+
 ## Updates
 
 - `Update` in the title bar, left of the window buttons, opens a drop-down. It
@@ -223,8 +268,9 @@ exe and writes nothing to AppData or the registry:
 |---|---|
 | `settings.json` | Settings, with a comment for each key. The settings page writes it. |
 | `favorites.json` | The favorites bar. |
-| `session.json` | Window, tabs, columns, Notepad# files and the AstraViewer history of the last run. |
+| `session.json` | Window, tabs, columns, Notepad# files, the AstraViewer history and where videos were left. |
 | `notepad-cache\` | Notepad# texts kept over a restart: unsaved changes, new files, files deleted outside. |
+| `vlc\` | VLC's engine for OpusHC, only after you agreed to download it. |
 
 ## Command line
 

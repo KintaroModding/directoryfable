@@ -73,10 +73,10 @@ public partial class MainWindow
     private void ShowNotepad(bool show) => ShowView(show ? MainView.Notepad : MainView.Explorer);
 
     /// <summary>The views below the title bar, one per title bar tab.</summary>
-    private enum MainView { Explorer, Notepad, Viewer, Search }
+    private enum MainView { Explorer, Notepad, Viewer, Search, Player }
 
     private MainView ShownView => NotepadShown ? MainView.Notepad : ViewerShown ? MainView.Viewer
-        : SearchShown ? MainView.Search : MainView.Explorer;
+        : SearchShown ? MainView.Search : PlayerShown ? MainView.Player : MainView.Explorer;
 
     /// <summary>
     /// Shows one view below the title bar; the others keep their state. A click on the tab of
@@ -88,14 +88,18 @@ public partial class MainWindow
         NotepadTab.IsChecked = view == MainView.Notepad;
         AstraViewerTab.IsChecked = view == MainView.Viewer;
         SearchTab.IsChecked = view == MainView.Search;
+        PlayerTab.IsChecked = view == MainView.Player;
         if (view == ShownView)
             return;
+        if (view != MainView.Player && PlayerPage.IsFullScreen)
+            PlayerPage.SetFullScreen(false);
 
         if (view != MainView.Explorer)
             ShowSettings(false); // The explorer's settings page belongs to the explorer.
         NotepadPage.Visibility = view == MainView.Notepad ? Visibility.Visible : Visibility.Collapsed;
         AstraViewerPage.Visibility = view == MainView.Viewer ? Visibility.Visible : Visibility.Collapsed;
         SearchPage.Visibility = view == MainView.Search ? Visibility.Visible : Visibility.Collapsed;
+        PlayerPage.Visibility = view == MainView.Player ? Visibility.Visible : Visibility.Collapsed;
         SetExplorerShown(view == MainView.Explorer);
         switch (view)
         {
@@ -107,6 +111,10 @@ public partial class MainWindow
                 break;
             case MainView.Search:
                 SearchPage.FocusQuery();
+                break;
+            case MainView.Player:
+                PlayerPage.FocusView();
+                PlayerShownFirstTime();
                 break;
             default:
                 ActivePaneView.FocusList();

@@ -34,6 +34,7 @@ public partial class MainWindow : Window
         InitTitleBar();
         InitNotepad();
         InitAstraViewer();
+        InitOpusPlayer();
         InitSearch();
         InitUpdate(settings);
 
@@ -87,7 +88,14 @@ public partial class MainWindow : Window
         Closing += Window_Closing;
 
         Views.SpaceView.SavedColumns = session?.SpaceColumns;
+        Views.SpaceView.ShowBlocks = session?.SpaceBlocks ?? true;
+        Views.SpaceView.BlocksShare = session?.SpaceBlocksShare ?? 0.45;
+        RecentFolders.Max = settings.RecentFoldersCount;
+        RecentFolders.Restore(session?.RecentFolders);
+        SettingsPage.RecentFoldersCountChanged += count => RecentFolders.Max = count;
         Search.FolderSizes.Enabled = settings.FolderSizes;
+        Search.FolderSizes.CheckInterval = settings.FolderSizesCheckSeconds;
+        SettingsPage.CheckSecondsChanged += seconds => Search.FolderSizes.CheckInterval = seconds;
         Views.FilePane.IconsOnly = settings.QuickBarIconsOnly;
         SettingsPage.IconsOnlyChanged += on => Views.FilePane.IconsOnly = on;
         SettingsPage.FolderSizesChanged += ApplyFolderSizes;
@@ -110,6 +118,8 @@ public partial class MainWindow : Window
             string defaultLeft = Environment.ExpandEnvironmentVariables(settings.LeftPath);
             string defaultRight = Environment.ExpandEnvironmentVariables(settings.RightPath);
 
+            // The tabs that come back at the start are not "opened" (This PC's recent folders keep their order).
+            RecentFolders.Paused = true;
             if (leftFolder is not null || rightFolder is not null)
             {
                 // Folders on the command line win over the saved session (used by tests).
@@ -119,16 +129,20 @@ public partial class MainWindow : Window
             {
                 await Task.WhenAll(_left.RestoreAsync(session?.Left, defaultLeft), _right.RestoreAsync(session?.Right, defaultRight));
             }
+            RecentFolders.Paused = false;
 
             await NotepadPage.RestoreAsync(session?.Notepad);
             await AstraViewerPage.RestoreAsync(session?.Viewer);
             SearchPage.RestoreState(session?.Search);
+            PlayerPage.RestoreState(session?.Player);
             if (session?.NotepadShown == true && NotepadPage.Documents.Any())
                 ShowView(MainView.Notepad);
             else if (session?.ViewerShown == true && AstraViewerPage.CurrentPath is not null)
                 ShowView(MainView.Viewer);
             else if (session?.SearchShown == true)
                 ShowView(MainView.Search);
+            else if (session?.PlayerShown == true)
+                ShowView(MainView.Player);
 
             // Restoring tabs queues "focus this list" steps; activate the saved pane after all of them.
             bool rightActive = leftFolder is null && rightFolder is null && session?.RightPaneActive == true;
@@ -214,7 +228,12 @@ public partial class MainWindow : Window
             Viewer = AstraViewerPage.CaptureState(),
             SearchShown = SearchShown,
             Search = SearchPage.CaptureState(),
+            PlayerShown = PlayerShown,
+            Player = PlayerPage.CaptureState(),
             SpaceColumns = Views.SpaceView.SavedColumns,
+            SpaceBlocks = Views.SpaceView.ShowBlocks,
+            SpaceBlocksShare = Views.SpaceView.BlocksShare,
+            RecentFolders = RecentFolders.Capture(),
             Left = _left.CaptureState(),
             Right = _right.CaptureState(),
         }.Save();
@@ -277,7 +296,12 @@ public partial class MainWindow : Window
         // Saved on every close: in tray mode the app may run for days before it exits.
         SaveSession();
         if (AllowClose)
+        {
+            PlayerPage.Shutdown(); // VLC stops before the app ends.
             return;
+        }
+        if (PlayerPage.IsFullScreen)
+            PlayerPage.SetFullScreen(false);
         e.Cancel = true;
         Hide();
     }
@@ -317,8 +341,8 @@ public partial class MainWindow : Window
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        // Notepad#, AstraViewer and Search have their own keys (Tab, Ctrl+Z, arrows, ...).
-        if (NotepadShown || ViewerShown || SearchShown)
+        // Notepad#, AstraViewer, Search and OpusHC have their own keys (Tab, Ctrl+Z, arrows, ...).
+        if (NotepadShown || ViewerShown || SearchShown || PlayerShown)
             return;
 
         // The settings page has its own keys (Tab between controls); Esc closes it.

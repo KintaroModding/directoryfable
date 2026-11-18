@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>Opus - Home Cinema</title>
+  <defs>
+    <linearGradient id="blue" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0" stop-color="#087DE0"/><stop offset="1" stop-color="#0041B8"/></linearGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0" stop-color="#27CCD9"/><stop offset="1" stop-color="#0099B8"/></linearGradient>
+  </defs>
+  <path fill="url(#blue)" d="M 34,35 L 222,35 Q 240,35 240,53 L 240,180 Q 240,198 222,198 L 34,198 Q 16,198 16,180 L 16,53 Q 16,35 34,35 Z"/>
+  <path fill="#092D64" d="M 40,53 L 216,53 Q 222,53 222,59 L 222,174 Q 222,180 216,180 L 40,180 Q 34,180 34,174 L 34,59 Q 34,53 40,53 Z"/>
+  <path fill="#E8F9FF" d="M 103,79 Q 103,73 109,77 L 163,110 Q 172,116 163,122 L 109,155 Q 103,159 103,153 Z"/>
+  <path fill="url(#cyan)" d="M 34,180 L 222,180 L 222,183 Q 222,198 207,198 L 49,198 Q 34,198 34,183 Z"/>
+</svg>

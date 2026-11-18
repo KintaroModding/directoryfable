@@ -2,11 +2,11 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Properties"
-        Width="600" Height="680" MinWidth="380" MinHeight="300"
+        Width="780" Height="720" MinWidth="380" MinHeight="300"
         ShowInTaskbar="False" WindowStartupLocation="CenterOwner"
         Background="{StaticResource WindowBackgroundBrush}"
         Foreground="{StaticResource ListTextBrush}"
-        FontFamily="{StaticResource UiFont}" FontSize="13">
+        FontFamily="{StaticResource UiFont}" FontSize="12">
     <!-- Own file properties window: the content of Windows' "Details" tab,
          grouped like there. Values can be selected and copied. -->
     <Window.Resources>
@@ -36,11 +36,28 @@
             <Image x:Name="ItemIcon" Width="16" Height="16" Margin="0,3,10,0" VerticalAlignment="Top"
                    RenderOptions.BitmapScalingMode="HighQuality" />
             <StackPanel>
-                <TextBox x:Name="ItemName" Style="{StaticResource ValueBox}" FontSize="16" FontWeight="SemiBold" />
+                <TextBox x:Name="ItemName" Style="{StaticResource ValueBox}" FontSize="15" FontWeight="SemiBold" />
                 <TextBox x:Name="ItemFolder" Style="{StaticResource ValueBox}" FontSize="12"
                          Foreground="{StaticResource SecondaryTextBrush}" Margin="0,2,0,0" />
             </StackPanel>
         </DockPanel>
+
+        <!-- Attributes as check boxes: a click changes the file at once (not for drives). -->
+        <StackPanel x:Name="AttributesPanel" DockPanel.Dock="Top" Margin="26,0,0,10" Visibility="Collapsed">
+            <WrapPanel Orientation="Horizontal">
+                <TextBlock Text="Attributes" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0" />
+                <CheckBox x:Name="ReadOnlyBox" MinWidth="0" Content="Read-only" Margin="0,0,16,0" Tag="ReadOnly" Click="Attribute_Click"
+                          ToolTip="The file cannot be changed or deleted without clearing this first" />
+                <CheckBox x:Name="HiddenBox" MinWidth="0" Content="Hidden" Margin="0,0,16,0" Tag="Hidden" Click="Attribute_Click"
+                          ToolTip="Windows Explorer hides it (DirectoryFable always shows it)" />
+                <CheckBox x:Name="SystemBox" MinWidth="0" Content="System" Margin="0,0,16,0" Tag="System" Click="Attribute_Click"
+                          ToolTip="Marked as a file of the operating system" />
+                <CheckBox x:Name="ArchiveBox" MinWidth="0" Content="Archive" Tag="Archive" Click="Attribute_Click"
+                          ToolTip="Changed since the last backup (backup programs clear it)" />
+            </WrapPanel>
+            <TextBlock x:Name="AttributesStatus" Margin="0,4,0,0" FontSize="12" TextWrapping="Wrap"
+                       Foreground="{StaticResource SecondaryTextBrush}" Visibility="Collapsed" />
+        </StackPanel>
 
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
             <Button Content="Copy all" MinWidth="100" Margin="0,0,8,0" Click="CopyAll_Click" />
@@ -57,15 +74,15 @@
                             <DataTemplate>
                                 <StackPanel>
                                     <!-- Section header like the Windows Details tab: name, then a fine line. -->
-                                    <DockPanel Margin="0,14,0,6">
+                                    <DockPanel Margin="0,10,0,4">
                                         <TextBlock Text="{Binding Name}" Foreground="{StaticResource GroupChevronBrush}"
-                                                   FontSize="14" Margin="0,0,10,0" />
+                                                   FontSize="13" Margin="0,0,10,0" />
                                         <Rectangle Height="1" Fill="{StaticResource LineBrush}" VerticalAlignment="Center" />
                                     </DockPanel>
                                     <ItemsControl ItemsSource="{Binding Lines}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <Grid Margin="0,3">
+                                                <Grid Margin="0,2">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="190" />
                                                         <ColumnDefinition Width="*" />

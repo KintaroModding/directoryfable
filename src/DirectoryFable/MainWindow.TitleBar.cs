@@ -59,11 +59,13 @@ public partial class MainWindow
         string? file = NotepadPage.Active?.FileName;
         string? image = AstraViewerPage.CurrentPath is { } shown ? System.IO.Path.GetFileName(shown) : null;
         string search = SearchPage.TitleText;
+        string? video = PlayerPage.CurrentPath is { } playing ? System.IO.Path.GetFileName(playing) : null;
         Title = ShownView switch
         {
             MainView.Notepad => file ?? "Notepad#",
             MainView.Viewer => image ?? "AstraViewer",
             MainView.Search => search.Length == 0 ? "SonnetSearch" : $"SonnetSearch: {search}",
+            MainView.Player => video ?? "OpusHC",
             _ => folder,
         };
     }

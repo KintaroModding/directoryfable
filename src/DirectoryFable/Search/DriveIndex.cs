@@ -21,6 +21,12 @@ public sealed class DriveIndex
     internal uint[] Attributes = [];
     internal char[] Names = new char[1 << 16];
     internal int NamesUsed;
+    internal int[] Record = [];        // MFT record number per entry (file table reads only).
+
+    /// <summary>File table reads: the change journal's id and its position when the read began (see UsnJournal).</summary>
+    public bool HasJournal { get; set; }
+    public ulong JournalId { get; set; }
+    public long StartUsn { get; set; }
     private int _count;
 
     private readonly Dictionary<int, string> _folderPaths = [];

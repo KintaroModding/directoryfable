@@ -16,7 +16,9 @@
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <!-- The app's version: the update check compares it with the GitHub release tags (v<Version>),
          and build.ps1 names the release zip after it. -->
-    <Version>1.1.3</Version>
+    <Version>1.2.0</Version>
+    <!-- The version text is only the number (no "+<commit id>" of the build's repository). -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -31,6 +33,7 @@
     <Resource Include="Assets\notepad.ico" />
     <Resource Include="Assets\astraviewer.ico" />
     <Resource Include="Assets\sonnetsearch.ico" />
+    <Resource Include="Assets\opushc.ico" />
     <!-- Icons for files in the Notepad# list (right-click, Icon): <id>-<size>.png, see Editor/FileIcons.cs. -->
     <Resource Include="Assets\NotepadIcons\*.png" />
     <!-- Notepad# syntax definitions (AutoHotkey, INI): loaded by Editor/EditorHighlighting.cs. -->
@@ -41,6 +44,9 @@
 
   <ItemGroup>
     <PackageReference Include="AvalonEdit" Version="6.3.1.120" />
+    <!-- OpusHC: the .NET binding of VLC's engine (LGPL-2.1). The engine itself (libVLC) is not shipped:
+         it is downloaded on first use into the data folder (Player/VlcEngine.cs). -->
+    <PackageReference Include="LibVLCSharp" Version="3.10.2" />
   </ItemGroup>
 
 </Project>

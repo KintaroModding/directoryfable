@@ -61,6 +61,9 @@ public partial class FilePane
     /// <summary>Set by the main window: opens an image in AstraViewer (and puts it at the top of its history).</summary>
     public static Action<string>? OpenInViewer { get; set; }
 
+    /// <summary>Set by the main window: plays a video in OpusHC.</summary>
+    public static Action<string>? OpenInPlayer { get; set; }
+
     /// <summary>Set by the main window: opens files in Notepad#.</summary>
     public static Action<IReadOnlyList<string>>? OpenInNotepad { get; set; }
 
@@ -225,6 +228,20 @@ public partial class FilePane
         }
         else
         {
+            if (permanent)
+            {
+                // DirectoryFable's own (dark) question instead of Windows' one.
+                int folders = files.Count(f => f.IsDirectory);
+                string what = files.Count == 1 ? $"\"{files[0].DisplayName}\""
+                    : folders == 0 ? $"these {files.Count:N0} files"
+                    : folders == files.Count ? $"these {files.Count:N0} folders and everything in them"
+                    : $"these {files.Count:N0} items (folders with everything in them)";
+                var answer = MessageDialog.Show(Window.GetWindow(this),
+                    $"Delete {what} permanently?\n\nThey do not go to the Recycle Bin, and Undo cannot bring them back.",
+                    "Delete permanently", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.Yes);
+                if (answer != MessageBoxResult.Yes)
+                    return;
+            }
             await FileOperations.DeleteAsync(OwnerHandle, [.. files.Select(f => f.FullPath)], permanent);
         }
         await _viewModel.RefreshAsync([], focusAfter);

@@ -8,6 +8,8 @@ public enum ConflictChoice
     Replace,
     Skip,
     KeepBoth,
+    /// <summary>Replace when the new one is newer (<see cref="ConflictPlanner.IsNewer"/>), else skip; decided per item.</summary>
+    ReplaceIfNewer,
 }
 
 /// <summary>An item whose name is taken in the target folder (also inside a folder that is merged into one).</summary>
@@ -110,6 +112,22 @@ public static class ConflictPlanner
         foreach (string source in sources)
             Add(Trim(source), targetFolder);
         return (items, split);
+    }
+
+    /// <summary>
+    /// True when <paramref name="source"/> was modified at least 2 seconds after <paramref name="target"/> (FAT drives
+    /// keep times in 2-second steps, so a smaller difference is "the same").
+    /// </summary>
+    public static bool IsNewer(string source, string target)
+    {
+        try
+        {
+            return File.GetLastWriteTimeUtc(source) - File.GetLastWriteTimeUtc(target) >= TimeSpan.FromSeconds(2);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
     }
 
     /// <summary>"name (2).ext", "name (3).ext" ...: the first that is free in the folder and not given yet.</summary>

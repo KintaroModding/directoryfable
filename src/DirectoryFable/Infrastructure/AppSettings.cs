@@ -38,6 +38,12 @@ public sealed class AppSettings
     /// </summary>
     public bool FolderSizes { get; set; } = true;
 
+    /// <summary>Folder sizes: seconds between two checks of the drives' change journals (2 to 600).</summary>
+    public int FolderSizesCheckSeconds { get; set; } = 10;
+
+    /// <summary>How many recently opened folders This PC shows ("Recent folders"); 0 = none. 0 to 100.</summary>
+    public int RecentFoldersCount { get; set; } = 10;
+
     /// <summary>The quick bar of each pane shows only the icons of its buttons (no labels).</summary>
     public bool QuickBarIconsOnly { get; set; }
 
@@ -70,6 +76,27 @@ public sealed class AppSettings
 
     /// <summary>Image types for AstraViewer, separated by spaces (".png .jpg .gif").</summary>
     public string ViewerFileTypes { get; set; } = Viewer.ImageFileTypes.DefaultList;
+
+    /// <summary>A double-click in DirectoryFable opens <see cref="PlayerFileTypes"/> in OpusHC (Windows' defaults stay untouched).</summary>
+    public bool PlayerOpensFileTypes { get; set; } = true;
+
+    /// <summary>Video types for OpusHC, separated by spaces (".mp4 .mkv").</summary>
+    public string PlayerFileTypes { get; set; } = Player.VideoFileTypes.DefaultList;
+
+    /// <summary>OpusHC: at the end of a video, play the next one of the folder.</summary>
+    public bool PlayerAutoNext { get; set; } = true;
+
+    /// <summary>OpusHC: a video starts where it was left.</summary>
+    public bool PlayerResume { get; set; } = true;
+
+    /// <summary>OpusHC: the filmstrip (small pictures of the whole video) above the timeline.</summary>
+    public bool PlayerFilmstrip { get; set; } = true;
+
+    /// <summary>OpusHC: how many pictures the filmstrip has (one of <see cref="FilmstripCounts"/>).</summary>
+    public int PlayerFilmstripCount { get; set; } = 40;
+
+    /// <summary>The steps of the filmstrip slider on OpusHC's settings page.</summary>
+    public static readonly int[] FilmstripCounts = [20, 30, 40, 50, 60, 80, 100, 120, 160, 200];
 
     /// <summary>AstraViewer: how a newly shown image starts, "fit" (into the window, never enlarged) or "actual" (100 %).</summary>
     public string ViewerZoom { get; set; } = "fit";
@@ -183,6 +210,10 @@ public sealed class AppSettings
           "updateCheckAtStart": {{Json(s.UpdateCheckAtStart)}},
           // true: folders show their size (all files below) in the Size column. Needs an NTFS drive and administrator rights.
           "folderSizes": {{Json(s.FolderSizes)}},
+          // Folder sizes follow the drives' change journals: seconds between two checks (2 to 600).
+          "folderSizesCheckSeconds": {{s.FolderSizesCheckSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture)}},
+          // This PC: how many recently opened folders it shows (0 = none, up to 100).
+          "recentFoldersCount": {{s.RecentFoldersCount.ToString(System.Globalization.CultureInfo.InvariantCulture)}},
           // true: the quick bar of each pane shows only the icons of its buttons (the tooltips name them).
           "quickBarIconsOnly": {{Json(s.QuickBarIconsOnly)}},
           // File list background while inside a ZIP file ("#RRGGBB"; normal list: "#191919").
@@ -210,6 +241,16 @@ public sealed class AppSettings
           // AstraViewer: thumbnails below the image "small", "medium" or "large".
           "viewerThumbnailSize": {{Json(s.ViewerThumbnailSize)}},
           "viewerHistorySize": {{s.ViewerHistorySize.ToString(System.Globalization.CultureInfo.InvariantCulture)}},
+          // OpusHC: a double-click in DirectoryFable opens these video types there (Windows' defaults are not changed).
+          "playerOpensFileTypes": {{Json(s.PlayerOpensFileTypes)}},
+          "playerFileTypes": {{Json(s.PlayerFileTypes)}},
+          // OpusHC: play the next video of the folder at the end; start a video where it was left.
+          "playerAutoNext": {{Json(s.PlayerAutoNext)}},
+          "playerResume": {{Json(s.PlayerResume)}},
+          // OpusHC: the filmstrip above the timeline (small pictures of the whole video; made in memory only).
+          "playerFilmstrip": {{Json(s.PlayerFilmstrip)}},
+          // OpusHC: pictures in the filmstrip: 20, 30, 40, 50, 60, 80, 100, 120, 160 or 200.
+          "playerFilmstripCount": {{s.PlayerFilmstripCount.ToString(System.Globalization.CultureInfo.InvariantCulture)}},
           // Start folders when there is no saved session.
           "leftPath": {{Json(s.LeftPath)}},
           "rightPath": {{Json(s.RightPath)}}

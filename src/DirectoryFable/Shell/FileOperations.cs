@@ -59,12 +59,13 @@ public static class FileOperations
                 else
                     op.CopyItem(CreateItem(item.Source), folder, item.NewName, IntPtr.Zero);
             }
-        }, recorder, progress: NewProgress(move), skipWhenEmpty: () => items.Count == 0);
+        }, recorder, progress: NewProgress(move ? OperationKind.Move : OperationKind.Copy), skipWhenEmpty: () => items.Count == 0);
 
     /// <summary>
     /// Finds names that are already taken in the target and asks about each in DirectoryFable's dialog ("do the same
     /// for the others" answers the rest; a file cannot replace a folder, so such a conflict is still asked).
-    /// Returns the choices by source path, or null when the user cancelled.
+    /// "Replace if newer" becomes Replace or Skip for each item by its own dates. Returns the choices by source
+    /// path, or null when the user cancelled.
     /// </summary>
     private static async Task<Dictionary<string, ConflictChoice>?> ResolveConflictsAsync(
         IntPtr owner, IReadOnlyList<string> sources, string destinationFolder, bool move)
@@ -75,19 +76,23 @@ public static class FileOperations
         for (int i = 0; i < conflicts.Count; i++)
         {
             var conflict = conflicts[i];
-            if (forAll is { } all && !(all == ConflictChoice.Replace && conflict.TypeMismatch))
+            if (forAll is { } all && !(all is ConflictChoice.Replace or ConflictChoice.ReplaceIfNewer && conflict.TypeMismatch))
             {
-                choices[conflict.Source] = all;
+                choices[conflict.Source] = Decide(all, conflict);
                 continue;
             }
             if (Views.ConflictDialog.Ask(owner, conflict, i + 1, conflicts.Count, move) is not { } answer)
                 return null;
-            choices[conflict.Source] = answer.Choice;
+            choices[conflict.Source] = Decide(answer.Choice, conflict);
             if (answer.ForAll)
                 forAll = answer.Choice;
         }
         return choices;
     }
+
+    private static ConflictChoice Decide(ConflictChoice choice, Conflict conflict) =>
+        choice != ConflictChoice.ReplaceIfNewer ? choice
+        : ConflictPlanner.IsNewer(conflict.Source, conflict.Target) ? ConflictChoice.Replace : ConflictChoice.Skip;
 
     private static bool IsInFolder(string path, string folder) =>
         string.Equals(Path.GetDirectoryName(path.TrimEnd('\\')), folder.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase);
@@ -118,8 +123,8 @@ public static class FileOperations
     }
 
     /// <summary>
-    /// Delete to the Recycle Bin, or permanently (Windows asks for confirmation). Only the
-    /// Recycle Bin case can be undone. <paramref name="record"/> = false: not undoable
+    /// Delete to the Recycle Bin, or permanently (the caller asks first, in DirectoryFable's own dialog; Windows
+    /// still warns when an item cannot go to the Recycle Bin). Only the Recycle Bin case can be undone. <paramref name="record"/> = false: not undoable
     /// (used by Undo itself and by "move into a ZIP file").
     /// </summary>
     public static async Task<bool> DeleteAsync(IntPtr owner, IReadOnlyList<string> paths, bool permanent, bool record = true)
@@ -129,10 +134,25 @@ public static class FileOperations
         {
             foreach (string path in paths)
                 op.DeleteItem(CreateItem(path), IntPtr.Zero);
-        }, recorder);
+        }, recorder, progress: NewProgress(permanent || paths.All(IsOnNetwork) ? OperationKind.Delete : OperationKind.Recycle));
         if (recorder is not null)
             UndoManager.Record(UndoKind.Delete, recorder.Items, "");
         return ok;
+    }
+
+    /// <summary>A network path has no Recycle Bin: Windows deletes it for good (after its own question).</summary>
+    private static bool IsOnNetwork(string path)
+    {
+        if (path.StartsWith(@"\\", StringComparison.Ordinal))
+            return true;
+        try
+        {
+            return path.Length >= 2 && path[1] == ':' && new DriveInfo(path[..1]).DriveType == DriveType.Network;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
     }
 
     /// <summary>Copies one file or folder into <paramref name="destinationFolder"/> under a new name (Duplicate).</summary>
@@ -140,7 +160,7 @@ public static class FileOperations
     {
         var recorder = new UndoRecorder([source]);
         bool ok = await RunAsync(owner, CopyMoveFlags, op =>
-            op.CopyItem(CreateItem(source), CreateItem(destinationFolder), newName, IntPtr.Zero), recorder, progress: NewProgress(move: false));
+            op.CopyItem(CreateItem(source), CreateItem(destinationFolder), newName, IntPtr.Zero), recorder, progress: NewProgress(OperationKind.Copy));
         UndoManager.Record(UndoKind.Copy, recorder.Items, destinationFolder);
         return ok;
     }
@@ -194,9 +214,9 @@ public static class FileOperations
 
     // ---------- Runner ----------
 
-    /// <summary>DirectoryFable's progress window for a copy or move (created on the UI thread); null without one.</summary>
-    private static OperationProgress? NewProgress(bool move) =>
-        System.Windows.Application.Current?.Dispatcher is { } ui ? new OperationProgress(ui, move) : null;
+    /// <summary>DirectoryFable's progress window for a copy, move or delete (created on the UI thread); null without one.</summary>
+    private static OperationProgress? NewProgress(OperationKind kind) =>
+        System.Windows.Application.Current?.Dispatcher is { } ui ? new OperationProgress(ui, kind) : null;
 
     /// <param name="recorder">Receives the per-item results (for Undo), or null.</param>
     /// <param name="skipWhenEmpty">After queuing: true = nothing was queued, do not run.</param>
@@ -224,6 +244,7 @@ public static class FileOperations
                 }
                 if (progress is not null)
                 {
+                    progress.EngineThread = GetCurrentThreadId(); // Its question dialogs belong to this thread.
                     dialog = Marshal.GetComInterfaceForObject<OperationProgress, OperationProgress.IOperationsProgressDialog>(progress);
                     op.SetProgressDialog(dialog);
                 }
@@ -396,7 +417,10 @@ public static class FileOperations
     private const uint UndoFlags = FOF_ALLOWUNDO | FOFX_ADDUNDORECORD | FOFX_SHOWELEVATIONPROMPT;
     private const uint CopyMoveFlags = UndoFlags | FOF_NOCONFIRMMKDIR;
     private const uint RecycleFlags = UndoFlags | FOFX_RECYCLEONDELETE | FOF_WANTNUKEWARNING;
-    private const uint DeletePermanentFlags = FOF_WANTNUKEWARNING | FOFX_SHOWELEVATIONPROMPT;
+    private const uint DeletePermanentFlags = FOF_NOCONFIRMATION | FOFX_SHOWELEVATIONPROMPT;
+
+    [DllImport("kernel32.dll")]
+    private static extern uint GetCurrentThreadId();
 
     // ---------- COM interop ----------
 

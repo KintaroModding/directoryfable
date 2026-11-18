@@ -118,6 +118,26 @@ public sealed class ViewerState
     public double ListWidth { get; set; }
 }
 
+/// <summary>OpusHC in the session.</summary>
+public sealed class PlayerState
+{
+    /// <summary>The video shown at the end (null = none).</summary>
+    public string? Current { get; set; }
+
+    public int Volume { get; set; } = 80;
+    public bool Muted { get; set; }
+
+    /// <summary>Where videos were left, the newest first.</summary>
+    public List<PlayerPositionState> Positions { get; set; } = [];
+}
+
+/// <summary>A video and the second it was left at.</summary>
+public sealed class PlayerPositionState
+{
+    public string Path { get; set; } = "";
+    public double Seconds { get; set; }
+}
+
 /// <summary>A group of the Notepad# file list, in list order.</summary>
 public sealed class NotepadGroupState
 {
@@ -173,6 +193,12 @@ public sealed class SessionState
     /// <summary>AstraViewer's history and shown image.</summary>
     public ViewerState? Viewer { get; set; }
 
+    /// <summary>True when OpusHC was the shown view.</summary>
+    public bool PlayerShown { get; set; }
+
+    /// <summary>OpusHC: the last video, volume, where videos were left.</summary>
+    public PlayerState? Player { get; set; }
+
     /// <summary>True when Search was the shown view.</summary>
     public bool SearchShown { get; set; }
 
@@ -181,6 +207,13 @@ public sealed class SessionState
 
     /// <summary>Column widths of the Space view (both panes).</summary>
     public List<ColumnState>? SpaceColumns { get; set; }
+
+    /// <summary>The Space view's block chart is shown, and its share of the height.</summary>
+    public bool SpaceBlocks { get; set; } = true;
+    public double SpaceBlocksShare { get; set; } = 0.45;
+
+    /// <summary>The folders opened last, the newest first (This PC's "Recent folders").</summary>
+    public List<RecentFolderState>? RecentFolders { get; set; }
 
     private static string FilePath => System.IO.Path.Combine(AppSettings.DataFolder, FileName);
 

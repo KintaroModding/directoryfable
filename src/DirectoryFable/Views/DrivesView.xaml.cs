@@ -14,13 +14,37 @@ using DirectoryFable.Shell;
 
 namespace DirectoryFable.Views;
 
-/// <summary>One drive of This PC.</summary>
-public sealed class DriveTile : ObservableObject
+/// <summary>One row of This PC: a drive or a recent folder.</summary>
+public abstract class ThisPcItem : ObservableObject
 {
+    /// <summary>What a double-click opens: "C:\" or the folder's path.</summary>
     public string Root { get; init; } = "";
 
-    /// <summary>"Devices and drives" or "Network locations".</summary>
+    /// <summary>"Devices and drives", "Network locations" or "Recent folders" (in this order).</summary>
     public string Group { get; init; } = "";
+
+    /// <summary>Order inside the group.</summary>
+    public string SortKey { get; init; } = "";
+}
+
+/// <summary>A folder opened lately (<see cref="RecentFolders"/>).</summary>
+public sealed class RecentTile : ThisPcItem
+{
+    public string Name { get; init; } = "";
+
+    /// <summary>After the name, dimmed: the folder that holds it.</summary>
+    public string Folder { get; init; } = "";
+
+    public string OpenedText { get; init; } = "";
+
+    public string ToolTip => Root;
+
+    public ImageSource? Icon { get; init; }
+}
+
+/// <summary>One drive of This PC.</summary>
+public sealed class DriveTile : ThisPcItem
+{
 
     private string _name = "", _detail = "", _line1 = "", _line2 = "", _toolTip = "";
     private ImageSource? _icon;
@@ -77,8 +101,11 @@ public sealed class DriveTile : ObservableObject
 
 /// <summary>
 /// This PC in a pane: the drives in two groups ("Devices and drives", "Network locations") with icon, name, a
-/// usage bar (red from 90 % used), file system, how full, and free of total. Double-click or Enter opens a drive,
-/// a middle click opens it in a new tab, right-click shows Windows' menu for it (Properties, Eject, ...).
+/// usage bar (red from 90 % used), file system, how full, and free of total; then "Recent folders", the folders
+/// opened last (<see cref="RecentFolders"/>; how many is a setting, folders that are gone are left out).
+/// Double-click or Enter opens a drive or folder, a middle click opens it in a new tab, right-click shows Windows'
+/// menu for it (Properties, Eject, ...) with "Open in new tab", "Space usage" and, for a recent folder, "Remove
+/// from this list".
 /// While shown, it reads the drives again every few seconds (free space changes, drives come and go); a slow
 /// network drive is read off the UI thread.
 /// </summary>
@@ -86,10 +113,12 @@ public partial class DrivesView : UserControl
 {
     private const string DevicesGroup = "Devices and drives";
     private const string NetworkGroup = "Network locations";
+    private const string RecentGroup = "Recent folders";
     private const int CmdOpenInNewTab = ShellContextMenu.ExtraCommandFirst;
     private const int CmdSpace = ShellContextMenu.ExtraCommandFirst + 1;
+    private const int CmdForget = ShellContextMenu.ExtraCommandFirst + 2;
 
-    private readonly System.Collections.ObjectModel.ObservableCollection<DriveTile> _tiles = [];
+    private readonly System.Collections.ObjectModel.ObservableCollection<ThisPcItem> _tiles = [];
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(3) };
     private bool _reading;
     private string? _focusRoot;
@@ -100,9 +129,14 @@ public partial class DrivesView : UserControl
         var view = new ListCollectionView(_tiles);
         view.GroupDescriptions.Add(new PropertyGroupDescription(nameof(DriveTile.Group)));
         view.SortDescriptions.Add(new SortDescription(nameof(DriveTile.Group), ListSortDirection.Ascending));
-        view.SortDescriptions.Add(new SortDescription(nameof(DriveTile.Root), ListSortDirection.Ascending));
+        view.SortDescriptions.Add(new SortDescription(nameof(ThisPcItem.SortKey), ListSortDirection.Ascending));
         List.ItemsSource = view;
         _timer.Tick += (_, _) => _ = ReadAsync();
+        RecentFolders.Changed += () =>
+        {
+            if (IsVisible)
+                _ = ReadAsync();
+        };
         IsVisibleChanged += (_, _) =>
         {
             if (IsVisible)
@@ -126,8 +160,8 @@ public partial class DrivesView : UserControl
     /// <summary>"Space usage" in a drive's menu: open its Space view.</summary>
     public event Action<string>? SpaceRequested;
 
-    /// <summary>The selected drive ("C:"), or null.</summary>
-    public string? SelectedRoot => (List.SelectedItem as DriveTile)?.Root;
+    /// <summary>The selected drive ("C:\") or recent folder, or null.</summary>
+    public string? SelectedRoot => (List.SelectedItem as ThisPcItem)?.Root;
 
     /// <summary>Shows the drives; <paramref name="focusRoot"/> (the drive one came up from) is selected.</summary>
     public void Show(string? focusRoot)
@@ -157,8 +191,10 @@ public partial class DrivesView : UserControl
         _reading = true;
         try
         {
-            var drives = await Task.Run(ReadDrives);
+            var recent = RecentFolders.List.ToList();
+            var (drives, folders) = await Task.Run(() => (ReadDrives(), Existing(recent)));
             Apply(drives);
+            ApplyRecent(folders);
         }
         finally
         {
@@ -186,16 +222,63 @@ public partial class DrivesView : UserControl
         return list;
     }
 
+    /// <summary>The recent folders that still exist (a network folder is not checked: an offline server is slow).</summary>
+    private static List<RecentFolderState> Existing(List<RecentFolderState> recent) =>
+        [.. recent.Where(r => IsNetworkPath(r.Path) || Directory.Exists(r.Path))];
+
+    private static bool IsNetworkPath(string path)
+    {
+        if (path.StartsWith(@"\\", StringComparison.Ordinal))
+            return true;
+        try
+        {
+            return path.Length >= 2 && path[1] == ':' && new DriveInfo(path[..1]).DriveType == DriveType.Network;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>The recent folder rows; built again only when the list changed (so a selected row stays selected).</summary>
+    private void ApplyRecent(List<RecentFolderState> folders)
+    {
+        var shown = _tiles.OfType<RecentTile>().ToList();
+        string Key(RecentFolderState r) => r.Path + "|" + r.Opened.Ticks;
+        if (shown.Select(t => t.SortKey[5..]).SequenceEqual(folders.Select(Key), StringComparer.OrdinalIgnoreCase))
+            return;
+        bool wasSelected = List.SelectedItem is RecentTile;
+        foreach (var tile in shown)
+            _tiles.Remove(tile);
+        for (int i = 0; i < folders.Count; i++)
+        {
+            var folder = folders[i];
+            string parent = Path.GetDirectoryName(folder.Path.TrimEnd('\\')) ?? "";
+            _tiles.Add(new RecentTile
+            {
+                Root = folder.Path,
+                Group = RecentGroup,
+                SortKey = $"{i:D4}|{Key(folder)}",
+                Name = PathHelper.GetName(folder.Path),
+                Folder = parent.Length > 0 ? "   " + parent : "",
+                OpenedText = DisplayFormat.Date(folder.Opened),
+                Icon = ShellInfo.GetFolderIconFast(folder.Path),
+            });
+        }
+        if (wasSelected && List.SelectedItem is null && _tiles.Count > 0)
+            List.SelectedIndex = 0;
+    }
+
     private void Apply(List<DriveData> drives)
     {
         var roots = new HashSet<string>(drives.Select(d => d.Root), StringComparer.OrdinalIgnoreCase);
-        foreach (var gone in _tiles.Where(t => !roots.Contains(t.Root)).ToList())
+        foreach (var gone in _tiles.OfType<DriveTile>().Where(t => !roots.Contains(t.Root)).ToList())
             _tiles.Remove(gone);
         foreach (var data in drives)
         {
-            var tile = _tiles.FirstOrDefault(t => string.Equals(t.Root, data.Root, StringComparison.OrdinalIgnoreCase));
+            var tile = _tiles.OfType<DriveTile>().FirstOrDefault(t => string.Equals(t.Root, data.Root, StringComparison.OrdinalIgnoreCase));
             bool isNew = tile is null;
-            tile ??= new DriveTile { Root = data.Root, Group = data.Type == DriveType.Network ? NetworkGroup : DevicesGroup };
+            tile ??= new DriveTile { Root = data.Root, SortKey = data.Root, Group = data.Type == DriveType.Network ? NetworkGroup : DevicesGroup };
             Fill(tile, data);
             if (isNew)
             {
@@ -203,7 +286,7 @@ public partial class DrivesView : UserControl
                 _tiles.Add(tile);
             }
         }
-        if (_focusRoot is not null && _tiles.FirstOrDefault(t => string.Equals(t.Root, _focusRoot, StringComparison.OrdinalIgnoreCase)) is { } focus)
+        if (_focusRoot is not null && _tiles.OfType<DriveTile>().FirstOrDefault(t => string.Equals(t.Root, _focusRoot, StringComparison.OrdinalIgnoreCase)) is { } focus)
         {
             List.SelectedItem = focus;
             _focusRoot = null;
@@ -261,8 +344,8 @@ public partial class DrivesView : UserControl
 
     // ---------- Input ----------
 
-    private DriveTile? TileAt(object source) =>
-        ItemsControl.ContainerFromElement(List, (DependencyObject)source) is ListBoxItem { DataContext: DriveTile tile } ? tile : null;
+    private ThisPcItem? TileAt(object source) =>
+        ItemsControl.ContainerFromElement(List, (DependencyObject)source) is ListBoxItem { DataContext: ThisPcItem tile } ? tile : null;
 
     private void List_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
@@ -281,7 +364,7 @@ public partial class DrivesView : UserControl
 
     private void List_KeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Enter && List.SelectedItem is DriveTile tile)
+        if (e.Key == Key.Enter && List.SelectedItem is ThisPcItem tile)
         {
             e.Handled = true;
             OpenRequested?.Invoke(tile.Root, Keyboard.Modifiers.HasFlag(ModifierKeys.Control));
@@ -298,7 +381,10 @@ public partial class DrivesView : UserControl
         }
     }
 
-    /// <summary>Windows' menu for the drive (Properties, Eject, Format, ...), plus "Open in new tab" and "Space usage".</summary>
+    /// <summary>
+    /// Windows' menu for the drive (Properties, Eject, Format, ...) or recent folder, plus "Open in new tab", "Space
+    /// usage" and, for a recent folder, "Remove from this list".
+    /// </summary>
     private void List_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (TileAt(e.OriginalSource) is not { } tile)
@@ -309,8 +395,12 @@ public partial class DrivesView : UserControl
         Point screen = PointToScreen(e.GetPosition(this));
         try
         {
-            var result = ShellContextMenu.Show(hwnd, tile.Root, [tile.Root], (int)screen.X, (int)screen.Y,
-                [(CmdOpenInNewTab, "Open in new tab"), (CmdSpace, "Space usage")],
+            bool recent = tile is RecentTile;
+            string folder = recent ? Path.GetDirectoryName(tile.Root.TrimEnd('\\')) ?? tile.Root : tile.Root;
+            List<(int, string)> extras = [(CmdOpenInNewTab, "Open in new tab"), (CmdSpace, "Space usage")];
+            if (recent)
+                extras.Add((CmdForget, "Remove from this list"));
+            var result = ShellContextMenu.Show(hwnd, folder, [tile.Root], (int)screen.X, (int)screen.Y, extras,
                 extendedVerbs: Keyboard.Modifiers.HasFlag(ModifierKeys.Shift),
                 ctrlDown: Keyboard.Modifiers.HasFlag(ModifierKeys.Control),
                 shiftDown: Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
@@ -318,6 +408,8 @@ public partial class DrivesView : UserControl
                 OpenRequested?.Invoke(tile.Root, true);
             else if (result.Outcome == ShellMenuOutcome.Extra && result.ExtraCommandId == CmdSpace)
                 SpaceRequested?.Invoke(tile.Root);
+            else if (result.Outcome == ShellMenuOutcome.Extra && result.ExtraCommandId == CmdForget)
+                RecentFolders.Remove(tile.Root);
         }
         catch (Exception)
         {

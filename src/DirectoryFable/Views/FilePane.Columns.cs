@@ -144,10 +144,13 @@ public partial class FilePane
         tab.FolderSizesChanged += OnFolderSizesChanged;
     }
 
-    /// <summary>Folder sizes arrived: a list sorted by size sorts again (not while a name is edited).</summary>
-    private void OnFolderSizesChanged()
+    /// <summary>
+    /// The first folder sizes arrived: a list sorted by size sorts again (not while a name is edited). Later live
+    /// changes only change the numbers: sorting again every few seconds would make the list jump.
+    /// </summary>
+    private void OnFolderSizesChanged(bool first)
     {
-        if (_view is null || _viewOwner is not { SortColumn: SortColumn.Size } tab || tab.Items.Any(i => i.IsRenaming))
+        if (!first || _view is null || _viewOwner is not { SortColumn: SortColumn.Size } tab || tab.Items.Any(i => i.IsRenaming))
             return;
         bool hadFocus = FileList.IsKeyboardFocusWithin;
         _view.Refresh();

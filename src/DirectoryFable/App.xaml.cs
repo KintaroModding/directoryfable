@@ -67,6 +67,8 @@ public partial class App : Application
         SevenZip.Configure(settings.SevenZipFolder);
         Editor.EditorFileTypes.Configure(settings);
         Viewer.ImageFileTypes.Configure(settings);
+        Player.VideoFileTypes.Configure(settings);
+        Player.VlcEngine.CleanUpPending(); // A "Remove" of VLC's engine that had to wait for its files.
 
         _window = new MainWindow(folders.ElementAtOrDefault(0), folders.ElementAtOrDefault(1), trayMode, settings, session);
         MainWindow = _window;
