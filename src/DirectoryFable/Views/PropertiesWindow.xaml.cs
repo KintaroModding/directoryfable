@@ -9,13 +9,18 @@ using DirectoryFable.Shell;
 namespace DirectoryFable.Views;
 
 /// <summary>
-/// Own file properties window (row "ⓘ" button, Alt+Enter): the "Details" tab of Windows'
-/// properties, read by <see cref="FileProperties"/>. Not modal, so several can stay open.
+/// Own file properties window (row "ⓘ" button, Alt+Enter): first "General" as Windows' General tab
+/// (<see cref="GeneralProperties"/>: type, location, size and size on disk, what a folder contains, dates,
+/// attributes; a folder is counted in the background), then the "Details" tab of Windows' properties, read by
+/// <see cref="FileProperties"/>. Not modal, so several can stay open.
 /// </summary>
 public partial class PropertiesWindow : Window
 {
     private readonly string _path;
-    private List<PropertyGroup> _groups = [];
+    private readonly System.Collections.ObjectModel.ObservableCollection<PropertyGroup> _groups = [];
+    private readonly GeneralProperties.FolderTotals? _totals;
+    private readonly CancellationTokenSource _closing = new();
+    private System.Windows.Threading.DispatcherTimer? _countTimer;
 
     private PropertiesWindow(string path, ImageSource? icon)
     {
@@ -26,7 +31,49 @@ public partial class PropertiesWindow : Window
         ItemIcon.Source = icon;
         ItemName.Text = name;
         ItemFolder.Text = Path.GetDirectoryName(path.TrimEnd('\\')) ?? "";
+        Groups.ItemsSource = _groups;
+        if (Directory.Exists(path) && Path.GetPathRoot(path)?.TrimEnd('\\') != path.TrimEnd('\\'))
+            _totals = new GeneralProperties.FolderTotals();
+        ShowGeneral();
+        Closed += (_, _) =>
+        {
+            _closing.Cancel();
+            _countTimer?.Stop();
+        };
         Loaded += async (_, _) => await LoadAsync();
+    }
+
+    /// <summary>The General section (first); while a folder is counted, it is renewed four times a second.</summary>
+    private void ShowGeneral()
+    {
+        PropertyGroup general;
+        try
+        {
+            general = GeneralProperties.For(_path, _totals);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            general = new PropertyGroup("General", [new PropertyLine("Error", ex.Message)]);
+        }
+        if (_groups.Count > 0 && _groups[0].Name == "General")
+            _groups[0] = general;
+        else
+            _groups.Insert(0, general);
+    }
+
+    private void StartCounting()
+    {
+        if (_totals is null)
+            return;
+        _ = GeneralProperties.CountAsync(_path, _totals, _closing.Token);
+        _countTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+        _countTimer.Tick += (_, _) =>
+        {
+            ShowGeneral();
+            if (_totals.Done)
+                _countTimer.Stop();
+        };
+        _countTimer.Start();
     }
 
     public static void Open(Window? owner, string path, ImageSource? icon) =>
@@ -34,16 +81,16 @@ public partial class PropertiesWindow : Window
 
     private async Task LoadAsync()
     {
+        StartCounting();
+        StatusText.Visibility = Visibility.Collapsed; // General is there at once.
         try
         {
-            _groups = await FileProperties.ReadAsync(_path);
-            Groups.ItemsSource = _groups;
-            StatusText.Visibility = _groups.Count > 0 ? Visibility.Collapsed : Visibility.Visible;
-            StatusText.Text = "Windows has no properties for this item.";
+            foreach (var group in await FileProperties.ReadAsync(_path))
+                _groups.Add(group);
         }
         catch (Exception ex) when (ex is COMException or FileNotFoundException or UnauthorizedAccessException or ArgumentException)
         {
-            StatusText.Text = $"Cannot read the properties: {ex.Message}";
+            _groups.Add(new PropertyGroup("Details", [new PropertyLine("Error", $"Cannot read the properties: {ex.Message}")]));
         }
     }
 

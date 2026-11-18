@@ -54,9 +54,11 @@ yourself, see [Build](#build).
   and its subfolders, like `Ctrl+F`).
 - **Archives as folders**: ZIP read and write; 7z and RAR read only, through an
   installed [7-Zip](https://www.7-zip.org/).
-- **Properties window** with the details Windows knows for the file type (for
-  example image size, artist, page count). `Alt+Enter` or the info button on a
-  row.
+- **Properties window** (`Alt+Enter` or the info button on a row): first
+  General, as Windows' General tab (type, location, size and size on disk with
+  the exact bytes, what a folder contains - counted while you look -, dates,
+  attributes; drives: capacity, used, free, file system), then the details
+  Windows knows for the file type (for example image size, artist, page count).
 - **Status bar**: selected and total folders, files and size; free space.
 - **Settings page** behind the gear button. A normal window with a taskbar
   button (the default), or tray mode: only a tray icon, and closing the window

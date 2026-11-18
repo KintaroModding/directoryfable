@@ -82,7 +82,7 @@ public partial class FileProgressWindow : Window
         {
             try
             {
-                Clipboard.SetText(text.Text);
+                Clipboard.SetText(text.Tag as string ?? text.Text);
             }
             catch (System.Runtime.InteropServices.COMException)
             {
@@ -129,7 +129,9 @@ public partial class FileProgressWindow : Window
         ToRun.Text = s.To.Length > 0 ? s.To : "...";
         FromPathText.Text = s.FromPath.Length > 0 ? s.FromPath : s.From;
         ToPathText.Text = s.ToPath.Length > 0 ? s.ToPath : s.To;
-        ItemPathText.Text = s.ItemPath.Length > 0 ? s.ItemPath : s.Item;
+        string itemPath = s.ItemPath.Length > 0 ? s.ItemPath : s.Item;
+        ItemPathText.Text = Relative(itemPath, s.FromPath);
+        ItemPathText.Tag = itemPath; // "Copy path" copies the full path.
         ItemText.Text = s.Item;
 
         Bar.IsIndeterminate = s.Counting;
@@ -155,6 +157,19 @@ public partial class FileProgressWindow : Window
 
         PauseText.Text = s.Paused ? "Resume" : "Pause";
         PauseIcon.Text = s.Paused ? "" : ""; // Play / Pause
+    }
+
+    /// <summary>
+    /// The item's path below the From folder, after "..." ("...\Game\Bundles\a.unit"): the From line above
+    /// already shows the start. An item elsewhere keeps its full path.
+    /// </summary>
+    private static string Relative(string path, string from)
+    {
+        string root = from.TrimEnd('\\');
+        return root.Length > 0 && path.Length > root.Length + 1 && path[root.Length] == '\\'
+            && path.StartsWith(root, StringComparison.OrdinalIgnoreCase)
+                ? "..." + path[root.Length..]
+                : path;
     }
 
     private static string Speed(double bytesPerSecond) => DisplayFormat.Size((long)Math.Max(0, bytesPerSecond)) + "/s";

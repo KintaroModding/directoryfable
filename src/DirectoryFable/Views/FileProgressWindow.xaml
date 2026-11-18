@@ -1,7 +1,7 @@
 <Window x:Class="DirectoryFable.Views.FileProgressWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Copying" Width="540" SizeToContent="Height" ResizeMode="CanMinimize"
+        Title="Copying" Width="810" SizeToContent="Height" ResizeMode="CanMinimize"
         ShowInTaskbar="True" WindowStartupLocation="Manual"
         Background="{StaticResource WindowBackgroundBrush}"
         Foreground="{StaticResource ListTextBrush}"
