@@ -39,7 +39,9 @@ public partial class NotepadView : UserControl
         Editor.TextArea.SelectionBorder = null;
         Editor.TextArea.Caret.CaretBrush = Brushes.White;
         // Ctrl+F: the dark search box (style in Themes/Controls.xaml); matches in a dim orange.
-        var search = SearchPanel.Install(Editor);
+        var search = _search = SearchPanel.Install(Editor);
+        search.Loaded += (_, _) => HookReplace(search); // Replace row (Ctrl+H, NotepadView.Find.cs).
+        FindResults.ItemsSource = _hits; // Find in files (Ctrl+Shift+F).
         search.MarkerBrush = new SolidColorBrush(Color.FromArgb(0x70, 0xB3, 0x5C, 0x1E));
         search.MarkerCornerRadius = 2;
         Minimap.Attach(Editor);
@@ -570,7 +572,7 @@ public partial class NotepadView : UserControl
             return;
         var document = Active;
         SaveButton.IsEnabled = document is { HasContent: true };
-        LanguageButton.IsEnabled = document is not null;
+        LanguageButton.IsEnabled = PreviousLanguageButton.IsEnabled = NextLanguageButton.IsEnabled = document is not null;
         LanguageText.Text = document?.LanguageName ?? "Normal Text";
         ShowPath(document);
         if (document is null)
@@ -774,7 +776,7 @@ public partial class NotepadView : UserControl
         var menu = NewMenu(LanguageButton, PlacementMode.Bottom);
         menu.Items.Add(LanguageItem(document, null, "Normal Text"));
         menu.Items.Add(new Separator());
-        foreach (var letter in EditorHighlighting.Languages.GroupBy(d => char.ToUpperInvariant(d.Name[0])).OrderBy(g => g.Key))
+        foreach (var letter in LanguagesByLetter())
         {
             var group = new MenuItem { Header = letter.Key.ToString() };
             foreach (var definition in letter)
@@ -784,17 +786,37 @@ public partial class NotepadView : UserControl
         menu.IsOpen = true;
     }
 
+    private static IEnumerable<IGrouping<char, IHighlightingDefinition>> LanguagesByLetter() =>
+        EditorHighlighting.Languages.GroupBy(d => char.ToUpperInvariant(d.Name[0])).OrderBy(g => g.Key);
+
     private MenuItem LanguageItem(EditorDocument document, IHighlightingDefinition? definition, string header)
     {
         var item = new MenuItem { Header = header, IsCheckable = true, IsChecked = document.Highlighting == definition };
-        item.Click += (_, _) =>
-        {
-            document.Highlighting = definition;
-            if (document == Active)
-                Editor.SyntaxHighlighting = definition;
-            UpdateStatus();
-        };
+        item.Click += (_, _) => SetLanguage(document, definition);
         return item;
+    }
+
+    private void SetLanguage(EditorDocument document, IHighlightingDefinition? definition)
+    {
+        document.Highlighting = definition;
+        if (document == Active)
+            Editor.SyntaxHighlighting = definition;
+        UpdateStatus();
+    }
+
+    private void PreviousLanguage_Click(object sender, RoutedEventArgs e) => StepLanguage(-1);
+
+    private void NextLanguage_Click(object sender, RoutedEventArgs e) => StepLanguage(1);
+
+    /// <summary>The language before / after the current one, in the menu's order (Normal Text first); wraps at both ends.</summary>
+    private void StepLanguage(int step)
+    {
+        if (Active is not { } document)
+            return;
+        var order = new List<IHighlightingDefinition?> { null };
+        order.AddRange(LanguagesByLetter().SelectMany(letter => letter));
+        int at = Math.Max(0, order.IndexOf(document.Highlighting));
+        SetLanguage(document, order[(at + step + order.Count) % order.Count]);
     }
 
     private ContextMenu NewMenu(UIElement target, PlacementMode placement) => new()
@@ -820,6 +842,20 @@ public partial class NotepadView : UserControl
         {
             e.Handled = true;
             NewFile();
+        }
+        else if (key == Key.F && modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
+        {
+            e.Handled = true;
+            ShowFindPanel();
+        }
+        else if (key == Key.H && modifiers == ModifierKeys.Control && Editor.Visibility == Visibility.Visible)
+        {
+            e.Handled = true;
+            SetReplaceMode(true);
+        }
+        else if (key == Key.F && modifiers == ModifierKeys.Control && _search is not null)
+        {
+            _search.Tag = null; // Ctrl+F: the search box without its replace row (AvalonEdit opens it).
         }
         else if (key == Key.S && modifiers == (ModifierKeys.Control | ModifierKeys.Alt))
         {

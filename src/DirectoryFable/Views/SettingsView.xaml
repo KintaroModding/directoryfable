@@ -91,6 +91,22 @@
                 </Grid>
             </Border>
 
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Style="{StaticResource SettingName}" Text="Start hidden" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="DirectoryFable starts without showing its window. Tray mode: it stays hidden until you click the tray icon. Taskbar mode: it starts minimized. Not when it is started with a folder, or right after an update." />
+                    </StackPanel>
+                    <CheckBox x:Name="StartHidden" Grid.Column="1" VerticalAlignment="Center" Content="Hidden"
+                              Checked="Flag_Changed" Unchecked="Flag_Changed" />
+                </Grid>
+            </Border>
+
             <!-- ===== Start ===== -->
             <TextBlock Style="{StaticResource SectionTitle}" Text="Start" />
 
@@ -200,6 +216,25 @@
                     <ComboBox x:Name="CheckSecondsBox" Grid.Column="1" Width="110" VerticalAlignment="Center" IsEditable="True"
                               SelectionChanged="CheckSeconds_Changed" LostKeyboardFocus="CheckSeconds_LostFocus" KeyDown="CheckSeconds_KeyDown" />
                     <TextBlock Grid.Column="2" Margin="10,0,0,0" VerticalAlignment="Center" Style="{StaticResource SettingHelp}" Text="seconds" />
+                </Grid>
+            </Border>
+
+            <!-- ===== Folder tree ===== -->
+            <TextBlock Style="{StaticResource SectionTitle}" Text="Folder tree" />
+
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Style="{StaticResource SettingName}" Text="Network" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="A Network group after This PC: this computer and the servers of mapped drives, favorites and recent folders; the computers that Windows' network discovery finds are added as they come in (that needs network discovery on, here and there). Open a computer to see its shares. F5 on the group searches again. Applies at once." />
+                    </StackPanel>
+                    <CheckBox x:Name="NetworkInTree" Grid.Column="1" VerticalAlignment="Center" Content="Show"
+                              Checked="NetworkInTree_Changed" Unchecked="NetworkInTree_Changed" />
                 </Grid>
             </Border>
 
@@ -323,7 +358,7 @@
                     </StackPanel>
                     <TextBox x:Name="ArchiveBackground" Grid.Column="1" Width="110" VerticalAlignment="Center"
                              TextChanged="ArchiveBackground_TextChanged" />
-                    <Border x:Name="ArchiveSwatch" Grid.Column="2" Width="28" Height="28" Margin="8,0,0,0" CornerRadius="3"
+                    <Border x:Name="ArchiveSwatch" Grid.Column="2" Width="28" Height="28" Margin="8,0,0,0"
                             BorderBrush="{StaticResource LineBrush}" BorderThickness="1" VerticalAlignment="Center" />
                     <Button Grid.Column="3" Content="Default" MinWidth="80" Margin="8,0,0,0" VerticalAlignment="Center"
                             Click="ArchiveDefault_Click" />

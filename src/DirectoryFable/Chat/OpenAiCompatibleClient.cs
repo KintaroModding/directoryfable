@@ -160,6 +160,37 @@ public static class OpenAiCompatibleClient
                     }).ToList(),
                 });
             }
+            else if (m.Role == "user" && (m.Images is { Count: > 0 } || m.Files is { Count: > 0 }))
+            {
+                // Attached text files are part of the text; pictures and PDFs make the content a list of parts
+                // (a picture as a data URL, a PDF as a file part).
+                string text = ChatFiles.TextWithFiles(m);
+                var pdfs = ChatFiles.Pdfs(m);
+                if (m.Images is not { Count: > 0 } && pdfs.Count == 0)
+                {
+                    messages.Add(new Dictionary<string, object?> { ["role"] = "user", ["content"] = text });
+                    continue;
+                }
+                var parts = new List<object>();
+                if (text.Length > 0)
+                    parts.Add(new Dictionary<string, object?> { ["type"] = "text", ["text"] = text });
+                foreach (string name in m.Images ?? [])
+                {
+                    if (ChatImages.ForApi(name) is { } image)
+                        parts.Add(new Dictionary<string, object?>
+                        {
+                            ["type"] = "image_url",
+                            ["image_url"] = new Dictionary<string, object?> { ["url"] = $"data:{image.MediaType};base64,{image.Base64}" },
+                        });
+                }
+                foreach (var (name, base64) in pdfs)
+                    parts.Add(new Dictionary<string, object?>
+                    {
+                        ["type"] = "file",
+                        ["file"] = new Dictionary<string, object?> { ["filename"] = name, ["file_data"] = $"data:application/pdf;base64,{base64}" },
+                    });
+                messages.Add(new Dictionary<string, object?> { ["role"] = "user", ["content"] = parts });
+            }
             else
             {
                 messages.Add(new Dictionary<string, object?> { ["role"] = m.Role, ["content"] = m.Content });

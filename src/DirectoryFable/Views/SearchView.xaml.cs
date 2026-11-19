@@ -35,6 +35,16 @@ public partial class SearchView : UserControl
 
     // Read drives and folders are kept in DriveIndexCache (shared with the folder sizes and the Space view).
     private CancellationTokenSource? _queryCancel;
+
+    // "Containing": which files hold the text, kept per file (size and date tell when to read it again) while the
+    // text and match case stay the same; a run with other filters then reads only files it has not read yet.
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (long Size, long Modified, bool Hit)> _contentHits =
+        new(StringComparer.OrdinalIgnoreCase);
+    private string _contentKey = "";
+    private bool _readingContents;
+
+    // "Duplicates": what each file gave is kept, so a run with other filters reads only new files.
+    private readonly DuplicateFinder _duplicates = new();
     private readonly System.Windows.Threading.DispatcherTimer _debounce;
     private readonly System.Windows.Threading.DispatcherTimer _progressTimer;
 
@@ -100,13 +110,14 @@ public partial class SearchView : UserControl
         QueryBox.SelectAll();
     }, System.Windows.Threading.DispatcherPriority.Input);
 
-    /// <summary>Ctrl+F in the explorer: search only this folder (and below).</summary>
+    /// <summary>Ctrl+F in the explorer: search only this folder (and below). A new search: Duplicates is off.</summary>
     public void SearchIn(string folder)
     {
         string path = Path.GetFullPath(folder);
         _filling = true;
         foreach (var drive in _top.Where(n => n.IsDrive))
             drive.IsChecked = false;
+        DuplicatesToggle.IsChecked = false;
         _filling = false;
         foreach (string other in _checkedFolders.ToList())
             SetFolderChecked(other, false);
@@ -325,6 +336,8 @@ public partial class SearchView : UserControl
             TypeBox.SelectedIndex = SizeBox.SelectedIndex = DateColumnBox.SelectedIndex = RangeBox.SelectedIndex = 0;
             ExtensionsBox.Text = "";
             ExtensionsBox.Visibility = Visibility.Collapsed;
+            ContentBox.Text = "";
+            DuplicatesToggle.IsChecked = false;
         }
         finally
         {
@@ -342,6 +355,10 @@ public partial class SearchView : UserControl
 
     private void QueryBox_TextChanged(object sender, TextChangedEventArgs e)
     {
+        // Other text is a new search: Duplicates goes off (it would hold back the results); it is only ever
+        // switched on by hand, after the text (the filters keep it on: they narrow the duplicates).
+        if (!_filling)
+            DuplicatesToggle.IsChecked = false;
         QueryHint.Visibility = QueryBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         TitleChanged?.Invoke();
         ScheduleRun();
@@ -357,6 +374,187 @@ public partial class SearchView : UserControl
     }
 
     private void Extensions_TextChanged(object sender, TextChangedEventArgs e) => ScheduleRun();
+
+    /// <summary>The text inside files is searched on Enter only (reading files takes time); emptied: at once.</summary>
+    private void ContentBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (ContentBox.Text.Length == 0)
+            ScheduleRun();
+        else
+            StateChanged?.Invoke();
+    }
+
+    private void ContentBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            e.Handled = true;
+            _ = RunAsync(reread: false);
+        }
+    }
+
+    /// <summary>
+    /// Keeps the files of the result that contain the text (folders go): read four at a time, the progress in the
+    /// status line, Esc stops. Files read before (same size and date) are not read again.
+    /// </summary>
+    private async Task<SearchResult> FilterByContentAsync(SearchResult result, string text, bool matchCase, CancellationToken token)
+    {
+        var pattern = ContentSearch.Build(text, matchCase, wholeWords: false, regex: false)!;
+        string key = (matchCase ? "1" : "0") + text;
+        if (key != _contentKey)
+        {
+            _contentHits.Clear();
+            _contentKey = key;
+        }
+        var items = result.Items;
+        var keep = new bool[items.Length];
+        int files = items.Count(item => !result.IndexOf(item).IsDirectory(SearchResult.EntryOf(item)));
+        int done = 0;
+        var progress = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+        progress.Tick += (_, _) => StatusText.Text = $"Searching inside the files: {done:N0} of {files:N0}   (Esc stops)";
+        progress.Start();
+        _readingContents = true;
+        try
+        {
+            await Task.Run(() => Parallel.For(0, items.Length, new ParallelOptions { CancellationToken = token, MaxDegreeOfParallelism = 4 }, k =>
+            {
+                var index = result.IndexOf(items[k]);
+                int i = SearchResult.EntryOf(items[k]);
+                if (index.IsDirectory(i))
+                    return;
+                string path = index.FolderPath(i) + index.Name(i).ToString();
+                long size = index.Size[i], modified = index.Modified[i];
+                bool hit;
+                if (_contentHits.TryGetValue(path, out var known) && known.Size == size && known.Modified == modified)
+                {
+                    hit = known.Hit;
+                }
+                else
+                {
+                    hit = ContentSearch.Contains(path, pattern);
+                    _contentHits[path] = (size, modified, hit);
+                }
+                keep[k] = hit;
+                Interlocked.Increment(ref done);
+            }), token);
+        }
+        finally
+        {
+            progress.Stop();
+            _readingContents = false;
+        }
+        var filtered = new List<long>();
+        for (int k = 0; k < items.Length; k++)
+        {
+            if (keep[k])
+                filtered.Add(items[k]);
+        }
+        return new SearchResult(result.Indexes, [.. filtered], result.Searched, result.Totals);
+    }
+
+    /// <summary>"Duplicates" switched: the search runs at once (on: the found files of the same size are compared).</summary>
+    private void Duplicates_Click(object sender, RoutedEventArgs e)
+    {
+        StateChanged?.Invoke();
+        _ = RunAsync(reread: false);
+    }
+
+    /// <summary>Keeps the files that have the same content as another file of the result, in groups; Esc stops.</summary>
+    private async Task<SearchResult> FindDuplicatesAsync(SearchResult result, CancellationToken token)
+    {
+        var progress = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+        progress.Tick += (_, _) => StatusText.Text = _duplicates.ProgressText + "   (Esc stops)";
+        progress.Start();
+        StatusText.Text = "Duplicates: grouping the files by size...";
+        var sort = _sort;
+        bool descending = _descending;
+        _readingContents = true;
+        try
+        {
+            return await Task.Run(() =>
+            {
+                var found = _duplicates.Find(result, token);
+                if (sort != ResultSort.None && found.Groups is { } groups)
+                    SearchRunner.SortGroups(found.Items, groups, found.Indexes, found.Totals, sort, descending, token);
+                return found;
+            }, token);
+        }
+        finally
+        {
+            progress.Stop();
+            _readingContents = false;
+        }
+    }
+
+    /// <summary>Selects all files of each group but its first row (what can go, one copy stays).</summary>
+    private void KeepOne_Click(object sender, RoutedEventArgs e)
+    {
+        if (Results.ItemsSource is not SearchRowList rows || rows.Result.Groups is not { } groups)
+            return;
+        Results.SelectedItems.Clear();
+        int selected = 0;
+        for (int p = 1; p < groups.Length; p++)
+        {
+            if (groups[p] != groups[p - 1])
+                continue;
+            Results.SelectedItems.Add(rows[p]);
+            selected++;
+        }
+        Results.Focus();
+        StatusText.Text = $"{selected:N0} files selected: all but the first of each group. Delete moves them to the Recycle Bin.";
+    }
+
+    /// <summary>
+    /// Moves the rows' files and folders to the Recycle Bin (as Delete in the explorer; Undo brings them back), then
+    /// takes what is gone off the list. Duplicates: a group with one file left goes too.
+    /// </summary>
+    private async Task DeleteAsync(List<SearchRow> rows)
+    {
+        var paths = rows.Select(r => r.FullPath).ToList();
+        if (paths.Count == 0)
+            return;
+        await FileOperations.DeleteAsync(new WindowInteropHelper(Window.GetWindow(this)).Handle, paths, permanent: false);
+        var gone = paths.Where(p => !File.Exists(p) && !Directory.Exists(p)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (gone.Count == 0)
+            return;
+        RemoveFromResult(gone);
+        StatusText.Text = $"{gone.Count:N0} item(s) moved to the Recycle Bin.   " + StatusText.Text;
+    }
+
+    private void RemoveFromResult(HashSet<string> gone)
+    {
+        var current = _result;
+        var items = new List<long>(current.Items.Length);
+        var groups = current.Groups is null ? null : new List<int>(current.Items.Length);
+        for (int p = 0; p < current.Items.Length; p++)
+        {
+            long item = current.Items[p];
+            if (gone.Contains(current.IndexOf(item).FullPath(SearchResult.EntryOf(item))))
+                continue;
+            items.Add(item);
+            groups?.Add(current.Groups![p]);
+        }
+        if (groups is not null)
+        {
+            // Groups with one file left are no duplicates any more; the others are numbered again.
+            var counts = groups.GroupBy(g => g).ToDictionary(g => g.Key, g => g.Count());
+            var numbers = new Dictionary<int, int>();
+            var keptItems = new List<long>();
+            var keptGroups = new List<int>();
+            for (int p = 0; p < items.Count; p++)
+            {
+                if (counts[groups[p]] < 2)
+                    continue;
+                if (!numbers.TryGetValue(groups[p], out int number))
+                    numbers[groups[p]] = number = numbers.Count + 1;
+                keptItems.Add(items[p]);
+                keptGroups.Add(number);
+            }
+            items = keptItems;
+            groups = keptGroups;
+        }
+        ShowResult(new SearchResult(current.Indexes, [.. items], current.Searched, current.Totals, groups?.ToArray()));
+    }
 
     private void ScheduleRun()
     {
@@ -519,6 +717,11 @@ public partial class SearchView : UserControl
                     return;
             }
             var result = await Task.Run(() => SearchRunner.Run(indexes, scopes, query, _sort, _descending, totals, token), token);
+            string content = ContentBox.Text;
+            if (content.Length > 0 && !token.IsCancellationRequested)
+                result = await FilterByContentAsync(result, content, CaseToggle.IsChecked == true, token);
+            if (DuplicatesToggle.IsChecked == true && !token.IsCancellationRequested)
+                result = await FindDuplicatesAsync(result, token);
             if (!token.IsCancellationRequested)
                 ShowResult(result);
         }
@@ -564,9 +767,16 @@ public partial class SearchView : UserControl
     private void ShowResult(SearchResult result)
     {
         _result = result;
+        // Duplicates: the rows of a group share one background, and "#" is the group number.
+        bool groups = result.Groups is not null;
+        Results.ItemContainerStyle = (Style)FindResource(groups ? "DuplicateRowStyle" : "AlternatingFileRowStyle");
+        _headerLabels["Number"] = groups ? "Group" : "#";
+        UpdateHeaders();
+        KeepOneButton.Visibility = groups && result.Items.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         Results.ItemsSource = new SearchRowList(result);
-        Scrubber.SetResult(result, _sort);
-        EmptyText.Text = result.Items.Length == 0 && result.Searched > 0 ? "Nothing found." : "";
+        // Duplicates stand in group order, the largest files first: the scroll rail shows size steps then.
+        Scrubber.SetResult(result, groups ? ResultSort.Size : _sort);
+        EmptyText.Text = result.Items.Length == 0 && result.Searched > 0 ? (groups ? "No duplicates found." : "Nothing found.") : "";
         if (result.Items.Length == 0 && result.Searched == 0 && EmptyText.Text.Length == 0)
             EmptyText.Text = "Press Enter to search.";
         if (!DriveIndexCache.IsReading)
@@ -588,7 +798,17 @@ public partial class SearchView : UserControl
             ? "   ·   Not administrator: drives are read with a folder walk (slow). Run DirectoryFable as administrator for the fast search."
             : "";
         string gone = _missingFolders.Count > 0 ? $"   ·   Not found (moved or deleted?): {string.Join(", ", _missingFolders)}" : "";
-        StatusText.Text = $"{result.Items.Length:N0} of {result.Searched:N0} objects   ·   {string.Join("   ·   ", sources.Distinct())}{hint}{gone}";
+        string containing = ContentBox.Text.Length > 0 ? $" containing \"{ContentBox.Text}\"" : "";
+        string found = $"{result.Items.Length:N0} of {result.Searched:N0} objects{containing}";
+        if (result.Groups is not null)
+        {
+            var (groups, files, freeable) = DuplicateFinder.Summarize(result);
+            found = groups == 0
+                ? $"No duplicates in {result.Searched:N0} objects{containing}"
+                : $"{files:N0} duplicate files in {groups:N0} group{(groups == 1 ? "" : "s")}, {DisplayFormat.Size(freeable)} to free (one file of each group kept), " +
+                  $"of {result.Searched:N0} objects{containing}";
+        }
+        StatusText.Text = $"{found}   ·   {string.Join("   ·   ", sources.Distinct())}{hint}{gone}";
         var oldest = result.Indexes.Min(i => i.ReadAt);
         AgeText.Text = $"Read at {oldest:HH:mm:ss}  ·  Enter reads again";
     }
@@ -645,9 +865,16 @@ public partial class SearchView : UserControl
         var sort = _sort;
         bool descending = _descending;
         StatusText.Text = "Sorting...";
-        await Task.Run(() => SearchRunner.Sort(items, current.Indexes, current.Totals, sort, descending, CancellationToken.None));
+        // Duplicates: inside each group only, so the groups stay together.
+        await Task.Run(() =>
+        {
+            if (current.Groups is { } groups)
+                SearchRunner.SortGroups(items, groups, current.Indexes, current.Totals, sort, descending, CancellationToken.None);
+            else
+                SearchRunner.Sort(items, current.Indexes, current.Totals, sort, descending, CancellationToken.None);
+        });
         if (_result == current)
-            ShowResult(new SearchResult(current.Indexes, items, current.Searched, current.Totals));
+            ShowResult(new SearchResult(current.Indexes, items, current.Searched, current.Totals, current.Groups));
     }
 
     // ---------- Results: open, menu, drag ----------
@@ -722,6 +949,8 @@ public partial class SearchView : UserControl
             Add("Copy (files)", () => FileClipboard.SetFiles(paths, cut: false));
             Add("Copy paths", () => CopyText(string.Join(Environment.NewLine, paths)));
             Add($"Show {clicked.Name} in explorer", () => ShowInExplorerRequested?.Invoke(clicked.FullPath));
+            menu.Items.Add(new Separator());
+            Add("Delete (to the Recycle Bin)", () => _ = DeleteAsync(rows));
             menu.IsOpen = true;
             return;
         }
@@ -790,8 +1019,12 @@ public partial class SearchView : UserControl
             return;
         _dragStart = null;
         var paths = SelectedRows().Select(r => r.FullPath).ToArray();
-        if (paths.Length > 0)
-            DragDrop.DoDragDrop(Results, new DataObject(DataFormats.FileDrop, paths), DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link);
+        if (paths.Length == 0)
+            return;
+        // With Windows' drag picture; a plain drag when that cannot start.
+        var effects = DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link;
+        if (!Shell.ShellDrag.TryStart(Results, paths, effects))
+            DragDrop.DoDragDrop(Results, new DataObject(DataFormats.FileDrop, paths), effects);
     }
 
     // ---------- Keys ----------
@@ -811,6 +1044,18 @@ public partial class SearchView : UserControl
                 e.Handled = true;
                 DriveIndexCache.CancelReads();
             }
+            else if (_readingContents)
+            {
+                e.Handled = true;
+                _queryCancel?.Cancel();
+                StatusText.Text = "Stopped.";
+            }
+            return;
+        }
+        if (e.Key == Key.Enter && modifiers == ModifierKeys.None && Keyboard.FocusedElement == ContentBox)
+        {
+            e.Handled = true;
+            _ = RunAsync(reread: false); // "Containing": search with the places as read.
             return;
         }
         if ((e.Key == Key.Enter && Keyboard.FocusedElement is not ListViewItem && modifiers == ModifierKeys.None) ||
@@ -834,6 +1079,11 @@ public partial class SearchView : UserControl
             e.Handled = true;
             foreach (var row in rows.Take(10))
                 Open(row);
+        }
+        else if (e.Key == Key.Delete && modifiers == ModifierKeys.None && rows.Count > 0)
+        {
+            e.Handled = true;
+            _ = DeleteAsync(rows);
         }
         else if (e.Key == Key.C && modifiers == ModifierKeys.Control && rows.Count > 0)
         {
@@ -864,6 +1114,7 @@ public partial class SearchView : UserControl
         Size = SizeBox.SelectedIndex,
         DateColumn = DateColumnBox.SelectedIndex,
         Range = RangeBox.SelectedIndex,
+        Content = ContentBox.Text,
         Sort = (int)_sort,
         Descending = _descending,
         // Width is NaN for an auto-sized column; the session file cannot hold NaN.
@@ -932,6 +1183,7 @@ public partial class SearchView : UserControl
             CaseToggle.IsChecked = state.MatchCase;
             RegexToggle.IsChecked = state.UseRegex;
             ExtensionsBox.Text = state.Extensions;
+            ContentBox.Text = state.Content ?? "";
             TypeBox.SelectedIndex = Math.Clamp(state.Type, 0, TypeBox.Items.Count - 1);
             SizeBox.SelectedIndex = Math.Clamp(state.Size, 0, SizeBox.Items.Count - 1);
             DateColumnBox.SelectedIndex = Math.Clamp(state.DateColumn, 0, DateColumnBox.Items.Count - 1);

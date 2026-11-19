@@ -23,6 +23,12 @@ public sealed class AppSettings
     /// <summary>Start with a maximized window (default).</summary>
     public bool StartMaximized { get; set; } = true;
 
+    /// <summary>
+    /// Start without showing the window (default off): in tray mode it stays hidden until the tray icon is clicked,
+    /// in taskbar mode it starts minimized. Not when started with a folder or right after an update.
+    /// </summary>
+    public bool StartHidden { get; set; }
+
     /// <summary>Reopen the last tabs, window and splitters (session.json).</summary>
     public bool RestoreSession { get; set; } = true;
 
@@ -46,6 +52,9 @@ public sealed class AppSettings
 
     /// <summary>The quick bar of each pane shows only the icons of its buttons (no labels).</summary>
     public bool QuickBarIconsOnly { get; set; }
+
+    /// <summary>The folder tree shows a Network group (computers, then their shares). Default off.</summary>
+    public bool NetworkInTree { get; set; }
 
     /// <summary>
     /// File list background while inside a ZIP file ("#RRGGBB"). Default almost pure dark
@@ -214,6 +223,8 @@ public sealed class AppSettings
           "windowMode": {{Json(s.WindowMode)}},
           // true: the window starts maximized.
           "startMaximized": {{Json(s.StartMaximized)}},
+          // true: start without showing the window (tray mode: hidden until the tray icon is clicked; taskbar mode: minimized).
+          "startHidden": {{Json(s.StartHidden)}},
           // true: reopen the last tabs, window position and splitters.
           "restoreSession": {{Json(s.RestoreSession)}},
           // The Update button in the title bar (new versions from GitHub); false = no button and no update checks.
@@ -228,6 +239,8 @@ public sealed class AppSettings
           "recentFoldersCount": {{s.RecentFoldersCount.ToString(System.Globalization.CultureInfo.InvariantCulture)}},
           // true: the quick bar of each pane shows only the icons of its buttons (the tooltips name them).
           "quickBarIconsOnly": {{Json(s.QuickBarIconsOnly)}},
+          // true: the folder tree shows a Network group after This PC (computers on the network, then their shares).
+          "networkInTree": {{Json(s.NetworkInTree)}},
           // File list background while inside a ZIP file ("#RRGGBB"; normal list: "#191919").
           "archiveBackground": {{Json(s.ArchiveBackground)}},
           // Folder of 7-Zip (7zG.exe, 7z.exe) for the "7z" button and 7z / RAR archives; "" = find it automatically.

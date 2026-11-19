@@ -9,7 +9,8 @@ namespace DirectoryFable.ViewModels;
 /// <summary>
 /// The shared folder tree on the left. Top-level groups:
 /// Home, Favorites (same folders as the favorites bar), Desktop, This PC
-/// (drives). It follows the active pane's folder.
+/// (drives) and, with the setting on, Network (computers, then their shares).
+/// It follows the active pane's folder.
 /// </summary>
 public sealed class FolderTreeViewModel : ObservableObject
 {
@@ -32,6 +33,9 @@ public sealed class FolderTreeViewModel : ObservableObject
         ThisPc = new FolderNodeViewModel("This PC", "", 0, ShellInfo.GetThisPcIcon(), LoadDrivesAsync);
         Roots.Add(ThisPc);
 
+        // Shown by ShowNetwork (the setting); it reads the network only when opened.
+        Network = new FolderNodeViewModel("Network", "", 0, ShellInfo.GetNetworkFolderIcon(), LoadNetworkAsync);
+
         FavoritesNode.IsExpanded = true;
         ThisPc.IsExpanded = true;
     }
@@ -41,6 +45,30 @@ public sealed class FolderTreeViewModel : ObservableObject
     public FolderNodeViewModel FavoritesNode { get; }
 
     public FolderNodeViewModel ThisPc { get; }
+
+    /// <summary>The Network group: the computers on the network, below them their shares.</summary>
+    public FolderNodeViewModel Network { get; }
+
+    public bool ShowsNetwork => Roots.Contains(Network);
+
+    /// <summary>Adds the Network group after This PC, or removes it (setting "Network in the folder tree").</summary>
+    public void ShowNetwork(bool show)
+    {
+        if (show == ShowsNetwork)
+            return;
+        if (show)
+        {
+            Roots.Insert(Roots.IndexOf(ThisPc) + 1, Network);
+            return;
+        }
+        if (Selected is not null && (Selected == Network || Network.ContainsLoaded(Selected)))
+        {
+            Selected.IsSelected = false;
+            Selected = null;
+        }
+        Network.CollapseAll(); // Stops the folder watchers of open shares.
+        Roots.Remove(Network);
+    }
 
     public FolderNodeViewModel? Selected { get; private set; }
 
@@ -105,9 +133,22 @@ public sealed class FolderTreeViewModel : ObservableObject
         if (version != _syncVersion)
             return;
 
+        // A network path shows under Network (when it is in the tree), also on a computer that the discovery missed.
+        string? server = ShowsNetwork ? NetworkComputers.ServerOf(path) : null;
+        if (server is not null)
+        {
+            await Network.LoadChildrenAsync(); // The first time: the network is read (can take seconds).
+            if (version != _syncVersion)
+                return;
+            if (!Network.Children.Any(c => c.Contains(path)))
+                AddComputer(server);
+        }
+
+        var computers = server is not null ? Network.Children : Enumerable.Empty<FolderNodeViewModel>();
         var starts = Roots.Where(r => !r.IsVirtual).Select(n => (Group: (FolderNodeViewModel?)null, Node: n))
             .Concat(FavoritesNode.Children.Select(n => (Group: (FolderNodeViewModel?)FavoritesNode, Node: n)))
-            .Concat(ThisPc.Children.Select(n => (Group: (FolderNodeViewModel?)ThisPc, Node: n)));
+            .Concat(ThisPc.Children.Select(n => (Group: (FolderNodeViewModel?)ThisPc, Node: n)))
+            .Concat(computers.Select(n => (Group: (FolderNodeViewModel?)Network, Node: n)));
         var start = starts.Where(s => s.Node.Contains(path)).MaxBy(s => s.Node.Path.Length);
         if (start.Node is null)
             return;
@@ -157,7 +198,7 @@ public sealed class FolderTreeViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Back to the overview: Home closed; Favorites, Desktop and
+    /// Back to the overview: Home and Network closed; Favorites, Desktop and
     /// This PC open with only their first level shown; everything deeper closed.
     /// </summary>
     public void CollapseAll()
@@ -167,7 +208,7 @@ public sealed class FolderTreeViewModel : ObservableObject
         {
             foreach (var child in root.Children)
                 child.CollapseAll();
-            root.IsExpanded = root != Roots[0]; // Roots[0] = Home (large; closed).
+            root.IsExpanded = root != Roots[0] && root != Network; // Roots[0] = Home (large; closed).
         }
     }
 
@@ -185,6 +226,50 @@ public sealed class FolderTreeViewModel : ObservableObject
             .Select(f => f.Path.StartsWith(@"\\", StringComparison.Ordinal) || FolderNodeViewModel.HasSubfolders(f.Path))
             .ToList());
         return [.. favorites.Select((f, i) => new FolderNodeViewModel(f.Name, f.Path, 1, f.Icon, hasChildren: hasSubfolders[i]))];
+    }
+
+    private CancellationTokenSource? _discovery;
+
+    /// <summary>
+    /// Network computers, each opens to its shares. At once: this computer and the servers of mapped drives,
+    /// favorites and recent folders. Then, as Windows' network discovery finds them (over some seconds, and only
+    /// with network discovery on): the other computers, added in name order.
+    /// </summary>
+    private async Task<List<FolderNodeViewModel>> LoadNetworkAsync()
+    {
+        var known = _favorites.Items.Select(f => f.FullPath).Concat(RecentFolders.List.Select(r => r.Path)).ToList();
+        var servers = await Task.Run(() => NetworkComputers.Known(known));
+        _ = AddDiscoveredAsync();
+        return [.. servers.Select(ComputerNode)];
+    }
+
+    private async Task AddDiscoveredAsync()
+    {
+        _discovery?.Cancel(); // F5 on the group: a new search replaces the running one.
+        var cancel = _discovery = new CancellationTokenSource();
+        // First the known computers must be in the list (this runs while the group is still loading them).
+        await Task.Yield();
+        await Network.LoadChildrenAsync();
+        var found = new Progress<string>(server =>
+        {
+            if (!cancel.IsCancellationRequested && !Network.Children.Any(c => PathHelper.IsSamePath(c.Path, server)))
+                AddComputer(server);
+        });
+        await NetworkComputers.DiscoverAsync(found, cancel.Token);
+    }
+
+    private static FolderNodeViewModel ComputerNode(string server) =>
+        new(server.TrimStart('\\'), server, 1, ShellInfo.GetNetworkIcon(server));
+
+    /// <summary>A computer that is not in the list yet (the pane shows a path on it), in name order.</summary>
+    private void AddComputer(string server)
+    {
+        var node = ComputerNode(server);
+        int index = 0;
+        while (index < Network.Children.Count &&
+               StringComparer.CurrentCultureIgnoreCase.Compare(Network.Children[index].Name, node.Name) < 0)
+            index++;
+        Network.Children.Insert(index, node);
     }
 
     /// <summary>Drives as "C: (System)". Labels are read off the UI thread; network drives are not touched.</summary>

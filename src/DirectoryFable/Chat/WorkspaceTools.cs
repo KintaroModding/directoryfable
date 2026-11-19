@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using DirectoryFable.Infrastructure;
 
 namespace DirectoryFable.Chat;
 
@@ -11,7 +13,8 @@ public sealed record ChangeRequest(string Kind, string RelativePath, string Full
 public sealed record ToolOutcome(string Content, string Summary, ChatChange? Change = null);
 
 /// <summary>
-/// GemmaChat's file tools in one workspace folder: list, read, search, create / overwrite, edit, delete. Every path
+/// GemmaChat's file tools in one workspace folder: list, read, search, create / overwrite, edit, delete, and
+/// run_command (PowerShell in that folder; it always asks, see the chat view). Every path
 /// is relative to the workspace and must stay inside it (no "..", no other drive). Changes go through
 /// <c>approve</c> (the chat asks the user, or not when the user switched that off; deleting always asks), and
 /// before a change the file is copied to the chat's backup folder, so Undo can put it back. Existing files keep their
@@ -21,6 +24,11 @@ public sealed class WorkspaceTools(string root, string chatId, Func<ChangeReques
     Func<string, Task<bool>> deleteToRecycleBin)
 {
     private const int MaxRead = 400_000;     // Characters given to the AI from one file.
+    private const int MaxCommandOutput = 20_000; // Characters of a command's output given to the AI.
+    private const int CommandCardLines = 200;    // Output lines shown on the command's card.
+
+    /// <summary>A stopped answer (Stop, Esc) also stops a running command.</summary>
+    public CancellationToken Token { get; init; }
     private const int MaxListed = 600;
     private const int MaxMatches = 200;
     private static readonly HashSet<string> SkippedFolders = new(StringComparer.OrdinalIgnoreCase) { ".git", ".vs", "node_modules", "bin", "obj" };
@@ -38,7 +46,8 @@ public sealed class WorkspaceTools(string root, string chatId, Func<ChangeReques
           {"type":"function","function":{"name":"search_files","description":"Search the text files of the workspace for a text (not case-sensitive). Returns file:line: line.","parameters":{"type":"object","properties":{"query":{"type":"string"},"path":{"type":"string","description":"Folder to search in, relative; default the whole workspace."},"file_pattern":{"type":"string","description":"For example *.cs; default all files."}},"required":["query"]}}},
           {"type":"function","function":{"name":"write_file","description":"Create a new file, or replace the whole content of a file. Folders are created as needed. The user approves it first.","parameters":{"type":"object","properties":{"path":{"type":"string"},"content":{"type":"string"}},"required":["path","content"]}}},
           {"type":"function","function":{"name":"edit_file","description":"Change part of a file: old_text must appear exactly once in the file (copy it exactly, with enough lines to be unique) and is replaced by new_text. The user approves it first.","parameters":{"type":"object","properties":{"path":{"type":"string"},"old_text":{"type":"string"},"new_text":{"type":"string"}},"required":["path","old_text","new_text"]}}},
-          {"type":"function","function":{"name":"delete_file","description":"Delete a file (to the Recycle Bin). The user is always asked first.","parameters":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}}}
+          {"type":"function","function":{"name":"delete_file","description":"Delete a file (to the Recycle Bin). The user is always asked first.","parameters":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}}},
+          {"type":"function","function":{"name":"run_command","description":"Run a PowerShell command in the workspace folder (Windows) and get its output (stdout and stderr) and exit code. The user sees the command and approves it first. Use it for builds, tests, git and similar; read and change files with the file tools instead.","parameters":{"type":"object","properties":{"command":{"type":"string","description":"The PowerShell command or script; the workspace folder is the current directory."},"timeout_seconds":{"type":"integer","description":"Stop it after this many seconds (default 120, at most 600)."}},"required":["command"]}}}
         ]
         """).RootElement.Clone();
 
@@ -48,7 +57,9 @@ public sealed class WorkspaceTools(string root, string chatId, Func<ChangeReques
         "edit_file and delete_file. Paths are relative to that folder; nothing outside it can be reached. Read a file before " +
         "you change it. For changes to existing files use edit_file with an exact, unique piece of the file; use write_file for " +
         "new files or complete rewrites. The user approves every change and may refuse it; after a refusal, do not try the same " +
-        "change again unless the user asks. Deleting a file always needs the user's approval. Say briefly what you changed.";
+        "change again unless the user asks. Deleting a file always needs the user's approval. Say briefly what you changed. " +
+        "With run_command you can run a PowerShell command in that folder (builds, tests, git); the user approves every " +
+        "command. Commands get no input: do not start anything that waits for the keyboard.";
 
     public async Task<ToolOutcome> RunAsync(ChatToolCall call)
     {
@@ -77,6 +88,7 @@ public sealed class WorkspaceTools(string root, string chatId, Func<ChangeReques
                 "write_file" => await WriteAsync(args),
                 "edit_file" => await EditAsync(args),
                 "delete_file" => await DeleteAsync(args),
+                "run_command" => await RunCommandAsync(args),
                 _ => new ToolOutcome($"Error: there is no tool \"{call.Name}\".", $"Unknown tool {call.Name}"),
             };
         }
@@ -309,6 +321,121 @@ public sealed class WorkspaceTools(string root, string chatId, Func<ChangeReques
             return new ToolOutcome("Error: the file could not be deleted.", $"Delete {Relative(path)}: failed");
         return new ToolOutcome("The file was deleted (it is in the Recycle Bin).", $"Deleted {Relative(path)}",
             new ChatChange { Path = path, Kind = "delete", Diff = diff, Decision = decision, Backup = backup });
+    }
+
+    /// <summary>
+    /// Runs a command with PowerShell (7 when installed) in the workspace folder, after the user's approval: no
+    /// window, no input, stdout and stderr together; stopped after the timeout or with Stop (with all its child
+    /// processes). The AI gets the exit code and the output (cut in the middle beyond 20,000 characters); the card
+    /// shows the command and the first 200 lines of output.
+    /// </summary>
+    private async Task<ToolOutcome> RunCommandAsync(JsonElement args)
+    {
+        string command = Text(args, "command").Trim();
+        if (command.Length == 0)
+            return new ToolOutcome("Error: an empty command.", "run_command: empty");
+        int timeout = Math.Clamp(Int(args, "timeout_seconds") ?? 120, 5, 600);
+        string shown = CommandLines(command);
+        var (allowed, decision) = await approve(new ChangeRequest("command", OneLine(command), _root, shown));
+        if (!allowed)
+            return new ToolOutcome("The user refused to run this command.", $"Command refused: {OneLine(command)}",
+                new ChatChange { Path = _root, Kind = "command", Diff = shown, Decision = decision });
+
+        var (exe, _) = Shells.PowerShell();
+        // UTF-8 out, no progress bars; the script goes in encoded (no quoting trouble).
+        string script = "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $ProgressPreference = 'SilentlyContinue'\n" + command;
+        var info = new ProcessStartInfo(exe,
+            "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand " + Convert.ToBase64String(Encoding.Unicode.GetBytes(script)))
+        {
+            WorkingDirectory = _root,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
+        };
+        var output = new StringBuilder();
+        void Add(string? line)
+        {
+            if (line is null)
+                return;
+            lock (output)
+            {
+                if (output.Length < 2_000_000)
+                    output.Append(line).Append('\n');
+            }
+        }
+        var watch = Stopwatch.StartNew();
+        int exitCode;
+        bool timedOut = false, stopped = false;
+        try
+        {
+            using var process = new Process { StartInfo = info };
+            process.OutputDataReceived += (_, e) => Add(e.Data);
+            process.ErrorDataReceived += (_, e) => Add(e.Data);
+            process.Start();
+            process.StandardInput.Close(); // No input: a command that asks for some gets an end of input.
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+            using var limit = CancellationTokenSource.CreateLinkedTokenSource(Token);
+            limit.CancelAfter(TimeSpan.FromSeconds(timeout));
+            try
+            {
+                await process.WaitForExitAsync(limit.Token);
+                process.WaitForExit(); // The last output lines.
+            }
+            catch (OperationCanceledException)
+            {
+                stopped = Token.IsCancellationRequested;
+                timedOut = !stopped;
+                try
+                {
+                    process.Kill(entireProcessTree: true);
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
+                {
+                    // It ended in the meantime.
+                }
+                process.WaitForExit(5000);
+            }
+            exitCode = process.HasExited ? process.ExitCode : -1;
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)
+        {
+            return new ToolOutcome($"Error: the command could not be started: {ex.Message}", $"Command failed: {ex.Message}",
+                new ChatChange { Path = _root, Kind = "command", Diff = shown, Decision = decision });
+        }
+        watch.Stop();
+
+        string all;
+        lock (output)
+            all = output.ToString().TrimEnd('\n');
+        string end = stopped ? "stopped by the user" : timedOut ? $"stopped after {timeout} s" : $"exit code {exitCode}";
+        string forAi = all.Length <= MaxCommandOutput ? all
+            : all[..(MaxCommandOutput / 3)] + $"\n…({all.Length - MaxCommandOutput:N0} characters left out)…\n" + all[^(MaxCommandOutput * 2 / 3)..];
+        string[] lines = all.Length == 0 ? [] : all.Split('\n');
+        var card = new StringBuilder(shown);
+        card.Append($"\n…{end} · {watch.Elapsed.TotalSeconds:0.0} s{(all.Length == 0 ? " · no output" : "")}");
+        foreach (string line in lines.Take(CommandCardLines))
+            card.Append("\n ").Append(line.TrimEnd('\r'));
+        if (lines.Length > CommandCardLines)
+            card.Append($"\n…{lines.Length - CommandCardLines:N0} more lines");
+        return new ToolOutcome($"{(stopped ? "The user stopped the command." : timedOut ? $"The command was stopped after {timeout} seconds." : $"Exit code {exitCode}.")}\n{forAi}",
+            $"Ran {OneLine(command)}: {end}",
+            new ChatChange { Path = _root, Kind = "command", Diff = card.ToString(), Decision = $"{decision} · {end}" });
+    }
+
+    /// <summary>The command for the card: each line after "$ " (the diff box shows lines starting with a space plain).</summary>
+    private static string CommandLines(string command) =>
+        string.Join("\n", command.ReplaceLineEndings("\n").Split('\n').Select((line, i) => (i == 0 ? " $ " : "   ") + line));
+
+    /// <summary>The command in one line, cut at 120 characters (titles, summaries).</summary>
+    private static string OneLine(string command)
+    {
+        string line = string.Join(" ", command.ReplaceLineEndings("\n").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        return line.Length > 120 ? line[..120] + "…" : line;
     }
 
     /// <summary>Copies the file to backups\{chat}\{time}\ before it changes; returns the copy's path.</summary>

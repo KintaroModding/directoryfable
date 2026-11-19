@@ -514,10 +514,11 @@
         <Setter Property="RenderOptions.BitmapScalingMode" Value="HighQuality" />
     </Style>
 
-    <!-- Flat like the field lists (user: "remove the rounded corner button style ... like the drop down menus"):
-         square, 26 px in the 28 px title bar; under the mouse the field color, the shown view the field's hover color. -->
+    <!-- Title bar tab, flat like the field lists: square; under the mouse the field color, the shown view the field's
+         hover color. The button is as high as the title bar, so a click on the screen's top edge (window maximized)
+         hits it; only its middle 26 px show the background. -->
     <Style x:Key="TitleTabButton" TargetType="ToggleButton">
-        <Setter Property="Height" Value="26" />
+        <Setter Property="Height" Value="{StaticResource TitleBarHeight}" />
         <Setter Property="Padding" Value="10,0" />
         <Setter Property="FontSize" Value="{StaticResource TitleFontSize}" />
         <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
@@ -527,9 +528,12 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
-                    <Border x:Name="Bd" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
-                        <ContentPresenter VerticalAlignment="Center" />
-                    </Border>
+                    <Grid Background="Transparent">
+                        <Border x:Name="Bd" Height="26" VerticalAlignment="Center" Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </Border>
+                    </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Bd" Property="Background" Value="{StaticResource FieldBrush}" />
@@ -548,7 +552,8 @@
     <!-- Notepad# search box (Ctrl+F, AvalonEdit's SearchPanel) in the dark look: the search
          text, the options as small toggles (Aa = match case, ab = whole words, .* = regular
          expression), previous / next match, close. Enter / F3 = next, Shift+Enter / Shift+F3 =
-         previous, Esc closes. -->
+         previous, Esc closes. The arrow on the left (or Ctrl+H) shows the replace row (Tag "replace"):
+         Replace (Enter in its box) and Replace all (Ctrl+Alt+Enter); wired in NotepadView. -->
     <Style x:Key="SearchOptionToggle" TargetType="ToggleButton">
         <Setter Property="Width" Value="24" />
         <Setter Property="Height" Value="22" />
@@ -593,50 +598,80 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="search:SearchPanel">
-                    <Border Background="#252526" BorderBrush="#454545" BorderThickness="1" CornerRadius="4"
+                    <Border Background="#252526" BorderBrush="#454545" BorderThickness="1"
                             Padding="5,4" Margin="0,2,20,0" HorizontalAlignment="Right" VerticalAlignment="Top" Cursor="Arrow"
                             TextElement.FontFamily="{StaticResource UiFont}">
                         <Border.Effect>
                             <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.55" Color="Black" />
                         </Border.Effect>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBox Name="PART_searchTextBox" Width="260" Height="26" MinHeight="0" Padding="4,0"
-                                     VerticalContentAlignment="Center" FontSize="13" ToolTip="Find (Enter: next, Shift+Enter: previous)">
-                                <TextBox.Text>
-                                    <Binding Path="SearchPattern" RelativeSource="{RelativeSource TemplatedParent}" UpdateSourceTrigger="PropertyChanged">
-                                        <Binding.ValidationRules>
-                                            <ExceptionValidationRule />
-                                        </Binding.ValidationRules>
-                                    </Binding>
-                                </TextBox.Text>
-                            </TextBox>
-                            <ToggleButton Style="{StaticResource SearchOptionToggle}" Margin="6,0,0,0" Content="Aa" ToolTip="Match case"
-                                          IsChecked="{Binding MatchCase, RelativeSource={RelativeSource TemplatedParent}}" />
-                            <ToggleButton Style="{StaticResource SearchOptionToggle}" ToolTip="Match whole words"
-                                          IsChecked="{Binding WholeWords, RelativeSource={RelativeSource TemplatedParent}}">
-                                <TextBlock Text="ab" TextDecorations="Underline" />
-                            </ToggleButton>
-                            <ToggleButton Style="{StaticResource SearchOptionToggle}" Content=".*" ToolTip="Use regular expressions"
-                                          IsChecked="{Binding UseRegex, RelativeSource={RelativeSource TemplatedParent}}" />
-                            <Rectangle Width="1" Height="16" Margin="6,0,4,0" Fill="{StaticResource LineBrush}" />
-                            <Button Style="{StaticResource SearchPanelButton}" Content="&#xE70E;" ToolTip="Previous match (Shift+F3)"
-                                    Command="search:SearchCommands.FindPrevious"
-                                    CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
-                            <Button Style="{StaticResource SearchPanelButton}" Content="&#xE70D;" ToolTip="Next match (F3)"
-                                    Command="search:SearchCommands.FindNext"
-                                    CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
-                            <Button Style="{StaticResource SearchPanelButton}" Content="&#xE711;" ToolTip="Close (Esc)"
-                                    Command="search:SearchCommands.CloseSearchPanel"
-                                    CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
-                        </StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <!-- Show / hide the replace row. -->
+                            <Button x:Name="ReplaceToggle" Grid.RowSpan="2" Style="{StaticResource SearchPanelButton}" Margin="0,0,4,0"
+                                    Height="Auto" VerticalAlignment="Stretch" ToolTip="Replace (Ctrl+H)">
+                                <TextBlock x:Name="ReplaceChevron" Text="&#xE76C;" FontFamily="{StaticResource IconFont}" FontSize="10" />
+                            </Button>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <TextBox Name="PART_searchTextBox" Width="260" Height="26" MinHeight="0" Padding="4,0"
+                                         VerticalContentAlignment="Center" FontSize="13" ToolTip="Find (Enter: next, Shift+Enter: previous)">
+                                    <TextBox.Text>
+                                        <Binding Path="SearchPattern" RelativeSource="{RelativeSource TemplatedParent}" UpdateSourceTrigger="PropertyChanged">
+                                            <Binding.ValidationRules>
+                                                <ExceptionValidationRule />
+                                            </Binding.ValidationRules>
+                                        </Binding>
+                                    </TextBox.Text>
+                                </TextBox>
+                                <ToggleButton Style="{StaticResource SearchOptionToggle}" Margin="6,0,0,0" Content="Aa" ToolTip="Match case"
+                                              IsChecked="{Binding MatchCase, RelativeSource={RelativeSource TemplatedParent}}" />
+                                <ToggleButton Style="{StaticResource SearchOptionToggle}" ToolTip="Match whole words"
+                                              IsChecked="{Binding WholeWords, RelativeSource={RelativeSource TemplatedParent}}">
+                                    <TextBlock Text="ab" TextDecorations="Underline" />
+                                </ToggleButton>
+                                <ToggleButton Style="{StaticResource SearchOptionToggle}" Content=".*" ToolTip="Use regular expressions"
+                                              IsChecked="{Binding UseRegex, RelativeSource={RelativeSource TemplatedParent}}" />
+                                <Rectangle Width="1" Height="16" Margin="6,0,4,0" Fill="{StaticResource LineBrush}" />
+                                <Button Style="{StaticResource SearchPanelButton}" Content="&#xE70E;" ToolTip="Previous match (Shift+F3)"
+                                        Command="search:SearchCommands.FindPrevious"
+                                        CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
+                                <Button Style="{StaticResource SearchPanelButton}" Content="&#xE70D;" ToolTip="Next match (F3)"
+                                        Command="search:SearchCommands.FindNext"
+                                        CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
+                                <Button Style="{StaticResource SearchPanelButton}" Content="&#xE711;" ToolTip="Close (Esc)"
+                                        Command="search:SearchCommands.CloseSearchPanel"
+                                        CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
+                            </StackPanel>
+                            <!-- Replace: the new text; with a regular expression $1, $2 ... take the groups of the match. -->
+                            <StackPanel x:Name="ReplaceRow" Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,4,0,0"
+                                        Visibility="Collapsed">
+                                <TextBox x:Name="ReplaceBox" Width="260" Height="26" MinHeight="0" Padding="4,0" VerticalContentAlignment="Center"
+                                         FontSize="13" ToolTip="Replace with (Enter: replace this match, Ctrl+Alt+Enter: replace all; $1 = a group of a regular expression)" />
+                                <Button x:Name="ReplaceOneButton" Style="{StaticResource SubtleButton}" Margin="6,0,0,0" Padding="8,0" Height="22"
+                                        Content="Replace" ToolTip="Replace this match and go to the next one (Enter)" />
+                                <Button x:Name="ReplaceAllButton" Style="{StaticResource SubtleButton}" Margin="2,0,0,0" Padding="8,0" Height="22"
+                                        Content="Replace all" ToolTip="Replace every match in the file (Ctrl+Alt+Enter; one Undo takes it back)" />
+                            </StackPanel>
+                        </Grid>
                     </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="Tag" Value="replace">
+                            <Setter TargetName="ReplaceRow" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="ReplaceChevron" Property="Text" Value="&#xE70D;" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
     </Style>
 
-    <!-- Lists as flat fields (user, GemmaChat: "go away from the button design ... more like a field with a slightly
-         different background"; then for SonnetSearch too): a flat #262626 field 26 px high, the bar's text
+    <!-- Lists as flat fields, not buttons: a flat #262626 field 26 px high, the bar's text
          size, a small arrow on the right; editable lists get a plain text box. The standard combo box is taller
          and rounded; this own template fits the bars. Used by GemmaChat's bar and SonnetSearch's filters. -->
     <Style x:Key="FieldComboItem" TargetType="ComboBoxItem">

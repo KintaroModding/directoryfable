@@ -95,6 +95,9 @@
                 <Button Style="{StaticResource SubtleButton}" Padding="7,1" Height="26" ToolTip="Zoom out (-, mouse wheel)" Click="ZoomOut_Click">
                     <TextBlock Text="&#xE71F;" FontFamily="{StaticResource IconFont}" FontSize="14" />
                 </Button>
+                <!-- The current zoom, between its buttons; fixed width, so the buttons do not move when it changes. -->
+                <TextBlock x:Name="ZoomText" Width="62" TextAlignment="Center" VerticalAlignment="Center"
+                           ToolTip="Current zoom (100 % = one image pixel per screen pixel)" />
                 <Button Style="{StaticResource SubtleButton}" Padding="7,1" Height="26" ToolTip="Zoom in (+, mouse wheel)" Click="ZoomIn_Click">
                     <TextBlock Text="&#xE8A3;" FontFamily="{StaticResource IconFont}" FontSize="14" />
                 </Button>
@@ -176,8 +179,6 @@
                 <Border DockPanel.Dock="Bottom" Height="24" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0"
                         Background="{StaticResource WindowBackgroundBrush}">
                     <DockPanel Margin="10,0">
-                        <TextBlock x:Name="ZoomText" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="16,0,0,0"
-                                   Foreground="{StaticResource SecondaryTextBrush}" />
                         <TextBlock x:Name="DetailsText" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                                    Foreground="{StaticResource SecondaryTextBrush}" />
                     </DockPanel>
@@ -218,7 +219,7 @@
                                     <Setter Property="Template">
                                         <Setter.Value>
                                             <ControlTemplate TargetType="ListBoxItem">
-                                                <Border x:Name="Bd" BorderThickness="2" BorderBrush="Transparent" CornerRadius="3" Padding="1" Opacity="0.75">
+                                                <Border x:Name="Bd" BorderThickness="2" BorderBrush="Transparent" Padding="1" Opacity="0.75">
                                                     <ContentPresenter />
                                                 </Border>
                                                 <ControlTemplate.Triggers>

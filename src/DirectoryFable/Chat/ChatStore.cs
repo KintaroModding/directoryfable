@@ -120,6 +120,12 @@ public sealed class ChatMessage
     /// <summary>An error shown in the chat (not sent to the AI again).</summary>
     public bool IsError { get; set; }
 
+    /// <summary>A user message: its pictures (names under data\gemmachat\images: "{chat}\{id}.png"), sent with it.</summary>
+    public List<string>? Images { get; set; }
+
+    /// <summary>A user message: its attached files (text files and PDFs), sent with it.</summary>
+    public List<ChatFile>? Files { get; set; }
+
     /// <summary>An answer: the model that gave it (as the provider reports it) and the effort it was asked with ("" = default).</summary>
     public string? Model { get; set; }
     public string? Effort { get; set; }
@@ -141,6 +147,18 @@ public sealed class ChatMessage
     /// marks), sent back unchanged in the next requests. Null for other providers' answers and stopped ones.
     /// </summary>
     public List<ChatBlock>? Blocks { get; set; }
+}
+
+/// <summary>A file attached to a message: its name, the copy kept with the chat, and how it is sent.</summary>
+public sealed class ChatFile
+{
+    public string Name { get; set; } = "";
+
+    /// <summary>The copy's name under data\gemmachat\files: "{chat}\{id}.txt".</summary>
+    public string Stored { get; set; } = "";
+
+    /// <summary>"text" (goes into the message as text) or "pdf" (goes as a document).</summary>
+    public string Kind { get; set; } = "text";
 }
 
 /// <summary>One content block of a Claude answer.</summary>
@@ -239,6 +257,36 @@ public static class ChatStore
     /// <summary>Copies of files before the AI changed them (Undo): backups\{chat id}\{time}\{file name}.</summary>
     public static string BackupFolder => Path.Combine(Folder, "backups");
     public static string ConfigPath => Path.Combine(Folder, "gemmachat.json");
+
+    /// <summary>Pictures of the messages: images\{chat id}\{id}.png (or .jpg / .gif).</summary>
+    public static string ImagesFolder => Path.Combine(Folder, "images");
+
+    public static string ImagePath(string name) => Path.Combine(ImagesFolder, name);
+
+    /// <summary>Copies of the files attached to messages: files\{chat id}\{id}{extension}.</summary>
+    public static string FilesFolder => Path.Combine(Folder, "files");
+
+    public static string FilePath(string name) => Path.Combine(FilesFolder, name);
+
+    /// <summary>Saves the copy of an attached file; returns its name for <see cref="ChatFile.Stored"/>.</summary>
+    public static string SaveFile(string chatId, byte[] bytes, string extension)
+    {
+        string name = Path.Combine(chatId, Guid.NewGuid().ToString("N") + extension);
+        string path = FilePath(name);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllBytes(path, bytes);
+        return name;
+    }
+
+    /// <summary>Saves a picture of a message; returns its name for <see cref="ChatMessage.Images"/>.</summary>
+    public static string SaveImage(string chatId, byte[] bytes, string extension)
+    {
+        string name = Path.Combine(chatId, Guid.NewGuid().ToString("N") + extension);
+        string path = ImagePath(name);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllBytes(path, bytes);
+        return name;
+    }
     private static string ChatsFolder => Path.Combine(Folder, "chats");
 
     public static ChatConfig LoadConfig()
@@ -291,6 +339,12 @@ public static class ChatStore
         string backups = Path.Combine(BackupFolder, chat.Id);
         if (Directory.Exists(backups))
             Directory.Delete(backups, recursive: true); // Its Undo copies go with it.
+        string images = Path.Combine(ImagesFolder, chat.Id);
+        if (Directory.Exists(images))
+            Directory.Delete(images, recursive: true); // And its pictures.
+        string files = Path.Combine(FilesFolder, chat.Id);
+        if (Directory.Exists(files))
+            Directory.Delete(files, recursive: true); // And the copies of its attached files.
     }
 
     private static void WriteAtomic(string path, string text)

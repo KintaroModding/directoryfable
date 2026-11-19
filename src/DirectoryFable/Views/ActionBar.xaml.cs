@@ -42,4 +42,9 @@ public partial class ActionBar : UserControl
     private void Settings_Click(object sender, RoutedEventArgs e) => SettingsToggled?.Invoke(SettingsButton.IsChecked == true);
 
     private void RefreshBoth_Click(object sender, RoutedEventArgs e) => RefreshBothRequested?.Invoke();
+
+    /// <summary>"Compare" was switched on (true) or off (false).</summary>
+    public event Action<bool>? CompareToggled;
+
+    private void Compare_Click(object sender, RoutedEventArgs e) => CompareToggled?.Invoke(CompareButton.IsChecked == true);
 }

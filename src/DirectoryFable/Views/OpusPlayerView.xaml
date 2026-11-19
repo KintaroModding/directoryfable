@@ -83,7 +83,7 @@
                        FontSize="14" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="40"
                        Text="Double-click a video in the explorer, or drop one here." />
             <!-- "Resumed at 12:34" for a few seconds. -->
-            <Border x:Name="Toast" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="16" Padding="12,7" CornerRadius="4"
+            <Border x:Name="Toast" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="16" Padding="12,7"
                     Background="#D0202020" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" Visibility="Collapsed" IsHitTestVisible="False">
                 <TextBlock x:Name="ToastText" FontSize="13" />
             </Border>
@@ -91,7 +91,7 @@
             <!-- VLC's engine is not there yet: the full explanation and Download, shown in the view until it is downloaded
                  (why it is needed, the exact address it comes from, the exact folder it goes to, nothing installed). -->
             <Border x:Name="EnginePanel" HorizontalAlignment="Center" VerticalAlignment="Center" Width="640" Margin="30"
-                    Padding="24,20" CornerRadius="6" Background="{StaticResource WindowBackgroundBrush}"
+                    Padding="24,20" Background="{StaticResource WindowBackgroundBrush}"
                     BorderBrush="{StaticResource LineBrush}" BorderThickness="1" Visibility="Collapsed">
                 <Border.Resources>
                     <Style x:Key="EngineLabel" TargetType="TextBlock">
@@ -171,7 +171,7 @@
                     <!-- The time under the mouse, above the timeline. -->
                     <Popup x:Name="HoverPopup" Grid.Column="1" PlacementTarget="{Binding ElementName=Timeline}" Placement="Relative"
                            AllowsTransparency="True" IsHitTestVisible="False">
-                        <Border Background="#E0202020" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="3" Padding="4">
+                        <Border Background="#E0202020" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" Padding="4">
                             <StackPanel>
                                 <Image x:Name="HoverImage" Width="240" Stretch="Uniform" Visibility="Collapsed" RenderOptions.BitmapScalingMode="HighQuality" />
                                 <TextBlock x:Name="HoverText" FontSize="12" HorizontalAlignment="Center" Margin="2,2,2,0" />

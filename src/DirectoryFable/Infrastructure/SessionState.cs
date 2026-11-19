@@ -99,6 +99,10 @@ public sealed class SearchState
     public int Size { get; set; }
     public int DateColumn { get; set; }
     public int Range { get; set; }
+
+    /// <summary>"Containing": text inside the files ("" = not searched).</summary>
+    public string Content { get; set; } = "";
+
     public int Sort { get; set; }
     public bool Descending { get; set; }
 

@@ -30,7 +30,10 @@ public static class FileDrop
     {
         // Only DragOver sees the button; at drop time it is already released.
         _rightDrag = e.KeyStates.HasFlag(DragDropKeyStates.RightMouseButton);
-        return ComputeEffect(e, sources, targetFolder, _rightDrag);
+        var effect = ComputeEffect(e, sources, targetFolder, _rightDrag);
+        // The text at the drag picture ("Move to <folder>"), see Shell/ShellDrag.cs.
+        Shell.ShellDrag.TargetFolder = effect == DragDropEffects.None ? null : targetFolder;
+        return effect;
     }
 
     private static DragDropEffects ComputeEffect(DragEventArgs e, string[] sources, string targetFolder, bool rightDrag)

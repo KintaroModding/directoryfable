@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<!-- Swift for Notepad#: comments, strings, keywords, types, attributes. -->
+<SyntaxDefinition name="Swift" extensions=".swift" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" foreground="#6A9955" />
+  <Color name="String" foreground="#CE9178" />
+  <Color name="Escape" foreground="#D7BA7D" />
+  <Color name="Number" foreground="#B5CEA8" />
+  <Color name="Keyword" foreground="#569CD6" />
+  <Color name="Control" foreground="#C586C0" />
+  <Color name="Type" foreground="#4EC9B0" />
+  <Color name="Function" foreground="#DCDCAA" />
+  <Color name="Constant" foreground="#4FC1FF" />
+  <Color name="Directive" foreground="#C586C0" />
+
+  <RuleSet>
+    <Span color="Comment" begin="//" />
+    <Span color="Comment" multiline="true" begin="/\*" end="\*/" />
+    <Span color="String" multiline="true" begin="&quot;&quot;&quot;" end="&quot;&quot;&quot;">
+      <RuleSet>
+        <Span color="Escape" begin="\\" end="." />
+      </RuleSet>
+    </Span>
+    <Span color="String" begin="&quot;" end="&quot;|$">
+      <RuleSet>
+        <Span color="Escape" begin="\\" end="." />
+      </RuleSet>
+    </Span>
+    <Rule color="Directive">@[A-Za-z_]\w*|\#\w+</Rule>
+    <Keywords color="Control"><Word>if</Word><Word>else</Word><Word>guard</Word><Word>switch</Word><Word>case</Word><Word>default</Word><Word>for</Word><Word>while</Word><Word>repeat</Word><Word>in</Word><Word>break</Word><Word>continue</Word><Word>return</Word><Word>throw</Word><Word>try</Word><Word>catch</Word><Word>do</Word><Word>defer</Word><Word>fallthrough</Word><Word>where</Word><Word>await</Word></Keywords>
+    <Keywords color="Keyword"><Word>import</Word><Word>class</Word><Word>struct</Word><Word>enum</Word><Word>protocol</Word><Word>extension</Word><Word>func</Word><Word>var</Word><Word>let</Word><Word>init</Word><Word>deinit</Word><Word>subscript</Word><Word>typealias</Word><Word>associatedtype</Word><Word>operator</Word><Word>static</Word><Word>final</Word><Word>override</Word><Word>private</Word><Word>fileprivate</Word><Word>internal</Word><Word>public</Word><Word>open</Word><Word>mutating</Word><Word>nonmutating</Word><Word>lazy</Word><Word>weak</Word><Word>unowned</Word><Word>inout</Word><Word>async</Word><Word>throws</Word><Word>rethrows</Word><Word>actor</Word><Word>some</Word><Word>any</Word><Word>is</Word><Word>as</Word><Word>self</Word><Word>Self</Word><Word>super</Word></Keywords>
+    <Keywords color="Type"><Word>Int</Word><Word>Int8</Word><Word>Int16</Word><Word>Int32</Word><Word>Int64</Word><Word>UInt</Word><Word>UInt8</Word><Word>UInt16</Word><Word>UInt32</Word><Word>UInt64</Word><Word>Float</Word><Word>Double</Word><Word>Bool</Word><Word>String</Word><Word>Character</Word><Word>Array</Word><Word>Dictionary</Word><Word>Set</Word><Word>Optional</Word><Word>Void</Word><Word>Any</Word><Word>AnyObject</Word></Keywords>
+    <Keywords color="Constant"><Word>true</Word><Word>false</Word><Word>nil</Word></Keywords>
+    <Rule color="Function">\b[A-Za-z_]\w*(?=\s*\()</Rule>
+    <Rule color="Number">\b0[xX][0-9a-fA-F_]+\b|\b0[bB][01_]+\b|\b\d[\d_]*(\.\d[\d_]*)?([eE][+-]?\d+)?\w*\b</Rule>
+  </RuleSet>
+</SyntaxDefinition>

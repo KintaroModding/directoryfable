@@ -19,7 +19,6 @@
             <Setter Property="Background" Value="{StaticResource ListBackgroundBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="4" />
             <Setter Property="Padding" Value="14,10" />
         </Style>
     </Window.Resources>

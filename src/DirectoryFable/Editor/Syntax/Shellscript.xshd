@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<!-- Shell scripts (sh, bash, zsh) for Notepad#: comments, strings, $variables, keywords. -->
+<SyntaxDefinition name="Shell script" extensions=".sh;.bash;.zsh;.ksh;.bashrc;.zshrc;.profile" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" foreground="#6A9955" />
+  <Color name="String" foreground="#CE9178" />
+  <Color name="Escape" foreground="#D7BA7D" />
+  <Color name="Number" foreground="#B5CEA8" />
+  <Color name="Keyword" foreground="#569CD6" />
+  <Color name="Control" foreground="#C586C0" />
+  <Color name="Function" foreground="#DCDCAA" />
+  <Color name="Variable" foreground="#9CDCFE" />
+
+  <RuleSet>
+    <Span color="Comment" begin="(^|(?&lt;=\s))\#" />
+    <Span color="String" multiline="true" begin="&quot;" end="&quot;">
+      <RuleSet>
+        <Span color="Escape" begin="\\" end="." />
+        <Rule color="Variable">\$\{[^}\r\n]*\}|\$[\w@\#?*!$-]+</Rule>
+      </RuleSet>
+    </Span>
+    <Span color="String" multiline="true" begin="'" end="'" />
+    <Rule color="Variable">\$\{[^}\r\n]*\}|\$\([^)\r\n]*\)|\$[\w@\#?*!$-]+</Rule>
+    <Keywords color="Control"><Word>if</Word><Word>then</Word><Word>else</Word><Word>elif</Word><Word>fi</Word><Word>for</Word><Word>while</Word><Word>until</Word><Word>do</Word><Word>done</Word><Word>case</Word><Word>esac</Word><Word>in</Word><Word>select</Word><Word>return</Word><Word>exit</Word><Word>break</Word><Word>continue</Word></Keywords>
+    <Keywords color="Keyword"><Word>function</Word><Word>local</Word><Word>export</Word><Word>readonly</Word><Word>declare</Word><Word>typeset</Word><Word>unset</Word><Word>shift</Word><Word>source</Word><Word>alias</Word><Word>unalias</Word><Word>echo</Word><Word>printf</Word><Word>read</Word><Word>cd</Word><Word>test</Word><Word>eval</Word><Word>exec</Word><Word>set</Word><Word>trap</Word><Word>wait</Word><Word>time</Word><Word>true</Word><Word>false</Word></Keywords>
+    <Rule color="Function">^\s*[A-Za-z_][\w-]*(?=\s*\(\))</Rule>
+    <Rule color="Number">\b\d+\b</Rule>
+  </RuleSet>
+</SyntaxDefinition>

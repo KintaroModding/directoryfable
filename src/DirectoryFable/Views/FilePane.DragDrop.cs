@@ -132,13 +132,16 @@ public partial class FilePane
             // Out of a ZIP: other programs cannot read inside it, so unpack the items to a temp
             // folder first and drag those (copy only; the ZIP itself stays unchanged).
             var extracted = ExtractForDrag(items);
-            if (extracted.Count > 0)
+            if (extracted.Count > 0 && !Shell.ShellDrag.TryStart(FileList, extracted, DragDropEffects.Copy))
                 DragDrop.DoDragDrop(FileList, new DataObject(DataFormats.FileDrop, extracted.ToArray()), DragDropEffects.Copy);
             return;
         }
 
-        var data = new DataObject(DataFormats.FileDrop, items.Select(i => i.FullPath).ToArray());
-        DragDrop.DoDragDrop(FileList, data, DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link);
+        // With Windows' drag picture (icon or thumbnail, a count); a plain drag when that cannot start.
+        var paths = items.Select(i => i.FullPath).ToArray();
+        var effects = DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link;
+        if (!Shell.ShellDrag.TryStart(FileList, paths, effects))
+            DragDrop.DoDragDrop(FileList, new DataObject(DataFormats.FileDrop, paths), effects);
     }
 
     /// <summary>

@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<!-- Makefiles for Notepad#: comments, targets, $(variables), directives. -->
+<SyntaxDefinition name="Makefile" extensions=".mk;.mak;.make" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" foreground="#6A9955" />
+  <Color name="String" foreground="#CE9178" />
+  <Color name="Control" foreground="#C586C0" />
+  <Color name="Variable" foreground="#9CDCFE" />
+  <Color name="Key" foreground="#9CDCFE" />
+  <Color name="Label" foreground="#4EC9B0" />
+
+  <RuleSet>
+    <Span color="Comment" begin="\#" />
+    <Rule color="Control">^\s*-?(include|sinclude|ifeq|ifneq|ifdef|ifndef|else|endif|define|endef|export|unexport|override|vpath|undefine)\b</Rule>
+    <Rule color="Label">^[^\s:=\#][^:=\#\r\n]*(?=:(?!=))</Rule>
+    <Rule color="Variable">\$\([^)\r\n]*\)|\$\{[^}\r\n]*\}|\$[@&lt;^+?*%$]</Rule>
+    <Rule color="Key">^\s*[\w.-]+(?=\s*[:+?!]?=)</Rule>
+    <Span color="String" begin="&quot;" end="&quot;|$" />
+    <Span color="String" begin="'" end="'|$" />
+  </RuleSet>
+</SyntaxDefinition>

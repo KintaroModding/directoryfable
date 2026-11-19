@@ -56,7 +56,7 @@
 
         <!-- Details: the full paths, slid open below by the Details button (right-click a path: copy it). -->
         <Border x:Name="DetailsPanel" Margin="0,14,0,0" Padding="12,8" Visibility="Collapsed" ClipToBounds="True"
-                Background="{StaticResource ListBackgroundBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="4">
+                Background="{StaticResource ListBackgroundBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1">
             <Border.LayoutTransform>
                 <ScaleTransform x:Name="DetailsScale" ScaleY="0" />
             </Border.LayoutTransform>

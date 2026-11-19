@@ -197,7 +197,8 @@ public partial class FolderTree : UserControl
     {
         e.Handled = true;
         var node = NodeAt(e.OriginalSource);
-        SetDropNode(node is { IsVirtual: false, IsPlaceholder: false } ? node : null);
+        // Not on a network computer: it holds shares, not files.
+        SetDropNode(node is { IsVirtual: false, IsPlaceholder: false } && !Infrastructure.PathHelper.IsServerPath(node.Path) ? node : null);
         e.Effects = _dropNode is not null && FileDrop.GetPaths(e.Data) is { } paths
             ? FileDrop.ChooseEffect(e, paths, _dropNode.Path)
             : DragDropEffects.None;

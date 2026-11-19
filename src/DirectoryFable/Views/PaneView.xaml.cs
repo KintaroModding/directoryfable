@@ -50,6 +50,13 @@ public partial class PaneView : UserControl
             pane.FocusList();
     }
 
+    /// <summary>Selects these rows in the visible tab ("Compare").</summary>
+    public void SelectItems(IReadOnlyCollection<Models.FileItem> items)
+    {
+        if (_viewModel?.SelectedTab is { } tab && _panes.TryGetValue(tab, out var pane))
+            pane.SelectItems(items);
+    }
+
     /// <summary>Reloads the visible tab and keeps its selection (action bar "Refresh both").</summary>
     public Task RefreshAsync() =>
         _viewModel?.SelectedTab is { } tab && _panes.TryGetValue(tab, out var pane)

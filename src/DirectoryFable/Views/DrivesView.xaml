@@ -48,6 +48,12 @@
                         <StackPanel Grid.Column="2" Margin="18,0,0,0" VerticalAlignment="Center">
                             <TextBlock Text="{Binding Line1}" Foreground="{StaticResource SecondaryTextBrush}" />
                             <TextBlock Text="{Binding Line2}" Margin="0,2,0,0" />
+                            <!-- The disk's health (Windows' drive health): a colored dot, the state, temperature, life left.
+                                 Local and removable drives keep the line's place while it is empty (Hidden, not Collapsed):
+                                 the details arrive a moment after the tiles, and the list must not jump then. -->
+                            <TextBlock Margin="0,2,0,0" FontSize="12" Visibility="{Binding HealthVisibility}">
+                                <Run Text="&#x25CF;" Foreground="{Binding HealthBrush, Mode=OneWay}" /><Run Text=" " /><Run Text="{Binding Health, Mode=OneWay}" Foreground="{StaticResource SecondaryTextBrush}" />
+                            </TextBlock>
                         </StackPanel>
                     </Grid>
         </DataTemplate>

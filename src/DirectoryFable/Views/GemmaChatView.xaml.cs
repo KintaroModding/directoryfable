@@ -42,6 +42,9 @@ public partial class GemmaChatView : UserControl
         InitializeComponent();
         ChatList.ItemsSource = _chats;
         Messages.ItemsSource = _items;
+        AttachmentStrip.ItemsSource = _attachments;
+        _attachments.CollectionChanged += (_, _) =>
+            AttachmentStrip.Visibility = _attachments.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         SettingsPage.CloseRequested += () => ShowSettings(false);
         SettingsPage.Saved += config =>
         {
@@ -259,7 +262,7 @@ public partial class GemmaChatView : UserControl
         if (_chat is null)
             return;
         _chat.Workspace = folder;
-        _allowAllInChat = false;
+        _allowAllInChat = _allowCommandsInChat = false;
         if (_chat.Messages.Count > 0)
             SaveChat(_chat);
         RefreshList(); // The list's folder mark.
@@ -289,7 +292,7 @@ public partial class GemmaChatView : UserControl
             return; // Not while an answer streams in.
         _chat = chat ?? new ChatThread();
         CurrentChatId = chat?.Id;
-        _allowAllInChat = false;
+        _allowAllInChat = _allowCommandsInChat = false;
         if (chat is null)
             ChatList.SelectedItem = null;
         _items.Clear();
@@ -383,7 +386,7 @@ public partial class GemmaChatView : UserControl
     // ---------- Sending: answer, tools, answer again ----------
 
     private void InputBox_TextChanged(object sender, TextChangedEventArgs e) =>
-        InputHint.Visibility = InputBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        InputHint.Visibility = InputBox.Text.Length == 0 && _attachments.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
     /// <summary>Enter sends, Shift+Enter makes a new line.</summary>
     private void InputBox_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -392,6 +395,157 @@ public partial class GemmaChatView : UserControl
         {
             e.Handled = true;
             _ = SendAsync();
+        }
+        else if ((e.Key == Key.V && Keyboard.Modifiers == ModifierKeys.Control) || (e.Key == Key.Insert && Keyboard.Modifiers == ModifierKeys.Shift))
+        {
+            // A screenshot or copied files in the clipboard: added to the message; text pastes as usual.
+            if (PasteAttachments())
+                e.Handled = true;
+        }
+    }
+
+    // ---------- Pictures and files for the next message ----------
+
+    /// <summary>PendingImage and PendingFile items, in the order they were added.</summary>
+    private readonly ObservableCollection<object> _attachments = [];
+    private const int MaxAttachments = 10;
+
+    /// <summary>
+    /// Copied files in the clipboard, or a picture (not text): added to the message; false = paste as text.
+    /// </summary>
+    private bool PasteAttachments()
+    {
+        try
+        {
+            if (Clipboard.ContainsFileDropList())
+            {
+                AttachFiles(Clipboard.GetFileDropList().Cast<string>().ToList());
+                return true;
+            }
+            if (Clipboard.ContainsText())
+                return false;
+        }
+        catch (COMException)
+        {
+            return false;
+        }
+        if (ChatImages.FromClipboard() is not { } image)
+            return false;
+        AddAttachment(image);
+        return true;
+    }
+
+    /// <summary>
+    /// Adds files to the next message: pictures as pictures, text files and PDFs as files (the explorer's "Send to
+    /// GemmaChat", the paperclip, a drop, Ctrl+V of copied files). What cannot be attached is named in the bar.
+    /// </summary>
+    public void AttachFiles(IReadOnlyList<string> paths)
+    {
+        EnsureLoaded();
+        var problems = new List<string>();
+        foreach (string path in paths)
+        {
+            if (Directory.Exists(path))
+            {
+                problems.Add($"{Path.GetFileName(path.TrimEnd('\\'))}: a folder (use \"Work in a folder\" for it).");
+            }
+            else if (ChatImages.IsPicture(path))
+            {
+                if (ChatImages.FromFile(path) is { } image)
+                    AddAttachment(image);
+                else
+                    problems.Add($"{Path.GetFileName(path)}: not a picture that can be read.");
+            }
+            else if (ChatFiles.FromFile(path, out string? problem) is { } file)
+            {
+                AddAttachment(file);
+            }
+            else if (problem is not null)
+            {
+                problems.Add(problem);
+            }
+        }
+        if (problems.Count > 0)
+            BarText.Text = problems.Count == 1 ? problems[0] : $"{problems.Count} files could not be attached. {problems[0]}";
+        if (!SettingsPage.IsVisible)
+            InputBox.Focus();
+    }
+
+    private void AddAttachment(object attachment)
+    {
+        if (_attachments.Count >= MaxAttachments)
+        {
+            BarText.Text = $"At most {MaxAttachments} pictures and files per message.";
+            return;
+        }
+        _attachments.Add(attachment);
+        InputHint.Visibility = Visibility.Collapsed;
+    }
+
+    private void RemoveAttachment_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is { } attachment)
+            _attachments.Remove(attachment);
+        InputHint.Visibility = InputBox.Text.Length == 0 && _attachments.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void Attach_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Attach files to the message",
+            Multiselect = true,
+            Filter = "Text files, PDF files and pictures|*.*",
+            InitialDirectory = _chat?.Workspace ?? "",
+        };
+        if (dialog.ShowDialog(Window.GetWindow(this)) == true)
+            AttachFiles(dialog.FileNames);
+    }
+
+    private void InputArea_PreviewDragOver(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            e.Effects = DragDropEffects.Copy;
+            e.Handled = true;
+        }
+    }
+
+    private void InputArea_PreviewDrop(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] files)
+            return;
+        e.Handled = true;
+        AttachFiles(files);
+    }
+
+    /// <summary>An attached file in a message: its copy opens with its Windows program.</summary>
+    private void FileChip_Click(object sender, MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not ChatFileChip { Path: var path } || !File.Exists(path))
+            return;
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            BarText.Text = $"Cannot open the file: {ex.Message}";
+        }
+    }
+
+    /// <summary>A picture in a message: opened with Windows' picture program.</summary>
+    private void Picture_Click(object sender, MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not ChatPicture { Path: var path } || !File.Exists(path))
+            return;
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            BarText.Text = $"Cannot open the picture: {ex.Message}";
         }
     }
 
@@ -406,7 +560,7 @@ public partial class GemmaChatView : UserControl
     private async Task SendAsync()
     {
         string text = InputBox.Text.Trim();
-        if (_sending is not null || text.Length == 0 || _chat is null)
+        if (_sending is not null || (text.Length == 0 && _attachments.Count == 0) || _chat is null)
             return;
         if (_config.Selected is not { } provider || provider.Model.Trim().Length == 0
             || (provider.IsClaude ? provider.ApiKey.Trim().Length == 0 : provider.BaseUrl.Trim().Length == 0))
@@ -419,9 +573,27 @@ public partial class GemmaChatView : UserControl
 
         var chat = _chat;
         var question = new ChatMessage { Role = "user", Content = text };
+        if (_attachments.Count > 0)
+        {
+            try
+            {
+                var images = _attachments.OfType<PendingImage>().ToList();
+                var files = _attachments.OfType<PendingFile>().ToList();
+                if (images.Count > 0)
+                    question.Images = [.. images.Select(a => ChatStore.SaveImage(chat.Id, a.Bytes, a.Extension))];
+                if (files.Count > 0)
+                    question.Files = [.. files.Select(f => new ChatFile { Name = f.Name, Kind = f.Kind, Stored = ChatStore.SaveFile(chat.Id, f.Bytes, f.Extension) })];
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                BarText.Text = $"Cannot save the attachments: {ex.Message}";
+                return;
+            }
+            _attachments.Clear();
+        }
         chat.Messages.Add(question);
         if (chat.Messages.Count(m => m.Role == "user") == 1)
-            chat.Title = TitleFrom(text);
+            chat.Title = TitleFrom(text.Length > 0 ? text : question.Files is [var first, ..] ? first.Name : "Picture");
         chat.Modified = DateTime.Now;
         if (!_chats.Contains(chat))
             _chats.Insert(0, chat);
@@ -442,7 +614,7 @@ public partial class GemmaChatView : UserControl
         try
         {
             var tools = chat.Workspace is { } root && Directory.Exists(root)
-                ? new WorkspaceTools(root, chat.Id, ApproveAsync, DeleteToRecycleBinAsync)
+                ? new WorkspaceTools(root, chat.Id, ApproveAsync, DeleteToRecycleBinAsync) { Token = cancel.Token }
                 : null;
             var parts = new List<string>();
             if (_config.SystemPrompt.Trim().Length > 0)
@@ -623,9 +795,13 @@ public partial class GemmaChatView : UserControl
 
     private MessageItem? _pendingCard;
 
+    /// <summary>"Allow all commands in this chat": run_command without asking (until another chat or folder).</summary>
+    private bool _allowCommandsInChat;
+
     /// <summary>
     /// Shows a change card and waits for the user's decision. Without asking (setting, or "Allow all in this chat")
-    /// the card only reports it; deleting always asks.
+    /// the card only reports it; deleting always asks; commands ask unless "Allow all commands in this chat" (the
+    /// setting does not cover them: a command can do anything).
     /// </summary>
     private Task<(bool Allowed, string Decision)> ApproveAsync(ChangeRequest request)
     {
@@ -633,7 +809,13 @@ public partial class GemmaChatView : UserControl
         _pendingCard = card;
         _items.Add(card);
         ScrollDownSoon();
-        if (request.Kind != "delete" && (_config.ChangesWithoutAsking || _allowAllInChat))
+        bool automatic = request.Kind switch
+        {
+            "delete" => false,
+            "command" => _allowCommandsInChat,
+            _ => _config.ChangesWithoutAsking || _allowAllInChat,
+        };
+        if (automatic)
         {
             card.Decide(true, "allowed automatically");
             return Task.FromResult((true, "allowed automatically"));
@@ -651,6 +833,12 @@ public partial class GemmaChatView : UserControl
 
     private void AllowAll_Click(object sender, RoutedEventArgs e)
     {
+        if (CardOf(sender) is { RequestKind: "command" } command)
+        {
+            _allowCommandsInChat = true;
+            command.Decide(true, "allowed (all commands in this chat)");
+            return;
+        }
         _allowAllInChat = true;
         CardOf(sender)?.Decide(true, "allowed (all in this chat)");
     }
@@ -804,7 +992,20 @@ public partial class GemmaChatView : UserControl
         {
             Message = message;
             Update(message.Content);
+            foreach (string name in message.Images ?? [])
+            {
+                if (ChatImages.Load(name, 480) is { } image)
+                    Pictures.Add(new ChatPicture(image, ChatStore.ImagePath(name)));
+            }
         }
+
+        /// <summary>The message's pictures (decoded small; a click opens the file).</summary>
+        public List<ChatPicture> Pictures { get; } = [];
+        public bool HasPictures => Pictures.Count > 0;
+
+        /// <summary>The message's attached files (name; a click opens the copy kept with the chat).</summary>
+        public List<ChatFileChip> FileChips => [.. (Message.Files ?? []).Select(f => new ChatFileChip(f.Name, ChatStore.FilePath(f.Stored)))];
+        public bool HasFiles => Message.Files is { Count: > 0 };
 
         public static MessageItem ForActivity(ChatMessage message) => new(message) { Kind = ItemKind.Activity };
 
@@ -833,6 +1034,7 @@ public partial class GemmaChatView : UserControl
         {
             "create" => $"Create {path}",
             "delete" => $"Delete {path}",
+            "command" => "Run a command",
             _ => $"Change {path}",
         };
 
@@ -856,16 +1058,20 @@ public partial class GemmaChatView : UserControl
         private bool Pending { get; set; }
         public bool IsPending => Pending;
         public bool CanAllowAll => Pending && RequestKind != "delete";
-        public string AllowText => RequestKind == "delete" ? "Delete" : "Allow";
+        public string AllowText => RequestKind switch { "delete" => "Delete", "command" => "Run", _ => "Allow" };
+        public string AllowAllText => RequestKind == "command" ? "Allow all commands in this chat" : "Allow all in this chat";
         public TaskCompletionSource<(bool Allowed, string Decision)> Decision { get; } = new();
         private string _decision = "";
 
-        public string ChangeIcon => (Change?.Kind ?? RequestKind) switch { "create" => "", "delete" => "", _ => "" };
+        public string ChangeIcon => (Change?.Kind ?? RequestKind) switch { "create" => "", "delete" => "", "command" => "", _ => "" };
 
         public bool CanUndo => Change is { Undone: false, Decision: not "refused" and not "stopped" } c && (c.Backup is not null || c.Kind == "create")
                                && !Pending;
 
-        public string DecisionText => Pending ? "The AI wants to make this change."
+        public string DecisionText => Pending
+                ? RequestKind == "command"
+                    ? $"The AI wants to run this command in its folder, with {(IsAdministrator ? "administrator" : "your")} rights. Read it first."
+                    : "The AI wants to make this change."
             : Change?.Undone == true ? $"{Capital(Change.Decision)} - undone"
             : Capital(Change?.Decision ?? _decision);
 
@@ -888,6 +1094,11 @@ public partial class GemmaChatView : UserControl
         {
             Message = message;
             Change = change;
+            if (change.Diff != _diffText)
+            {
+                SetDiff(change.Diff); // A command's card: the command, then what it printed.
+                OnPropertyChanged(nameof(DiffRows));
+            }
             RefreshChange();
         }
 
@@ -897,8 +1108,16 @@ public partial class GemmaChatView : UserControl
                 OnPropertyChanged(name);
         }
 
+        private string _diffText = "";
+
+        /// <summary>DirectoryFable runs as administrator: a command card says so.</summary>
+        private static readonly bool IsAdministrator =
+            new System.Security.Principal.WindowsPrincipal(System.Security.Principal.WindowsIdentity.GetCurrent())
+                .IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+
         private void SetDiff(string diff)
         {
+            _diffText = diff;
             DiffRows = [.. diff.Split('\n').Select(row => row.Length == 0 ? new DiffRow(" ", Brushes.Transparent, PlainText) : row[0] switch
             {
                 '+' => new DiffRow("+ " + row[1..], AddedBack, AddedText),

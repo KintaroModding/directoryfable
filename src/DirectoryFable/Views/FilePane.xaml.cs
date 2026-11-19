@@ -37,6 +37,26 @@ public partial class FilePane : UserControl
     /// <summary>Asks the pane to open a folder in a new background tab (middle-click, Ctrl+Enter).</summary>
     public event Action<string>? OpenInNewTabRequested;
 
+    /// <summary>
+    /// Selects exactly these rows ("Compare": what is only here or newer here) and shows the first one. Rows that
+    /// the quick filter hides stay out.
+    /// </summary>
+    public void SelectItems(IReadOnlyCollection<FileItem> items)
+    {
+        FileList.SelectedItems.Clear();
+        var wanted = new HashSet<FileItem>(items);
+        var shown = FileList.Items.Cast<FileItem>().Where(wanted.Contains).ToList();
+        if (shown.Count == 0)
+            return;
+        // All rows: one step (adding thousands of rows one by one is slow).
+        if (shown.Count == FileList.Items.Count)
+            FileList.SelectAll();
+        else
+            foreach (var item in shown)
+                FileList.SelectedItems.Add(item);
+        FileList.ScrollIntoView(shown[0]);
+    }
+
     /// <summary>Moves keyboard focus into the file list, back to the last focused row.</summary>
     public void FocusList()
     {

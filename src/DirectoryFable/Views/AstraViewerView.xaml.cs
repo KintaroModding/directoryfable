@@ -615,7 +615,9 @@ public partial class AstraViewerView : UserControl
             Checker.Width = bounds.Width;
             Checker.Height = bounds.Height;
         }
-        ZoomText.Text = $"{_zoom * 100:0.#} %";
+        // Whole percents (59 %, 74 %, 1.600 %); below 10 % one decimal (2,5 %).
+        double percent = _zoom * 100;
+        ZoomText.Text = percent >= 10 ? $"{percent:N0} %" : $"{percent:0.#} %";
     }
 
     private static bool HasTransparency(BitmapSource image) =>

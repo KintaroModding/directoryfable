@@ -35,7 +35,6 @@
             <Setter Property="Background" Value="{StaticResource CardBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="8" />
             <Setter Property="Padding" Value="16,14" />
             <Setter Property="Margin" Value="0,0,14,14" />
             <Setter Property="Width" Value="330" />
@@ -89,7 +88,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
-                        <Border x:Name="Bd" Background="Transparent" Padding="14,8" Margin="6,1" CornerRadius="4">
+                        <Border x:Name="Bd" Background="Transparent" Padding="14,8" Margin="6,1">
                             <ContentPresenter />
                         </Border>
                         <ControlTemplate.Triggers>
@@ -114,7 +113,7 @@
                         <Grid>
                             <!-- The entry's color: a light tint (a divider: a strong one) and a thin stripe on the left. -->
                             <Border x:Name="Bd" Background="{Binding RowBrush}" BorderBrush="Transparent" BorderThickness="1"
-                                    CornerRadius="6" Padding="{DynamicResource RowPadding}" Margin="{DynamicResource RowMargin}">
+                                    Padding="{DynamicResource RowPadding}" Margin="{DynamicResource RowMargin}">
                                 <ContentPresenter />
                             </Border>
                             <Rectangle Width="3" HorizontalAlignment="Left" Margin="{DynamicResource RowMargin}" RadiusX="1.5" RadiusY="1.5"
@@ -292,6 +291,14 @@
                             <TextBlock Text="Import CSV" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
+                    <Button x:Name="ExportButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="26"
+                            ToolTip="Export all entries as a CSV file (for another password manager or a copy; passwords as plain text)"
+                            Click="Export_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource BarIcon}" Text="&#xEDE1;" />
+                            <TextBlock Text="Export CSV" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
                     <Rectangle Width="1" Height="14" Margin="10,0" Fill="{StaticResource LineBrush}" />
                     <Button x:Name="LockButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="26"
                             ToolTip="Lock KeeSeek now (Ctrl+L)" Click="Lock_Click">
@@ -442,7 +449,7 @@
         <!-- Locked (or no vault yet): the master password. -->
         <Border x:Name="LockPanel" Grid.Row="1" Width="470" HorizontalAlignment="Center" VerticalAlignment="Center"
                 Background="{StaticResource CardBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1"
-                CornerRadius="8" Padding="32,28">
+                Padding="32,28">
             <StackPanel>
                 <StackPanel Orientation="Horizontal">
                     <Image x:Name="LockIcon" Source="/Assets/keeseek.ico" Width="40" Height="40" RenderOptions.BitmapScalingMode="HighQuality" />
@@ -470,7 +477,7 @@
         <Grid x:Name="EditorLayer" Grid.Row="1" Background="#B0000000" Visibility="Collapsed">
             <Border Width="560" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20"
                     Background="{StaticResource CardBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1"
-                    CornerRadius="8">
+                   >
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="28,22">
                     <StackPanel>
                         <TextBlock x:Name="EditorTitle" FontSize="19" FontWeight="SemiBold" />
@@ -482,7 +489,7 @@
                         <TextBlock Style="{StaticResource FieldLabel}" Text="Color" />
                         <WrapPanel x:Name="ColorSwatches" />
                         <DockPanel Margin="0,6,0,0">
-                            <Border x:Name="ColorPreview" DockPanel.Dock="Left" Width="24" Height="24" CornerRadius="4"
+                            <Border x:Name="ColorPreview" DockPanel.Dock="Left" Width="24" Height="24"
                                     BorderBrush="{StaticResource LineBrush}" BorderThickness="1" Margin="0,0,8,0" />
                             <TextBlock DockPanel.Dock="Left" Text="Own color (#RRGGBB):" VerticalAlignment="Center" Margin="0,0,8,0"
                                        FontSize="12" Foreground="{StaticResource SecondaryTextBrush}" />
@@ -516,7 +523,7 @@
                                        Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" />
                             <ProgressBar x:Name="StrengthBar" Height="5" Minimum="0" Maximum="128" VerticalAlignment="Center" />
                         </DockPanel>
-                        <Border x:Name="GeneratorPanel" Margin="0,10,0,0" Padding="14,10" CornerRadius="6" Background="#1A1A1A"
+                        <Border x:Name="GeneratorPanel" Margin="0,10,0,0" Padding="14,10" Background="#1A1A1A"
                                 BorderBrush="{StaticResource LineBrush}" BorderThickness="1" Visibility="Collapsed">
                             <StackPanel>
                                 <DockPanel>
@@ -562,7 +569,7 @@
 
         <!-- "Password copied · cleared in 18 s". -->
         <Border x:Name="Toast" Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,24"
-                Padding="16,9" CornerRadius="6" Background="#E0262626" BorderBrush="{StaticResource LineBrush}" BorderThickness="1"
+                Padding="16,9" Background="#E0262626" BorderBrush="{StaticResource LineBrush}" BorderThickness="1"
                 Visibility="Collapsed" IsHitTestVisible="False">
             <TextBlock x:Name="ToastText" FontSize="13" />
         </Border>

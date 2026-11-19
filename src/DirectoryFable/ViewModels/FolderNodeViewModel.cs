@@ -112,7 +112,7 @@ public sealed class FolderNodeViewModel : ObservableObject
         await _loading;
 
         int version = ++_refreshVersion;
-        var folders = await Task.Run(() => ReadSubfolders(Path));
+        var folders = await ReadChildrenAsync();
         if (version != _refreshVersion)
             return; // A newer read is on its way.
 
@@ -224,7 +224,7 @@ public sealed class FolderNodeViewModel : ObservableObject
         }
         else
         {
-            var folders = await Task.Run(() => ReadSubfolders(Path));
+            var folders = await ReadChildrenAsync();
             children = [.. folders.Select(f => new FolderNodeViewModel(
                 PathHelper.GetName(f.Path), f.Path, Depth + 1, ShellInfo.GetFolderIconFast(f.Path),
                 hasChildren: f.HasSubfolders))];
@@ -235,6 +235,30 @@ public sealed class FolderNodeViewModel : ObservableObject
         Children.Clear();
         foreach (var child in children)
             Children.Add(child);
+    }
+
+    // A server's hidden shares ("C$") that the pane went to: a read of the server never lists them, so they are
+    // kept here and stay in the tree over refreshes (else the selected folder below would vanish from it).
+    private HashSet<string>? _unlisted;
+
+    /// <summary>The subfolders as read (off the UI thread), plus the unlisted ones, in name order.</summary>
+    private Task<List<(string Path, bool HasSubfolders)>> ReadChildrenAsync()
+    {
+        string path = Path;
+        var unlisted = _unlisted?.ToList();
+        return Task.Run(() =>
+        {
+            var folders = ReadSubfolders(path);
+            if (unlisted is null)
+                return folders;
+            foreach (string extra in unlisted)
+            {
+                if (!folders.Any(f => string.Equals(f.Path, extra, StringComparison.OrdinalIgnoreCase)))
+                    folders.Add((extra, true));
+            }
+            folders.Sort((a, b) => StringComparer.CurrentCultureIgnoreCase.Compare(PathHelper.GetName(a.Path), PathHelper.GetName(b.Path)));
+            return folders;
+        });
     }
 
     private static readonly EnumerationOptions FolderOptions = new()
@@ -281,6 +305,8 @@ public sealed class FolderNodeViewModel : ObservableObject
     /// </summary>
     public FolderNodeViewModel AddHiddenChild(string childPath)
     {
+        if (PathHelper.IsServerPath(Path))
+            (_unlisted ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase)).Add(childPath);
         var node = new FolderNodeViewModel(PathHelper.GetName(childPath), childPath, Depth + 1,
             ShellInfo.GetFolderIconFast(childPath));
         int index = 0;

@@ -1,7 +1,5 @@
 using System.ComponentModel;
 using System.IO;
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -46,10 +44,12 @@ public sealed class RecentTile : ThisPcItem
 public sealed class DriveTile : ThisPcItem
 {
 
-    private string _name = "", _detail = "", _line1 = "", _line2 = "", _toolTip = "";
+    private string _name = "", _detail = "", _line1 = "", _line2 = "", _toolTip = "", _health = "";
+    private Brush? _healthBrush;
     private ImageSource? _icon;
     private double _used;
     private bool _ready;
+    private bool _keepsHealthLine;
 
     public string Name { get => _name; set => SetField(ref _name, value); }
 
@@ -63,6 +63,37 @@ public sealed class DriveTile : ThisPcItem
     public string Line2 { get => _line2; set => SetField(ref _line2, value); }
 
     public string ToolTip { get => _toolTip; set => SetField(ref _toolTip, value); }
+
+    /// <summary>The disk's health: "Healthy · 57 °C · 100 % life left", or "" (not known, or not read yet).</summary>
+    public string Health
+    {
+        get => _health;
+        set
+        {
+            if (SetField(ref _health, value))
+                OnPropertyChanged(nameof(HealthVisibility));
+        }
+    }
+
+    /// <summary>Green when healthy, orange for a warning, red when unhealthy.</summary>
+    public Brush? HealthBrush { get => _healthBrush; set => SetField(ref _healthBrush, value); }
+
+    /// <summary>
+    /// A drive on a disk that can have a health line (local and removable drives): the line keeps its place while it
+    /// is empty, so the tiles do not grow and push the rows below down when the disk details arrive a moment later.
+    /// </summary>
+    public bool KeepsHealthLine
+    {
+        get => _keepsHealthLine;
+        set
+        {
+            if (SetField(ref _keepsHealthLine, value))
+                OnPropertyChanged(nameof(HealthVisibility));
+        }
+    }
+
+    public Visibility HealthVisibility =>
+        _health.Length > 0 ? Visibility.Visible : _keepsHealthLine ? Visibility.Hidden : Visibility.Collapsed;
 
     public ImageSource? Icon { get => _icon; set => SetField(ref _icon, value); }
 
@@ -207,7 +238,7 @@ public partial class DrivesView : UserControl
         var list = new List<DriveData>();
         foreach (var drive in DriveInfo.GetDrives())
         {
-            string? unc = drive.DriveType == DriveType.Network ? NetworkTarget(drive.Name[..2]) : null;
+            string? unc = drive.DriveType == DriveType.Network ? NetworkComputers.MappedTarget(drive.Name[..2]) : null;
             try
             {
                 list.Add(drive.IsReady
@@ -311,8 +342,25 @@ public partial class DrivesView : UserControl
         };
         string label = data.Label.Length > 0 ? data.Label : share.Length > 0 ? share : kind;
         tile.Name = $"{label} ({letter})";
+        // The disk behind it (not for network and CD / DVD drives): "SSD · NVMe", and its health.
+        var disk = data.Type is DriveType.Fixed or DriveType.Removable ? DiskInfo.For(data.Root) : null;
+        string diskKind = disk?.KindText ?? "";
         tile.Detail = data.Unc is { } path ? $"   {path}"
-            : data.Type is DriveType.Removable or DriveType.CDRom or DriveType.Ram ? $"   {kind}" : "";
+            : data.Type is DriveType.Removable or DriveType.CDRom or DriveType.Ram
+                ? $"   {kind}{(diskKind.Length > 0 ? " · " + diskKind : "")}"
+            : diskKind.Length > 0 ? $"   {diskKind}" : "";
+        tile.KeepsHealthLine = data.Type is DriveType.Fixed or DriveType.Removable;
+        tile.Health = disk?.HealthText ?? "";
+        tile.HealthBrush = disk?.Health switch
+        {
+            "Healthy" => HealthyBrush,
+            "Warning" => WarningBrush,
+            "Unhealthy" => UnhealthyBrush,
+            _ => null,
+        };
+        string diskTip = disk is null ? ""
+            : $"\nDisk: {disk.Model}{(diskKind.Length > 0 ? $" ({diskKind})" : "")}" +
+              (disk.HealthText.Length > 0 ? $"\nHealth: {disk.HealthText}" : "");
         tile.Ready = data.Ready && data.Total > 0;
         if (tile.Ready)
         {
@@ -320,27 +368,27 @@ public partial class DrivesView : UserControl
             tile.Used = Math.Clamp(used, 0, 1);
             tile.Line1 = $"{data.Format}   ·   {used:P0} used";
             tile.Line2 = $"{DisplayFormat.Size(data.Free)} free of {DisplayFormat.Size(data.Total)}";
-            tile.ToolTip = $"{data.Root}\n{DisplayFormat.Size(data.Total - data.Free)} used, {DisplayFormat.Size(data.Free)} free, {DisplayFormat.Size(data.Total)} in all";
+            tile.ToolTip = $"{data.Root}\n{DisplayFormat.Size(data.Total - data.Free)} used, {DisplayFormat.Size(data.Free)} free, {DisplayFormat.Size(data.Total)} in all{diskTip}";
         }
         else
         {
             tile.Used = 0;
             tile.Line1 = data.Type == DriveType.CDRom ? "No disc" : "Not ready";
             tile.Line2 = "";
-            tile.ToolTip = data.Root;
+            tile.ToolTip = data.Root + diskTip;
         }
     }
 
-    /// <summary>"\\server\share" of a mapped network drive ("Z:"), or null.</summary>
-    private static string? NetworkTarget(string letter)
-    {
-        var buffer = new StringBuilder(512);
-        int length = buffer.Capacity;
-        return WNetGetConnectionW(letter, buffer, ref length) == 0 ? buffer.ToString() : null;
-    }
+    private static readonly Brush HealthyBrush = Frozen(0x6C, 0xCB, 0x5F);
+    private static readonly Brush WarningBrush = Frozen(0xF0, 0xB4, 0x29);
+    private static readonly Brush UnhealthyBrush = Frozen(0xFF, 0x6B, 0x6B);
 
-    [DllImport("mpr.dll", CharSet = CharSet.Unicode)]
-    private static extern int WNetGetConnectionW(string lpLocalName, StringBuilder lpRemoteName, ref int lpnLength);
+    private static Brush Frozen(byte r, byte g, byte b)
+    {
+        var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
+        brush.Freeze();
+        return brush;
+    }
 
     // ---------- Input ----------
 

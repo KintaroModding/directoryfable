@@ -9,6 +9,14 @@
     <!-- SonnetSearch: name search over whole drives (the drive's file table when run as administrator)
          or a folder tree; filters by type, size and date (also "since the time mark"). -->
     <UserControl.Resources>
+        <!-- "Duplicates": the background changes from group to group, not from row to row. -->
+        <Style x:Key="DuplicateRowStyle" TargetType="ListViewItem" BasedOn="{StaticResource FileRowStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Band}" Value="True">
+                    <Setter Property="Background" Value="{StaticResource ListAlternateRowBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         <Style x:Key="FilterLabel" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
             <Setter Property="VerticalAlignment" Value="Center" />
@@ -61,7 +69,9 @@
         </Grid.RowDefinitions>
 
         <!-- Search line: Reset | Search | text | match case, regular expression | time mark. -->
-        <Border Grid.Row="0" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1" Padding="8,5">
+        <!-- MinHeight 40 (1 more than the content needs): at 125 % and 150 % scaling the rounded row would else be half
+             a pixel short, and the 28 px search box would lose its bottom row (the blue focus line). -->
+        <Border Grid.Row="0" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1" Padding="8,5" MinHeight="40">
             <DockPanel>
                 <Button DockPanel.Dock="Left" Style="{StaticResource SubtleButton}" Height="28" Padding="10,0" Margin="0,0,4,0"
                         ToolTip="Reset: empty text, all filters back to &quot;any&quot; (places and the mark stay)" Click="Reset_Click">
@@ -97,7 +107,7 @@
                 <ToggleButton x:Name="CaseToggle" DockPanel.Dock="Right" Style="{StaticResource SearchOptionToggle}" Width="28" Height="26"
                               Margin="6,0,0,0" Content="Aa" ToolTip="Match case" Checked="Option_Changed" Unchecked="Option_Changed" />
                 <Grid>
-                    <TextBox x:Name="QueryBox" Style="{StaticResource FieldTextBox}" FontSize="13"
+                    <TextBox x:Name="QueryBox" Style="{StaticResource FieldTextBox}" Height="28" FontSize="13"
                              TextChanged="QueryBox_TextChanged" />
                     <TextBlock x:Name="QueryHint" Margin="10,0" VerticalAlignment="Center" IsHitTestVisible="False" FontSize="13"
                                Foreground="{StaticResource SecondaryTextBrush}"
@@ -270,6 +280,28 @@
                     <ComboBoxItem Content="Last 30 days" />
                     <ComboBoxItem x:Name="SinceMarkItem" Content="Since the mark" />
                 </ComboBox>
+                <!-- Text inside the files: read only for the files found by the rest (Enter starts it; Aa = match case). -->
+                <TextBlock Style="{StaticResource FilterLabel}" Text="Containing" />
+                <TextBox x:Name="ContentBox" Style="{StaticResource FieldTextBox}" Width="220" KeyDown="ContentBox_KeyDown"
+                         TextChanged="ContentBox_TextChanged"
+                         ToolTip="Text inside the files (Enter searches; Aa = match case). Only the files found by the name and the filters are read; binary files and files over 64 MB are skipped. Esc stops." />
+                <!-- Files with the same content among the found files (same size, then the same start, then the same SHA-256). -->
+                <ToggleButton x:Name="DuplicatesToggle" Style="{StaticResource BarToggleButton}" Height="26" Padding="8,1" Margin="14,0,0,0"
+                              VerticalAlignment="Center" Click="Duplicates_Click"
+                              ToolTip="Show only files that have the same content as another found file, in groups (the largest files first). Files of the same size are read and compared; empty files are left out, hard links count once. Use the name and the filters (for example Size: At least 1 MB) to compare fewer files. Esc stops. Goes off by itself on a new search (other text, Ctrl+F in the explorer, the next start).">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE8C8;" FontFamily="{StaticResource IconFont}" FontSize="13" Margin="0,1,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Duplicates" VerticalAlignment="Center" />
+                    </StackPanel>
+                </ToggleButton>
+                <Button x:Name="KeepOneButton" Style="{StaticResource SubtleButton}" Height="26" Padding="8,1" Margin="4,0,0,0"
+                        VerticalAlignment="Center" Visibility="Collapsed" Click="KeepOne_Click"
+                        ToolTip="Select every file of each group except its first row (sort the list to choose which file stays: Containing Path, Last Modified, ...). Delete then moves the selected files to the Recycle Bin.">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE762;" FontFamily="{StaticResource IconFont}" FontSize="13" Margin="0,1,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Select all but one" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
             </StackPanel>
         </Border>
 

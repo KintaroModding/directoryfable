@@ -20,6 +20,10 @@ public partial class FilePane
     private const int CmdOpenInViewer = ShellContextMenu.ExtraCommandFirst + 6;
     private const int CmdOpenInPlayer = ShellContextMenu.ExtraCommandFirst + 7;
     private const int CmdOpenInChat = ShellContextMenu.ExtraCommandFirst + 8;
+    private const int CmdSendToChat = ShellContextMenu.ExtraCommandFirst + 9;
+
+    /// <summary>"Send to GemmaChat": the selected files are attached to the chat's next message (set by the main window).</summary>
+    public static Action<IReadOnlyList<string>>? SendToChat { get; set; }
 
     /// <summary>Set by the main window: a new GemmaChat chat that works in this folder.</summary>
     public static Action<string>? OpenInChat { get; set; }
@@ -97,6 +101,9 @@ public partial class FilePane
         // Files (no folders, not inside an archive): open them in Notepad#.
         if (selected.Count > 0 && selected.All(f => !f.IsDirectory) && !InArchive)
             extras.Add((CmdOpenInNotepad, "Open in Notepad#\tCtrl+E"));
+        // Files: attach them to GemmaChat's next message (text files, PDFs, pictures).
+        if (selected.Count > 0 && selected.All(f => !f.IsDirectory) && !InArchive && SendToChat is not null)
+            extras.Add((CmdSendToChat, "Send to GemmaChat"));
         // One image (of the AstraViewer types, not inside an archive): open it in AstraViewer.
         if (selected is [{ IsDirectory: false } image] && !InArchive && Viewer.ImageFileTypes.IsImage(image.FullPath))
             extras.Add((CmdOpenInViewer, "Open in AstraViewer"));
@@ -161,6 +168,9 @@ public partial class FilePane
                 break;
             case ShellMenuOutcome.Extra when result.ExtraCommandId == CmdOpenInChat:
                 OpenInChat?.Invoke(selected.Count == 1 ? selected[0].FullPath : _viewModel.CurrentPath);
+                break;
+            case ShellMenuOutcome.Extra when result.ExtraCommandId == CmdSendToChat:
+                SendToChat?.Invoke([.. selected.Select(f => f.FullPath)]);
                 break;
             case ShellMenuOutcome.Extra when result.ExtraCommandId == CmdAddFavorite:
                 FavoritesViewModel.Current?.Add(selected.Count == 1 ? selected[0].FullPath : _viewModel.CurrentPath);

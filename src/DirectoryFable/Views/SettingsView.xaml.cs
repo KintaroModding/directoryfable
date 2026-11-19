@@ -48,6 +48,9 @@ public partial class SettingsView : UserControl
     /// <summary>"Quick bar: icons only" was switched (the panes follow at once).</summary>
     public event Action<bool>? IconsOnlyChanged;
 
+    /// <summary>"Folder tree: Network" was switched (the tree follows at once).</summary>
+    public event Action<bool>? NetworkInTreeChanged;
+
     /// <summary>Reads settings.json again (it may have been edited by hand) and shows it.</summary>
     public void Open()
     {
@@ -59,6 +62,7 @@ public partial class SettingsView : UserControl
             TrayMode.IsChecked = _settings.IsTrayMode;
             TaskbarMode.IsChecked = !_settings.IsTrayMode;
             StartMaximized.IsChecked = _settings.StartMaximized;
+            StartHidden.IsChecked = _settings.StartHidden;
             RestoreSession.IsChecked = _settings.RestoreSession;
             FolderSizes.IsChecked = _settings.FolderSizes;
             CheckSecondsBox.Text = _settings.FolderSizesCheckSeconds.ToString(System.Globalization.CultureInfo.CurrentCulture);
@@ -72,6 +76,7 @@ public partial class SettingsView : UserControl
             ShowSevenZipStatus();
             ArchiveBackground.Text = _settings.ArchiveBackground;
             IconsOnly.IsChecked = _settings.QuickBarIconsOnly;
+            NetworkInTree.IsChecked = _settings.NetworkInTree;
             ShowSwatch(_settings.ArchiveBackground);
             SaveStatus.Text = "";
             ColumnsStatus.Text = "";
@@ -116,9 +121,11 @@ public partial class SettingsView : UserControl
         if (_filling)
             return;
         bool maximized = StartMaximized.IsChecked == true, restore = RestoreSession.IsChecked == true;
+        bool hidden = StartHidden.IsChecked == true;
         Save(s =>
         {
             s.StartMaximized = maximized;
+            s.StartHidden = hidden;
             s.RestoreSession = restore;
         });
     }
@@ -210,6 +217,17 @@ public partial class SettingsView : UserControl
         bool on = IconsOnly.IsChecked == true;
         Save(s => s.QuickBarIconsOnly = on);
         IconsOnlyChanged?.Invoke(on);
+    }
+
+    // ---------- Folder tree ----------
+
+    private void NetworkInTree_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_filling)
+            return;
+        bool on = NetworkInTree.IsChecked == true;
+        Save(s => s.NetworkInTree = on);
+        NetworkInTreeChanged?.Invoke(on);
     }
 
     // ---------- Folder sizes ----------

@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<!-- Log files for Notepad#: error, warning, info and debug words, dates and times, strings, numbers. -->
+<SyntaxDefinition name="Log" extensions=".log" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" foreground="#6A9955" />
+  <Color name="String" foreground="#CE9178" />
+  <Color name="Number" foreground="#B5CEA8" />
+  <Color name="Constant" foreground="#4FC1FF" />
+  <Color name="Error" foreground="#F44747" />
+  <Color name="Warning" foreground="#D7BA7D" />
+  <Color name="Info" foreground="#4FC1FF" />
+  <Color name="Dim" foreground="#808080" />
+
+  <RuleSet>
+    <Rule color="Error">\b(ERROR|ERR|FATAL|CRITICAL|CRIT|FAIL|FAILED|FAILURE|EXCEPTION|PANIC|SEVERE)\b|\b(Error|Fatal|Exception|Failed)\b(?=[:\]])</Rule>
+    <Rule color="Warning">\b(WARNING|WARN|CAUTION|DEPRECATED)\b|\bWarning\b(?=[:\]])</Rule>
+    <Rule color="Info">\b(INFO|INFORMATION|NOTICE|SUCCESS|OK|DISPLAY)\b</Rule>
+    <Rule color="Dim">\b(DEBUG|DBG|TRACE|VERBOSE|VERYVERBOSE|LOG)\b</Rule>
+    <Rule color="Comment">\b\d{4}[-./]\d{2}[-./]\d{2}([T\ ]\d{2}[:.]\d{2}([:.]\d{2})?([.,:]\d+)?)?(Z|[+-]\d{2}:?\d{2})?|\b\d{2}:\d{2}:\d{2}([.,]\d+)?\b</Rule>
+    <Span color="String" begin="&quot;" end="&quot;|$" />
+    <Rule color="Constant">\b0x[0-9a-fA-F]+\b|\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b</Rule>
+    <Rule color="Number">\b\d+(\.\d+)?\b</Rule>
+  </RuleSet>
+</SyntaxDefinition>

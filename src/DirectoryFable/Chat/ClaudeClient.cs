@@ -281,7 +281,28 @@ public static class ClaudeClient
             FlushResults();
             if (m.Role == "user")
             {
-                messages.Add(new BetaUserMessageParam { Content = m.Content });
+                if (m.Images is { Count: > 0 } || m.Files is { Count: > 0 })
+                {
+                    // Pictures and PDF documents first, then the text (as Claude reads them best); attached text
+                    // files are part of the text.
+                    var blocks = new List<BetaContentBlockParam>();
+                    foreach (string name in m.Images ?? [])
+                    {
+                        if (ChatImages.ForApi(name) is { } image)
+                            blocks.Add(new BetaImageBlockParam { Source = new BetaBase64ImageSource { Data = image.Base64, MediaType = image.MediaType } });
+                    }
+                    foreach (var (name, base64) in ChatFiles.Pdfs(m))
+                        blocks.Add(new BetaRequestDocumentBlock { Source = new BetaBase64PdfSource { Data = base64 }, Title = name });
+                    string text = ChatFiles.TextWithFiles(m);
+                    if (text.Length > 0)
+                        blocks.Add(new BetaTextBlockParam { Text = text });
+                    if (blocks.Count > 0)
+                        messages.Add(new BetaUserMessageParam { Content = blocks });
+                }
+                else
+                {
+                    messages.Add(new BetaUserMessageParam { Content = m.Content });
+                }
                 continue;
             }
             var content = m.Blocks is { Count: > 0 } saved ? FromBlocks(saved) : FromText(m);

@@ -16,6 +16,7 @@ public sealed class FileItem : ObservableObject
     private bool _isHidden;
     private ImageSource? _icon;
     private bool _isCut;
+    private string _compareMark = "";
 
     public required string Name { get; init; }
     public required string FullPath { get; init; }
@@ -97,6 +98,30 @@ public sealed class FileItem : ObservableObject
         get => _isCut;
         set => SetField(ref _isCut, value);
     }
+
+    /// <summary>
+    /// "Compare" (the two panes against each other): "only" (not on the other side), "newer", "older", "differs", or
+    /// "" (the same, or no compare runs).
+    /// </summary>
+    public string CompareMark
+    {
+        get => _compareMark;
+        set
+        {
+            if (SetField(ref _compareMark, value))
+                OnPropertyChanged(nameof(CompareText));
+        }
+    }
+
+    /// <summary>The mark as the row shows it.</summary>
+    public string CompareText => _compareMark switch
+    {
+        "only" => "only here",
+        "newer" => "newer",
+        "older" => "older",
+        "differs" => "differs",
+        _ => "",
+    };
 
     /// <summary>True while files are dragged over this folder row (drop goes into it).</summary>
     public bool IsDropTarget

@@ -158,15 +158,20 @@ public sealed class SearchQuery
 
 /// <summary>
 /// The found entries: (index number &lt;&lt; 32 | entry) per item, in display order. Totals: per index the folder
-/// sizes (all files below each folder), or null when folder sizes are off.
+/// sizes (all files below each folder), or null when folder sizes are off. Groups: "Duplicates" only, the group
+/// number (1, 2, ...) per item; the items of a group stand together.
 /// </summary>
-public sealed class SearchResult(IReadOnlyList<DriveIndex> indexes, long[] items, long searched, IReadOnlyList<FolderTotals>? totals = null)
+public sealed class SearchResult(IReadOnlyList<DriveIndex> indexes, long[] items, long searched, IReadOnlyList<FolderTotals>? totals = null,
+    int[]? groups = null)
 {
     public static readonly SearchResult Empty = new([], [], 0);
 
     public IReadOnlyList<DriveIndex> Indexes { get; } = indexes;
     public long[] Items { get; } = items;
     public IReadOnlyList<FolderTotals>? Totals { get; } = totals;
+
+    /// <summary>Duplicates: the group number per item (same length as <see cref="Items"/>); null for a normal search.</summary>
+    public int[]? Groups { get; } = groups;
 
     /// <summary>A file's size; a folder's: all files below it (with folder sizes on), else -1.</summary>
     public long SizeOf(long item) => SizeOf(Indexes, Totals, item);
@@ -262,6 +267,25 @@ public static class SearchRunner
         return result;
     }
 
+    /// <summary>Duplicates: sorts inside each group; the groups keep their order.</summary>
+    public static void SortGroups(long[] items, int[] groups, IReadOnlyList<DriveIndex> indexes, IReadOnlyList<FolderTotals>? totals,
+        ResultSort sort, bool descending, CancellationToken token)
+    {
+        for (int start = 0; start < items.Length;)
+        {
+            int end = start + 1;
+            while (end < items.Length && groups[end] == groups[start])
+                end++;
+            if (end - start > 1)
+            {
+                var part = items[start..end];
+                Sort(part, indexes, totals, sort, descending, token);
+                part.CopyTo(items, start);
+            }
+            start = end;
+        }
+    }
+
     public static void Sort(long[] items, IReadOnlyList<DriveIndex> indexes, IReadOnlyList<FolderTotals>? totals, ResultSort sort,
         bool descending, CancellationToken token)
     {
@@ -292,7 +316,12 @@ public static class SearchRunner
             return;
         }
 
-        Comparison<long> byName = (x, y) => Of(x).Name(Entry(x)).CompareTo(Of(y).Name(Entry(y)), StringComparison.OrdinalIgnoreCase);
+        // The same name (duplicates, desktop.ini, ...): by folder, so the order does not change from sort to sort.
+        Comparison<long> byName = (x, y) =>
+        {
+            int c = Of(x).Name(Entry(x)).CompareTo(Of(y).Name(Entry(y)), StringComparison.OrdinalIgnoreCase);
+            return c != 0 ? c : string.Compare(Of(x).FolderPath(Entry(x)), Of(y).FolderPath(Entry(y)), StringComparison.OrdinalIgnoreCase);
+        };
         Comparison<long> comparison = sort switch
         {
             ResultSort.Type => (x, y) =>

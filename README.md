@@ -24,13 +24,21 @@ yourself, see [Build](#build).
 - **Folder tree and favorites bar**, shared by both panes; they act on the
   active pane. The tree shows Home, Favorites, Desktop and This PC. It follows
   the active pane, or stays where it is (toggle in its header). "Collapse all"
-  goes back to the overview.
+  goes back to the overview. "Folder tree: Network" on the settings page (off
+  by default) adds a **Network** group: this computer and the servers of
+  mapped drives, favorites and recent folders, plus the computers that
+  Windows' network discovery finds (added as they come in). Open a computer
+  to see its shares; `F5` on the group searches again.
 - **Address bar** with clickable parts; it turns blue on a network path
   (`\\server\share` or a mapped network drive). Type a path with `Ctrl+L`, `Alt+D` or
   `F4`; environment variables like `%APPDATA%` work.
 - **This PC**: the drives with a usage bar (red from 90 % used), file system,
   how full and free of total, in "Devices and drives" and "Network locations"
-  (with the share). Open it from the tree, by typing `This PC`, or with Up from
+  (with the share). For local and removable drives also the disk behind them
+  ("SSD · NVMe", "HDD · SATA", "USB") and its health as Windows reports it: a
+  green, orange or red dot with Healthy / Warning / Unhealthy, the temperature
+  and, for SSDs, the life left (temperature and life need administrator
+  rights). Open it from the tree, by typing `This PC`, or with Up from
   a drive. Double-click or `Enter` opens a drive, a middle click opens it in a
   new tab, right-click shows Windows' menu for it ("Space usage" opens the Space
   view); the values update while you look. Below the drives: **Recent folders**,
@@ -71,6 +79,14 @@ yourself, see [Build](#build).
   the quick bar shows the text and "shown / all". `Backspace` takes back a
   character, `Esc` shows all again, another folder starts without a filter.
 - **Auto-refresh**: the lists and the tree follow changes on disk.
+- **Compare** (a toggle next to `Refresh both`, in the bar under the title
+  bar): while it is on, each row and tile shows how it stands against the
+  other pane: `only here`, `newer`, `older` or `differs` (the same time,
+  another size). It compares the names in the two shown folders (not inside
+  subfolders; folders by their name only); times up to 2 seconds apart count
+  as the same. Turning it on selects in each pane what is only there or newer
+  there, ready for Copy to other. The status bars show the counts, and the
+  marks follow changes and other folders. Click again to end.
 - **File operations through Windows** (Recycle Bin, elevation).
 - **Own question for names that are taken**: before a copy or move starts,
   DirectoryFable finds the names that already exist in the target (also inside
@@ -92,7 +108,9 @@ yourself, see [Build](#build).
   scrolls when you drag past its top or bottom.
 - **Drag and drop** between the panes, tabs, the tree, the favorites and other
   programs. A right-button drag asks what to do; dropped into the same folder,
-  it makes a copy under a new name.
+  it makes a copy under a new name. A drag shows Windows' drag picture (the
+  file's icon or thumbnail, a count for several) and what a drop would do
+  ("Move to Documents").
 - **The Windows context menu** in dark mode, so your shell extensions work.
 - **Quick actions bar** in each pane, in two rows. First: Folder path, File
   path, Copy, Cut, Paste (as `Ctrl+C`, `Ctrl+X`, `Ctrl+V`), 7z (7-Zip's "Add
@@ -121,7 +139,9 @@ yourself, see [Build](#build).
   column, every 2 seconds).
 - **Settings page** behind the gear button. A normal window with a taskbar
   button (the default), or tray mode: only a tray icon, and closing the window
-  hides it. Only one copy runs.
+  hides it. Only one copy runs. "Start hidden" (off by default) starts without
+  showing the window: hidden in tray mode until the tray icon is clicked,
+  minimized in taskbar mode.
 - **Session**: window, tabs, columns and the open Notepad# files come back at
   the next start.
 
@@ -138,15 +158,27 @@ yourself, see [Build](#build).
   `Default icon` goes back to the normal symbol. The icons are kept in the
   session.
 - **Editor** based on [AvalonEdit](https://github.com/icsharpcode/AvalonEdit):
-  line numbers, syntax highlighting for the languages AvalonEdit knows plus
-  AutoHotkey, INI and Technical Notes, chosen per file, and word wrap (`Alt+Z`).
+  line numbers, syntax highlighting chosen per file, and word wrap (`Alt+Z`).
+  Languages: the ones AvalonEdit knows (C#, C++, Java, JavaScript, Python,
+  PHP, PowerShell, SQL, HTML, CSS, XML, JSON, Markdown and more) plus
+  AutoHotkey, Batch, Dockerfile, Go, INI, Kotlin, Log, Lua, Makefile,
+  Registry, Ruby, Rust, Shader (GLSL / HLSL), Shell script, Swift, TOML,
+  TypeScript, YAML and Technical Notes. The arrows left of the Language menu
+  step through them in the menu's order, to try one after another.
 - **Technical Notes**: highlighting for plain-text notes and logs: dates and
   times, status words (`TODO`, `FIXED`, `ERROR`), paths, file names, dotted
   members, brackets (colored by depth), quotes, numbers; capitalized words
   always stand out. `.tnotes` files get it at once; for any other file choose
   it in the Language menu.
 - **Search** (`Ctrl+F`) in a dark search box: match case, whole words, regular
-  expressions.
+  expressions. **Replace** (`Ctrl+H`, or the arrow on the left of the search
+  box): Replace (`Enter`) and Replace all (`Ctrl+Alt+Enter`, one Undo takes it
+  back); with a regular expression `$1`, `$2` take the groups of the match.
+- **Find in files** (`Ctrl+Shift+F`): a panel above the status line searches a
+  folder and its subfolders (not `.git`, `.vs`, `node_modules`, `bin`, `obj`)
+  with the same options, in all files or in patterns such as `*.cs *.xaml`.
+  The hits are listed as file:line with the line; a double-click (or `Enter`)
+  opens the file at the hit. Binary files and files over 64 MB are skipped.
 - **Minimap** beside the scroll bar: click to jump, drag to scroll.
 - **The full path** of the shown file just above the first line; right-click
   it to copy it or to show the file in the explorer.
@@ -179,7 +211,8 @@ yourself, see [Build](#build).
   on a thumbnail adds that image ("Add to history").
 - **The image** fits into the window (or starts at 100 %). Mouse wheel = zoom
   at the mouse, drag = move, double-click = fit / 100 %, `R` = rotate the view
-  (the file is not changed). Transparent parts show a checkerboard.
+  (the file is not changed). Transparent parts show a checkerboard. The bar
+  shows the current zoom between its zoom out and zoom in buttons.
 - **Thumbnails** of the other images in the folder, with "n / N", like VS
   Code's image preview. The arrows next to "n / N", `Left` / `Right` or the
   mouse side buttons go to the previous / next image.
@@ -210,6 +243,27 @@ yourself, see [Build](#build).
   a date range for Last Modified, Creation Date, Last Accessed or any of them.
   The size filter also takes folders by their size (all files below them);
   type "Files" leaves the folders out.
+- **Containing**: text inside the files. `Enter` in its box searches: only the
+  files found by the name and the filters are read (four at a time, the
+  progress in the status line, `Esc` stops), with `Aa` for match case. Binary
+  files and files over 64 MB are skipped. What a file holds is remembered
+  (until its size or date changes), so the next search with other filters is
+  quick.
+- **Duplicates** (a toggle after Containing): only the found files whose
+  content another found file has too, in groups, the largest files first.
+  Files of the same size are compared: first their first 64 KB, then the
+  SHA-256 checksum of the whole file. Empty files are left out; hard links
+  (one file under two names) count once. The `#` column shows the group, and
+  the background changes from group to group; the status line counts the
+  groups and the space that one copy per group would free. A header click
+  sorts inside the groups. `Select all but one` selects every file of each
+  group except its first row (sort to choose which one stays). Use the name
+  and the filters (for example "At least 1 MB") to compare fewer files; `Esc`
+  stops. It is only ever switched on by hand: other text in the name box,
+  `Ctrl+F` in the explorer and the next start switch it off (the filters
+  keep it on).
+- `Delete` in the results moves the selected files to the Recycle Bin and
+  takes them off the list (`Undo` in the explorer brings them back).
 - **Time mark**: `Set mark` remembers the moment; "Since the mark" then shows
   only what changed after it (for example where a game wrote its save file).
 - Columns: `#` (row number), Name, Containing Path, Size, Last Modified,
@@ -297,6 +351,11 @@ yourself, see [Build](#build).
 - **Import CSV**: entries from a CSV export of another password manager (groups
   become categories); afterwards KeeSeek offers to delete the CSV file, since it
   holds the passwords as plain text.
+- **Export CSV**: all entries (not the dividers) as a CSV file for another
+  password manager or a copy, after a warning (the file holds the passwords as
+  plain text). Columns Group, Title, Username, Password, URL, Notes, Created,
+  Last Modified; the groups are `KeeSeek/<category>`, so Import CSV takes the
+  categories back.
 - **Locking**: `Ctrl+L` or Lock; by itself after 10 minutes without use (a
   slider, 1 to 60; fully left: no timer, it locks when you leave KeeSeek);
   always when Windows locks and when the window closes.
@@ -345,6 +404,29 @@ yourself, see [Build](#build).
   of the file before it, so its card has an Undo button. Line endings and the
   UTF-8 byte order mark of a file stay as they were. In the chat list, a chat
   that works in a folder has a blue folder mark and the folder's name.
+- **Pictures**: `Ctrl+V` in the input box adds a screenshot from the
+  clipboard (or copied picture files); picture files can also be dropped on
+  it. They show above the input (x removes one) and go with the next message,
+  up to 10; a picture larger than 2000 pixels on its long side is made
+  smaller. In the chat a click opens a picture. They are saved as files in
+  `data\gemmachat\images\` (deleted with their chat). The model must read
+  pictures (Claude and GPT do; a text-only model answers with an error).
+- **Files**: attach text files and PDF files to a message with the paperclip
+  button, by dropping them on the input box, with `Ctrl+V` of copied files,
+  or in the explorer: right-click files, "Send to GemmaChat" (pictures go the
+  same way). A text file (any usual encoding, up to 400,000 characters) goes
+  into the message as text; a PDF (up to 20 MB) as a document, which Claude
+  and GPT read. Other files cannot be attached. A copy as the file was is
+  kept in `data\gemmachat\files\` (deleted with the chat), so the chat stays
+  the same when the file changes later.
+- **Commands**: in a folder chat the AI can also run a PowerShell command
+  there (PowerShell 7 when installed), for example a build, tests or git. Each
+  command shows on a card first: Run, "Allow all commands in this chat" or
+  Refuse; the setting for changes without asking does not cover commands. The
+  card then shows the exit code and the output, which also goes to the AI.
+  Commands get no input; they stop after 2 minutes (the AI can ask for up to
+  10) and with Stop. They run with DirectoryFable's rights (as administrator,
+  when it runs so), so read them before you allow them.
 - `Enter` sends, `Shift+Enter` makes a new line, `Ctrl+N` starts a new chat.
   Chats are listed on the left, the newest first (rename and delete with a
   right-click).
@@ -421,6 +503,7 @@ DirectoryFable.exe [leftFolder] [rightFolder] [--multi] [--taskbar|--tray] [--da
 | Notepad#: `Ctrl+N` / `Ctrl+O` / `Ctrl+W` | New / open / close a file |
 | Notepad#: `Ctrl+S` / `Ctrl+Shift+S` / `Ctrl+Alt+S` | Save / save all / save as |
 | Notepad#: `Ctrl+F`, then `F3` / `Shift+F3` | Search, next / previous match |
+| Notepad#: `Ctrl+H` / `Ctrl+Shift+F` | Replace / find in files |
 | Notepad#: `Alt+Z` | Word wrap on / off |
 | Notepad#: `Ctrl+Tab` | Next file |
 | AstraViewer: `Left` / `Right`, `Home` / `End` | Previous / next, first / last image |

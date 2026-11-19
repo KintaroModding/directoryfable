@@ -354,7 +354,8 @@ public sealed class EditorDocument : ObservableObject
         OnPropertyChanged(nameof(ToolTip));
     }
 
-    private static (string Text, Encoding Encoding) Decode(byte[] bytes)
+    /// <summary>A file's bytes as text (also used by the content search, so both read a file the same way).</summary>
+    internal static (string Text, Encoding Encoding) Decode(byte[] bytes)
     {
         if (bytes is [0xEF, 0xBB, 0xBF, ..])
             return (new UTF8Encoding(true).GetString(bytes, 3, bytes.Length - 3), new UTF8Encoding(true));

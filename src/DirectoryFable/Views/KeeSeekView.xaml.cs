@@ -116,7 +116,7 @@ public partial class KeeSeekView : UserControl
         Resources["RowTitleSize"] = compact ? 12.0 : 14.0;
         Resources["RowFontSize"] = compact ? 12.0 : 13.0;
 
-        // A divider: as high as an entry (user: "dividers normal size is better"), only its title.
+        // A divider: as high as an entry, only its title.
         Resources["DividerContentHeight"] = content;
         Resources["DividerPadding"] = new Thickness(12, padding, 12, padding);
         Resources["DividerTitleSize"] = compact ? 12.0 : 14.0;
@@ -237,7 +237,7 @@ public partial class KeeSeekView : UserControl
         MainArea.Visibility = Visibility.Collapsed;
         EditorLayer.Visibility = Visibility.Collapsed;
         LockPanel.Visibility = Visibility.Visible;
-        NewEntryButton.IsEnabled = ImportButton.IsEnabled = LockButton.IsEnabled = false;
+        NewEntryButton.IsEnabled = ImportButton.IsEnabled = ExportButton.IsEnabled = LockButton.IsEnabled = false;
         SearchArea.Visibility = Visibility.Hidden;
         BarText.Text = "";
         bool create = CreateMode;
@@ -374,7 +374,7 @@ public partial class KeeSeekView : UserControl
     {
         LockPanel.Visibility = Visibility.Collapsed;
         MainArea.Visibility = Visibility.Visible;
-        NewEntryButton.IsEnabled = ImportButton.IsEnabled = LockButton.IsEnabled = true;
+        NewEntryButton.IsEnabled = ImportButton.IsEnabled = ExportButton.IsEnabled = LockButton.IsEnabled = true;
         SearchArea.Visibility = Visibility.Visible;
         ShowCategories();
         ShowCards();
@@ -734,7 +734,6 @@ public partial class KeeSeekView : UserControl
             {
                 Width = 20,
                 Height = 20,
-                CornerRadius = new CornerRadius(4),
                 Background = new SolidColorBrush(color),
             }));
         }
@@ -1068,7 +1067,6 @@ public partial class KeeSeekView : UserControl
             Background = (Brush)FindResource("CardBrush"),
             BorderBrush = (Brush)FindResource("LineBrush"),
             BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(6),
             Padding = new Thickness(10),
             Margin = new Thickness(6, 0, 0, 0),
             Child = new StackPanel
@@ -1489,6 +1487,46 @@ public partial class KeeSeekView : UserControl
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             MessageDialog.Show(Window.GetWindow(this), $"Cannot delete the file:\n\n{ex.Message}", "KeeSeek", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    /// <summary>
+    /// All entries (not the dividers) as a CSV file, after a warning: the file holds every password as plain text.
+    /// KeeSeek's own import reads it back (categories included).
+    /// </summary>
+    private void Export_Click(object sender, RoutedEventArgs e)
+    {
+        if (_data is null)
+            return;
+        int count = _data.Entries.Count(x => !x.IsDivider);
+        if (count == 0)
+        {
+            ShowToast("No entries to export");
+            return;
+        }
+        if (MessageDialog.Show(Window.GetWindow(this),
+                $"Export all {count:N0} {(count == 1 ? "entry" : "entries")} as a CSV file?\n\n" +
+                "The file holds every user name and password as plain text: anyone who gets the file can read them. " +
+                "Keep it in a safe place and delete it when you no longer need it.",
+                "KeeSeek export", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
+            return;
+        var dialog = new SaveFileDialog
+        {
+            Title = "Export the passwords as a CSV file",
+            Filter = "CSV files (*.csv)|*.csv",
+            FileName = $"KeeSeek export {DateTime.Now:yyyy-MM-dd}.csv",
+            OverwritePrompt = true,
+        };
+        if (dialog.ShowDialog(Window.GetWindow(this)) != true)
+            return;
+        try
+        {
+            int written = CsvExport.Write(_data, dialog.FileName);
+            ShowToast($"{written:N0} {(written == 1 ? "entry" : "entries")} exported");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            MessageDialog.Show(Window.GetWindow(this), $"Cannot write the file:\n\n{ex.Message}", "KeeSeek", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 

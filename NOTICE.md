@@ -36,6 +36,8 @@ These terms apply to this program and to every work based on it.
   used as a NuGet package. License text: licenses/Anthropic.txt. It brings
   Microsoft.Extensions.AI.Abstractions and System.Net.ServerSentEvents (MIT
   license, parts of .NET).
+- System.Management (MIT license, part of .NET), for the disk type and health
+  on the This PC tiles, used as a NuGet package.
 - LibVLCSharp (LGPL-2.1-or-later), the .NET binding of VLC's engine for OpusHC, used as a NuGet package. License text: licenses/LibVLCSharp.txt.
   VLC's engine itself (libVLC, VideoLAN, GPL-2.0-or-later and LGPL-2.1-or-later)
   is not part of DirectoryFable: it is downloaded from VideoLAN on first use,

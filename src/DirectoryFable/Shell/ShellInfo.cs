@@ -133,14 +133,19 @@ public static partial class ShellInfo
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     private static extern int SHGetStockIconInfo(uint siid, uint uFlags, ref SHSTOCKICONINFO psii);
 
-    private static ImageSource? _thisPcIcon;
+    private static readonly Dictionary<int, ImageSource?> SpecialFolderIcons = [];
 
     /// <summary>The "This PC" icon (a virtual folder: looked up by its shell id, not a path).</summary>
-    public static ImageSource? GetThisPcIcon()
+    public static ImageSource? GetThisPcIcon() => GetSpecialFolderIcon(CSIDL_DRIVES);
+
+    /// <summary>The "Network" folder icon (the folder tree's Network group).</summary>
+    public static ImageSource? GetNetworkFolderIcon() => GetSpecialFolderIcon(CSIDL_NETWORK);
+
+    private static ImageSource? GetSpecialFolderIcon(int csidl)
     {
-        if (_thisPcIcon is not null)
-            return _thisPcIcon;
-        if (SHGetSpecialFolderLocation(IntPtr.Zero, CSIDL_DRIVES, out IntPtr pidl) != 0)
+        if (SpecialFolderIcons.TryGetValue(csidl, out var cached) && cached is not null)
+            return cached;
+        if (SHGetSpecialFolderLocation(IntPtr.Zero, csidl, out IntPtr pidl) != 0)
             return null;
         try
         {
@@ -152,7 +157,7 @@ public static partial class ShellInfo
             {
                 var bmp = Imaging.CreateBitmapSourceFromHIcon(info.hIcon, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
                 bmp.Freeze();
-                return _thisPcIcon = bmp;
+                return SpecialFolderIcons[csidl] = bmp;
             }
             finally
             {
@@ -166,6 +171,7 @@ public static partial class ShellInfo
     }
 
     private const int CSIDL_DRIVES = 0x0011;
+    private const int CSIDL_NETWORK = 0x0012;
     private const uint SHGFI_PIDL = 0x000000008;
 
     [DllImport("shell32.dll")]

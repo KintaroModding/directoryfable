@@ -75,6 +75,10 @@
     <SolidColorBrush x:Key="EditorLineNumberBrush" Color="#6E6E6E" />
     <SolidColorBrush x:Key="EditorCurrentLineBrush" Color="#242424" />
     <SolidColorBrush x:Key="EditorSelectionBrush" Color="#264F78" />
+    <!-- Square corners also for the standard (Fluent) controls: buttons, text boxes, lists, menus and pop-ups.
+         The Fluent theme reads these two keys. -->
+    <CornerRadius x:Key="ControlCornerRadius">0</CornerRadius>
+    <CornerRadius x:Key="OverlayCornerRadius">0</CornerRadius>
     <!-- Flat fields (FieldComboBox, FieldTextBox) and the title bar view tabs: the field, and the field under the
          mouse (also the shown view's tab). -->
     <SolidColorBrush x:Key="FieldBrush" Color="#262626" />

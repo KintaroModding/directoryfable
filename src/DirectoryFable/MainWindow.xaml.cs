@@ -39,10 +39,13 @@ public partial class MainWindow : Window
         InitGemmaChat();
         InitSearch();
         InitUpdate(settings);
+        InitCompare();
 
+        Shell.ShellDrag.Attach(this); // The drag picture of file drags over the window.
         TrayMode = trayMode;
         ShowInTaskbar = !trayMode;
         AllowClose = !trayMode;
+        _startSession = session;
         if (session is not null)
             ApplyWindowState(session);
 
@@ -102,6 +105,13 @@ public partial class MainWindow : Window
         SettingsPage.CheckSecondsChanged += seconds => Search.FolderSizes.CheckInterval = seconds;
         Views.FilePane.IconsOnly = settings.QuickBarIconsOnly;
         SettingsPage.IconsOnlyChanged += on => Views.FilePane.IconsOnly = on;
+        _tree.ShowNetwork(settings.NetworkInTree);
+        SettingsPage.NetworkInTreeChanged += on =>
+        {
+            _tree.ShowNetwork(on);
+            if (on)
+                SyncTree(); // The pane may show a network path already.
+        };
         SettingsPage.FolderSizesChanged += ApplyFolderSizes;
         // "Folder sizes" in the column header menu: saved like the settings page does.
         Views.FilePane.SetFolderSizes = on =>
@@ -219,17 +229,19 @@ public partial class MainWindow : Window
         Rect normal = WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
         bool maximized = WindowState == WindowState.Maximized ||
                          (WindowState == WindowState.Minimized && _restoreState == WindowState.Maximized);
+        // Started hidden and never shown: the window has no real sizes yet, so the last session's are kept.
+        var kept = !_wasOnScreen && WindowState == WindowState.Minimized ? _startSession : null;
         new SessionState
         {
-            WindowLeft = normal.Left,
-            WindowTop = normal.Top,
-            WindowWidth = normal.Width,
-            WindowHeight = normal.Height,
+            WindowLeft = kept?.WindowLeft ?? normal.Left,
+            WindowTop = kept?.WindowTop ?? normal.Top,
+            WindowWidth = kept?.WindowWidth ?? normal.Width,
+            WindowHeight = kept?.WindowHeight ?? normal.Height,
             Maximized = maximized,
-            TreeWidth = TreeColumn.ActualWidth,
+            TreeWidth = kept?.TreeWidth ?? TreeColumn.ActualWidth,
             // Actual widths as star sizes keep the split ratio, whatever the window size next time.
-            LeftPaneStars = LeftColumn.ActualWidth,
-            RightPaneStars = RightColumn.ActualWidth,
+            LeftPaneStars = kept?.LeftPaneStars ?? LeftColumn.ActualWidth,
+            RightPaneStars = kept?.RightPaneStars ?? RightColumn.ActualWidth,
             RightPaneActive = _right.IsActive,
             TreeFollowsPane = _tree.FollowsPane,
             NotepadShown = NotepadShown,
@@ -275,6 +287,31 @@ public partial class MainWindow : Window
             ShowFromTray();
     }
 
+    /// <summary>
+    /// "Start hidden": the window is loaded (the session comes back, so a later exit saves it whole) but not seen.
+    /// Tray mode: hidden until the tray icon is clicked. Taskbar mode: minimized; the first restore goes to the
+    /// maximized state when that is how it would have started.
+    /// </summary>
+    public void ShowHiddenAtStart(bool maximized)
+    {
+        _restoreState = maximized ? WindowState.Maximized : WindowState.Normal;
+        _maximizeOnRestore = maximized && !TrayMode;
+        ShowActivated = false;
+        WindowState = WindowState.Minimized;
+        Show();
+        if (TrayMode)
+            Hide();
+        ShowActivated = true;
+    }
+
+    private bool _maximizeOnRestore;
+
+    /// <summary>The session the window started from (its sizes are kept when the window was never on screen).</summary>
+    private readonly SessionState? _startSession;
+
+    /// <summary>The window was on screen at least once (its sizes are real); see SaveSession.</summary>
+    private bool _wasOnScreen;
+
     public void ShowFromTray()
     {
         Show();
@@ -297,7 +334,18 @@ public partial class MainWindow : Window
                 Hide();
         }
         else
+        {
+            _wasOnScreen = true;
+            if (_maximizeOnRestore && WindowState == WindowState.Normal)
+            {
+                // Started minimized ("start hidden"): the first restore goes on to maximized.
+                _maximizeOnRestore = false;
+                WindowState = WindowState.Maximized;
+                return;
+            }
+            _maximizeOnRestore = false;
             _restoreState = WindowState;
+        }
     }
 
     private void Window_Closing(object? sender, CancelEventArgs e)

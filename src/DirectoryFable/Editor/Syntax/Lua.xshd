@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<!-- Lua for Notepad#: comments, strings, keywords, the standard functions. -->
+<SyntaxDefinition name="Lua" extensions=".lua" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" foreground="#6A9955" />
+  <Color name="String" foreground="#CE9178" />
+  <Color name="Escape" foreground="#D7BA7D" />
+  <Color name="Number" foreground="#B5CEA8" />
+  <Color name="Keyword" foreground="#569CD6" />
+  <Color name="Control" foreground="#C586C0" />
+  <Color name="Type" foreground="#4EC9B0" />
+  <Color name="Function" foreground="#DCDCAA" />
+  <Color name="Constant" foreground="#4FC1FF" />
+
+  <RuleSet>
+    <Span color="Comment" multiline="true" begin="--\[\[" end="\]\]" />
+    <Span color="Comment" begin="--" />
+    <Span color="String" begin="&quot;" end="&quot;|$">
+      <RuleSet>
+        <Span color="Escape" begin="\\" end="." />
+      </RuleSet>
+    </Span>
+    <Span color="String" begin="'" end="'|$">
+      <RuleSet>
+        <Span color="Escape" begin="\\" end="." />
+      </RuleSet>
+    </Span>
+    <Span color="String" multiline="true" begin="\[\[" end="\]\]" />
+    <Keywords color="Control"><Word>if</Word><Word>then</Word><Word>else</Word><Word>elseif</Word><Word>end</Word><Word>for</Word><Word>while</Word><Word>do</Word><Word>repeat</Word><Word>until</Word><Word>break</Word><Word>return</Word><Word>goto</Word><Word>in</Word></Keywords>
+    <Keywords color="Keyword"><Word>function</Word><Word>local</Word><Word>and</Word><Word>or</Word><Word>not</Word></Keywords>
+    <Keywords color="Constant"><Word>true</Word><Word>false</Word><Word>nil</Word><Word>self</Word><Word>_G</Word><Word>_VERSION</Word></Keywords>
+    <Keywords color="Function"><Word>print</Word><Word>pairs</Word><Word>ipairs</Word><Word>require</Word><Word>tostring</Word><Word>tonumber</Word><Word>type</Word><Word>setmetatable</Word><Word>getmetatable</Word><Word>pcall</Word><Word>xpcall</Word><Word>error</Word><Word>assert</Word><Word>select</Word><Word>next</Word><Word>unpack</Word><Word>rawget</Word><Word>rawset</Word><Word>rawequal</Word><Word>rawlen</Word><Word>dofile</Word><Word>load</Word><Word>loadstring</Word><Word>collectgarbage</Word></Keywords>
+    <Keywords color="Type"><Word>string</Word><Word>table</Word><Word>math</Word><Word>os</Word><Word>io</Word><Word>coroutine</Word><Word>debug</Word><Word>utf8</Word><Word>package</Word></Keywords>
+    <Rule color="Function">\b[A-Za-z_]\w*(?=\s*\()</Rule>
+    <Rule color="Number">\b0[xX][0-9a-fA-F_]+\b|\b0[bB][01_]+\b|\b\d[\d_]*(\.\d[\d_]*)?([eE][+-]?\d+)?\w*\b</Rule>
+  </RuleSet>
+</SyntaxDefinition>

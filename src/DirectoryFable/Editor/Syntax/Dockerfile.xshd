@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<!-- Dockerfiles for Notepad#: comments, instructions, strings, $variables. -->
+<SyntaxDefinition name="Dockerfile" extensions=".dockerfile;.containerfile" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" foreground="#6A9955" />
+  <Color name="String" foreground="#CE9178" />
+  <Color name="Escape" foreground="#D7BA7D" />
+  <Color name="Number" foreground="#B5CEA8" />
+  <Color name="Keyword" foreground="#569CD6" />
+  <Color name="Variable" foreground="#9CDCFE" />
+  <Color name="Constant" foreground="#4FC1FF" />
+
+  <RuleSet ignoreCase="true">
+    <Span color="Comment" begin="^\s*\#" />
+    <Rule color="Keyword">^\s*(FROM|RUN|CMD|LABEL|MAINTAINER|EXPOSE|ENV|ADD|COPY|ENTRYPOINT|VOLUME|USER|WORKDIR|ARG|ONBUILD|STOPSIGNAL|HEALTHCHECK|SHELL)\b</Rule>
+    <Rule color="Keyword">\bAS\b</Rule>
+    <Span color="String" begin="&quot;" end="&quot;|$">
+      <RuleSet>
+        <Span color="Escape" begin="\\" end="." />
+      </RuleSet>
+    </Span>
+    <Span color="String" begin="'" end="'|$" />
+    <Rule color="Variable">\$\{[^}\r\n]*\}|\$[A-Za-z_]\w*</Rule>
+    <Rule color="Constant">--[\w-]+(?==)</Rule>
+    <Rule color="Number">\b\d+\b</Rule>
+  </RuleSet>
+</SyntaxDefinition>

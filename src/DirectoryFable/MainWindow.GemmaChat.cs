@@ -19,6 +19,12 @@ public partial class MainWindow
             ShowView(MainView.Chat);
             GemmaChatPage.StartInFolder(folder);
         };
+        // Explorer: "Send to GemmaChat" on files - attached to the next message of the shown chat.
+        Views.FilePane.SendToChat = files =>
+        {
+            ShowView(MainView.Chat);
+            GemmaChatPage.AttachFiles(files);
+        };
     }
 
     private void GemmaChatTab_Click(object sender, RoutedEventArgs e) => ShowView(MainView.Chat);

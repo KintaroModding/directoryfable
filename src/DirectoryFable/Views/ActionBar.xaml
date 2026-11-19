@@ -37,5 +37,15 @@
                 <TextBlock Text="Refresh both" VerticalAlignment="Center" />
             </StackPanel>
         </Button>
+        <!-- Compares the folders of the two panes while on: marks on the rows (only here, newer, older, differs). -->
+        <ToggleButton x:Name="CompareButton" Style="{StaticResource BarToggleButton}" Padding="7,1" Height="26" Margin="2,0,0,0"
+                      ToolTip="Compare the folders of the two panes: marks what is only on one side, newer, older or different, and selects what is only here or newer here. Click again to end."
+                      Click="Compare_Click">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE8AB;" FontFamily="{StaticResource IconFont}" FontSize="14"
+                           Margin="0,1,6,0" VerticalAlignment="Center" />
+                <TextBlock Text="Compare" VerticalAlignment="Center" />
+            </StackPanel>
+        </ToggleButton>
     </StackPanel>
 </UserControl>

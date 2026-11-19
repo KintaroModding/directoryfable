@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<!-- TOML for Notepad#: [tables], keys, strings, numbers, dates, true / false. -->
+<SyntaxDefinition name="TOML" extensions=".toml" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" foreground="#6A9955" />
+  <Color name="String" foreground="#CE9178" />
+  <Color name="Escape" foreground="#D7BA7D" />
+  <Color name="Number" foreground="#B5CEA8" />
+  <Color name="Constant" foreground="#4FC1FF" />
+  <Color name="Key" foreground="#9CDCFE" />
+  <Color name="Section" foreground="#569CD6" fontWeight="bold" />
+
+  <RuleSet>
+    <Span color="Comment" begin="\#" />
+    <Rule color="Section">^\s*\[\[?[^\]\r\n]*\]\]?</Rule>
+    <Span color="String" multiline="true" begin="&quot;&quot;&quot;" end="&quot;&quot;&quot;">
+      <RuleSet>
+        <Span color="Escape" begin="\\" end="." />
+      </RuleSet>
+    </Span>
+    <Span color="String" multiline="true" begin="'''" end="'''" />
+    <Span color="String" begin="&quot;" end="&quot;|$">
+      <RuleSet>
+        <Span color="Escape" begin="\\" end="." />
+      </RuleSet>
+    </Span>
+    <Span color="String" begin="'" end="'|$" />
+    <Rule color="Key">^\s*[\w.\-]+(?=\s*=)</Rule>
+    <Rule color="Constant">\b(true|false|inf|nan)\b</Rule>
+    <Rule color="Number">\b\d{4}-\d{2}-\d{2}([Tt\ ]\d{2}:\d{2}:\d{2}(\.\d+)?)?([Zz]|[+-]\d{2}:\d{2})?|[+-]?\b0[xX][0-9a-fA-F_]+\b|\b0[bB][01_]+\b|\b\d[\d_]*(\.\d[\d_]*)?([eE][+-]?\d+)?\w*\b</Rule>
+  </RuleSet>
+</SyntaxDefinition>

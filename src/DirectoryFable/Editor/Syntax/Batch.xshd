@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<!-- Windows batch files for Notepad#: rem and :: comments, :labels, %variables%, commands. -->
+<SyntaxDefinition name="Batch" extensions=".bat;.cmd" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" foreground="#6A9955" />
+  <Color name="String" foreground="#CE9178" />
+  <Color name="Number" foreground="#B5CEA8" />
+  <Color name="Keyword" foreground="#569CD6" />
+  <Color name="Control" foreground="#C586C0" />
+  <Color name="Variable" foreground="#9CDCFE" />
+  <Color name="Label" foreground="#4EC9B0" />
+
+  <RuleSet ignoreCase="true">
+    <Span color="Comment" begin="^\s*@?(rem\b|::)" />
+    <Span color="Comment" begin="(?&lt;=&amp;\s*)rem\b" />
+    <Span color="String" begin="&quot;" end="&quot;|$" />
+    <Rule color="Label">^\s*:\w[\w.-]*</Rule>
+    <Rule color="Variable">%%~?[\w]+|%~[\w$]*\d|%\d|%\*|%[\w()\#$.-]+(:[^%\r\n]*)?%|![\w()\#$.-]+(:[^!\r\n]*)?!</Rule>
+    <Keywords color="Control"><Word>if</Word><Word>else</Word><Word>for</Word><Word>in</Word><Word>do</Word><Word>goto</Word><Word>call</Word><Word>exit</Word><Word>not</Word><Word>exist</Word><Word>defined</Word><Word>equ</Word><Word>neq</Word><Word>lss</Word><Word>leq</Word><Word>gtr</Word><Word>geq</Word><Word>errorlevel</Word></Keywords>
+    <Keywords color="Keyword"><Word>echo</Word><Word>set</Word><Word>setlocal</Word><Word>endlocal</Word><Word>pause</Word><Word>shift</Word><Word>cd</Word><Word>chdir</Word><Word>md</Word><Word>mkdir</Word><Word>rd</Word><Word>rmdir</Word><Word>del</Word><Word>erase</Word><Word>copy</Word><Word>move</Word><Word>ren</Word><Word>rename</Word><Word>start</Word><Word>title</Word><Word>cls</Word><Word>type</Word><Word>dir</Word><Word>pushd</Word><Word>popd</Word><Word>choice</Word><Word>timeout</Word><Word>where</Word><Word>findstr</Word><Word>find</Word><Word>xcopy</Word><Word>robocopy</Word><Word>assoc</Word><Word>ftype</Word><Word>path</Word><Word>prompt</Word><Word>color</Word><Word>mode</Word><Word>more</Word><Word>sort</Word><Word>attrib</Word><Word>taskkill</Word><Word>tasklist</Word><Word>reg</Word><Word>sc</Word><Word>net</Word><Word>ping</Word><Word>cmd</Word><Word>powershell</Word><Word>enabledelayedexpansion</Word><Word>disabledelayedexpansion</Word><Word>enableextensions</Word><Word>disableextensions</Word><Word>nul</Word><Word>con</Word><Word>off</Word><Word>on</Word></Keywords>
+    <Rule color="Number">\b\d+\b</Rule>
+  </RuleSet>
+</SyntaxDefinition>

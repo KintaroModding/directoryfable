@@ -73,13 +73,19 @@ public partial class App : Application
         _window = new MainWindow(folders.ElementAtOrDefault(0), folders.ElementAtOrDefault(1), trayMode, settings, session);
         MainWindow = _window;
         // The last session decides; without one, "startMaximized".
-        if (session?.Maximized ?? settings.StartMaximized)
+        bool maximized = session?.Maximized ?? settings.StartMaximized;
+        // "Start hidden" (a setting): not when a folder was asked for, and not right after an update.
+        bool hidden = settings.StartHidden && folders.Length == 0 && Value("--after-update=") is null;
+        if (maximized && !hidden)
             _window.WindowState = WindowState.Maximized;
         if (trayMode)
             _tray = new TrayIcon(leftClick: _window.ToggleFromTray, show: _window.ShowFromTray, exit: ExitApp);
         else
             _window.Closed += (_, _) => Shutdown(); // Taskbar mode: closing the window exits.
-        _window.Show();
+        if (hidden)
+            _window.ShowHiddenAtStart(maximized);
+        else
+            _window.Show();
 
         if (_showSignal is not null)
             StartShowListener(_showSignal);

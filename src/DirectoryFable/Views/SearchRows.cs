@@ -13,6 +13,7 @@ public sealed class SearchRow
     internal SearchRow(SearchResult result, int position)
     {
         Position = position;
+        Group = result.Groups?[position] ?? 0;
         long item = result.Items[position];
         var index = result.IndexOf(item);
         int i = SearchResult.EntryOf(item);
@@ -27,8 +28,14 @@ public sealed class SearchRow
 
     internal int Position { get; }
 
-    /// <summary>The row number in the shown order (1 = first row).</summary>
-    public string Number => (Position + 1).ToString("N0", CultureInfo.CurrentCulture);
+    /// <summary>"Duplicates": the number of the row's group (1, 2, ...); 0 in a normal search.</summary>
+    public int Group { get; }
+
+    /// <summary>Every second group of duplicates has the darker background (the groups stand apart).</summary>
+    public bool Band => Group % 2 == 0 && Group > 0;
+
+    /// <summary>The row number in the shown order (1 = first row); "Duplicates": the group number.</summary>
+    public string Number => (Group > 0 ? Group : Position + 1).ToString("N0", CultureInfo.CurrentCulture);
 
     public string Name { get; }
 

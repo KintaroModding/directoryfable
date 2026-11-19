@@ -8,6 +8,25 @@
              PreviewKeyDown="Pane_PreviewKeyDown"
              PreviewMouseDown="Pane_PreviewMouseDown">
     <UserControl.Resources>
+        <!-- "Compare" (action bar): how a row or tile stands against the other pane. -->
+        <Style x:Key="CompareMarkText" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="#808080" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding CompareMark}" Value="">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding CompareMark}" Value="only">
+                    <Setter Property="Foreground" Value="#6CCB5F" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding CompareMark}" Value="newer">
+                    <Setter Property="Foreground" Value="#4FC1FF" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding CompareMark}" Value="differs">
+                    <Setter Property="Foreground" Value="#D7BA7D" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         <!-- Tile view (FilePane.Tiles.cs): sizes follow the size slider through these resources. -->
         <system:Double x:Key="TilePictureWidth" xmlns:system="clr-namespace:System;assembly=System.Runtime">256</system:Double>
         <system:Double x:Key="TilePictureHeight" xmlns:system="clr-namespace:System;assembly=System.Runtime">144</system:Double>
@@ -23,7 +42,7 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ListViewItem">
                         <Border x:Name="Bd" Margin="3" Background="{TemplateBinding Background}" BorderBrush="Transparent"
-                                BorderThickness="1" CornerRadius="3" SnapsToDevicePixels="True">
+                                BorderThickness="1" SnapsToDevicePixels="True">
                             <ContentPresenter x:Name="Content" />
                         </Border>
                         <ControlTemplate.Triggers>
@@ -62,7 +81,7 @@
                 <Grid Width="{DynamicResource TilePictureWidth}" Height="{DynamicResource TilePictureHeight}">
                     <local:ThumbImage x:Name="Thumb" Item="{Binding}" BoxWidth="{DynamicResource TilePictureWidth}" />
                     <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,4,4" Padding="4,0,4,1"
-                            CornerRadius="2" Background="#C0000000">
+                            Background="#C0000000">
                         <Border.Style>
                             <Style TargetType="Border">
                                 <Style.Triggers>
@@ -73,6 +92,19 @@
                             </Style>
                         </Border.Style>
                         <TextBlock Text="{Binding Duration, ElementName=Thumb}" FontSize="11" Foreground="White" />
+                    </Border>
+                    <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="4,4,0,0" Padding="4,0,4,1"
+                            Background="#C0000000">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CompareMark}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="{Binding CompareText}" Style="{StaticResource CompareMarkText}" />
                     </Border>
                 </Grid>
                 <Grid Margin="0,4,0,0" Width="{DynamicResource TilePictureWidth}" Height="32">
@@ -449,6 +481,8 @@
                                     <Image DockPanel.Dock="Left" Source="{Binding Icon}" Width="13" Height="13" RenderOptions.BitmapScalingMode="HighQuality" Margin="0,0,5,0" />
                                     <Button DockPanel.Dock="Right" Style="{StaticResource RowInfoButton}"
                                             ToolTip="Properties (Alt+Enter)" Click="RowProperties_Click" />
+                                    <TextBlock DockPanel.Dock="Right" Text="{Binding CompareText}" Style="{StaticResource CompareMarkText}"
+                                               Margin="8,0,2,0" VerticalAlignment="Center" />
                                     <Grid>
                                         <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" />
                                         <!-- In-place rename (F2). Shown only while IsRenaming is true. -->
