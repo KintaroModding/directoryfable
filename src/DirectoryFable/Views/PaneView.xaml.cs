@@ -29,6 +29,20 @@ public partial class PaneView : UserControl
         SizeChanged += (_, _) => LimitTabStripWidth();
     }
 
+    private bool _showsMemory;
+
+    /// <summary>The tabs' status bars show DirectoryFable's RAM use (set for one side of the window).</summary>
+    public bool ShowsMemory
+    {
+        get => _showsMemory;
+        set
+        {
+            _showsMemory = value;
+            foreach (var pane in _panes.Values)
+                pane.ShowsMemory = value;
+        }
+    }
+
     /// <summary>Moves keyboard focus into the visible tab's file list.</summary>
     public void FocusList()
     {
@@ -73,6 +87,8 @@ public partial class PaneView : UserControl
             _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
         }
 
+        foreach (var old in _panes.Values)
+            old.ShowsMemory = false;
         TabHost.Children.Clear();
         _panes.Clear();
 
@@ -96,6 +112,7 @@ public partial class PaneView : UserControl
         var current = _viewModel!.Tabs.ToHashSet();
         foreach (var gone in _panes.Keys.Where(t => !current.Contains(t)).ToList())
         {
+            _panes[gone].ShowsMemory = false; // Lets go of the memory timer.
             TabHost.Children.Remove(_panes[gone]);
             _panes.Remove(gone);
         }
@@ -118,7 +135,7 @@ public partial class PaneView : UserControl
 
     private void AddPane(TabViewModel tab)
     {
-        var pane = new FilePane { DataContext = tab, Visibility = Visibility.Collapsed };
+        var pane = new FilePane { DataContext = tab, Visibility = Visibility.Collapsed, ShowsMemory = _showsMemory };
         pane.OpenInNewTabRequested += async path =>
         {
             if (_viewModel is not null)

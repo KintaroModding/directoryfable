@@ -23,6 +23,8 @@ public sealed class TabState
     public List<string>? CollapsedGroups { get; set; }
     /// <summary>The tab showed the Space view.</summary>
     public bool Space { get; set; }
+    /// <summary>The tab showed the tile view (large thumbnails).</summary>
+    public bool Tiles { get; set; }
 }
 
 /// <summary>One pane (left or right) as saved in session.json.</summary>
@@ -196,6 +198,16 @@ public sealed class SessionState
     /// <summary>True when OpusHC was the shown view.</summary>
     public bool PlayerShown { get; set; }
 
+    /// <summary>True when KeeSeek was the shown view (it opens locked).</summary>
+    public bool KeeSeekShown { get; set; }
+
+    /// <summary>KeeSeek's last chosen category: its random id only (no name), null = All entries.</summary>
+    public string? KeeSeekCategory { get; set; }
+
+    /// <summary>True when GemmaChat was the shown view, and the chat it showed.</summary>
+    public bool GemmaChatShown { get; set; }
+    public string? GemmaChatId { get; set; }
+
     /// <summary>OpusHC: the last video, volume, where videos were left.</summary>
     public PlayerState? Player { get; set; }
 
@@ -211,6 +223,9 @@ public sealed class SessionState
     /// <summary>The Space view's block chart is shown, and its share of the height.</summary>
     public bool SpaceBlocks { get; set; } = true;
     public double SpaceBlocksShare { get; set; } = 0.45;
+
+    /// <summary>The width of a picture in the file list's tile view (DIP, both panes).</summary>
+    public double TileSize { get; set; } = 256;
 
     /// <summary>The folders opened last, the newest first (This PC's "Recent folders").</summary>
     public List<RecentFolderState>? RecentFolders { get; set; }

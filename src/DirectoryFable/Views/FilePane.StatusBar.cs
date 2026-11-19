@@ -15,6 +15,27 @@ public partial class FilePane
 {
     private TabViewModel? _statusOwner;
 
+    private bool _showsMemory;
+
+    /// <summary>This pane's status bar shows DirectoryFable's RAM use, left of the free space (set for one pane).</summary>
+    public bool ShowsMemory
+    {
+        get => _showsMemory;
+        set
+        {
+            if (_showsMemory == value)
+                return;
+            _showsMemory = value;
+            StatusMemoryPanel.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+            if (value)
+                MemoryUsage.Changed += ShowMemory;
+            else
+                MemoryUsage.Changed -= ShowMemory;
+        }
+    }
+
+    private void ShowMemory(long bytes) => StatusMemory.Text = $"RAM {DisplayFormat.Size(bytes)}";
+
     private void InitStatusBar()
     {
         StatusFolderIcon.Source = ShellInfo.GetIcon("folder", isDirectory: true);

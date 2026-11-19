@@ -21,6 +21,7 @@ public partial class FilePane : UserControl
     {
         InitializeComponent();
         InitQuickActions();
+        InitTiles();
         InitColumns();
         InitStatusBar();
         DataContextChanged += OnDataContextChanged;
@@ -88,6 +89,9 @@ public partial class FilePane : UserControl
         {
             case nameof(TabViewModel.IsThisPc) or nameof(TabViewModel.SpaceMode) or nameof(TabViewModel.CanShowSpace):
                 ShowContent(tabChanged: false);
+                break;
+            case nameof(TabViewModel.TileMode):
+                ApplyTileMode();
                 break;
             case nameof(TabViewModel.Filter):
                 ApplyFilter();

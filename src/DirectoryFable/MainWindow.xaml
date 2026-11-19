@@ -52,32 +52,46 @@
                     <!-- Fixed width (about 28 characters, set in MainWindow.TitleBar.cs): the tabs never move; longer names end in "...". -->
                     <TextBlock x:Name="ExplorerTabText" Text="DirectoryFable" TextTrimming="CharacterEllipsis" />
                 </ToggleButton>
-                <ToggleButton x:Name="NotepadTab" Style="{StaticResource TitleTabButton}" Margin="4,0,0,0"
+                <ToggleButton x:Name="NotepadTab" Style="{StaticResource TitleTabButton}"
                               ToolTip="Notepad# (text editor)" Click="NotepadTab_Click">
                     <StackPanel Orientation="Horizontal">
                         <Image Source="Assets/notepad.ico" Style="{StaticResource TitleTabIcon}" />
                         <TextBlock Text="Notepad#" VerticalAlignment="Center" />
                     </StackPanel>
                 </ToggleButton>
-                <ToggleButton x:Name="AstraViewerTab" Style="{StaticResource TitleTabButton}" Margin="4,0,0,0"
+                <ToggleButton x:Name="AstraViewerTab" Style="{StaticResource TitleTabButton}"
                               ToolTip="AstraViewer (images)" Click="AstraViewerTab_Click">
                     <StackPanel Orientation="Horizontal">
                         <Image Source="Assets/astraviewer.ico" Style="{StaticResource TitleTabIcon}" />
                         <TextBlock Text="AstraViewer" VerticalAlignment="Center" />
                     </StackPanel>
                 </ToggleButton>
-                <ToggleButton x:Name="SearchTab" Style="{StaticResource TitleTabButton}" Margin="4,0,0,0"
+                <ToggleButton x:Name="SearchTab" Style="{StaticResource TitleTabButton}"
                               ToolTip="SonnetSearch: find files on whole drives (Ctrl+F in the explorer: search in the shown folder)" Click="SearchTab_Click">
                     <StackPanel Orientation="Horizontal">
                         <Image Source="Assets/sonnetsearch.ico" Style="{StaticResource TitleTabIcon}" />
                         <TextBlock Text="SonnetSearch" VerticalAlignment="Center" />
                     </StackPanel>
                 </ToggleButton>
-                <ToggleButton x:Name="PlayerTab" Style="{StaticResource TitleTabButton}" Margin="4,0,0,0"
+                <ToggleButton x:Name="PlayerTab" Style="{StaticResource TitleTabButton}"
                               ToolTip="OpusHC (videos)" Click="PlayerTab_Click">
                     <StackPanel Orientation="Horizontal">
                         <Image Source="Assets/opushc.ico" Style="{StaticResource TitleTabIcon}" />
                         <TextBlock Text="OpusHC" VerticalAlignment="Center" />
+                    </StackPanel>
+                </ToggleButton>
+                <ToggleButton x:Name="KeeSeekTab" Style="{StaticResource TitleTabButton}"
+                              ToolTip="KeeSeek (passwords)" Click="KeeSeekTab_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <Image Source="Assets/keeseek.ico" Style="{StaticResource TitleTabIcon}" />
+                        <TextBlock Text="KeeSeek" VerticalAlignment="Center" />
+                    </StackPanel>
+                </ToggleButton>
+                <ToggleButton x:Name="GemmaChatTab" Style="{StaticResource TitleTabButton}"
+                              ToolTip="GemmaChat (AI chat)" Click="GemmaChatTab_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <Image Source="Assets/gemmachat.ico" Style="{StaticResource TitleTabIcon}" />
+                        <TextBlock Text="GemmaChat" VerticalAlignment="Center" />
                     </StackPanel>
                 </ToggleButton>
             </StackPanel>
@@ -145,6 +159,14 @@
         <!-- OpusHC: covers everything below the title bar while shown (title bar tabs; full screen: all of it). -->
         <views:OpusPlayerView x:Name="PlayerPage" Grid.Row="1" Grid.RowSpan="3" Grid.ColumnSpan="5"
                               Visibility="Collapsed" />
+
+        <!-- KeeSeek: covers everything below the title bar while shown (title bar tabs). -->
+        <views:KeeSeekView x:Name="KeeSeekPage" Grid.Row="1" Grid.RowSpan="3" Grid.ColumnSpan="5"
+                           Visibility="Collapsed" />
+
+        <!-- GemmaChat: covers everything below the title bar while shown (title bar tabs). -->
+        <views:GemmaChatView x:Name="GemmaChatPage" Grid.Row="1" Grid.RowSpan="3" Grid.ColumnSpan="5"
+                             Visibility="Collapsed" />
     </Grid>
     </Border>
 </Window>

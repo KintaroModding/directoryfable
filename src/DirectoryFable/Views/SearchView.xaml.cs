@@ -507,7 +507,18 @@ public partial class SearchView : UserControl
             _missingFolders = missing;
             if (token.IsCancellationRequested)
                 return;
-            var result = await Task.Run(() => SearchRunner.Run(indexes, scopes, query, _sort, _descending, token), token);
+            // Folder sizes (the setting of the file panes' Size column): counted once per read drive, then kept.
+            IReadOnlyList<FolderTotals>? totals = null;
+            if (FolderSizes.Enabled)
+            {
+                var counting = indexes.Select(i => i.TotalsAsync()).ToList();
+                if (counting.Any(t => !t.IsCompleted))
+                    StatusText.Text = "Counting folder sizes...";
+                totals = await Task.WhenAll(counting);
+                if (token.IsCancellationRequested)
+                    return;
+            }
+            var result = await Task.Run(() => SearchRunner.Run(indexes, scopes, query, _sort, _descending, totals, token), token);
             if (!token.IsCancellationRequested)
                 ShowResult(result);
         }
@@ -634,9 +645,9 @@ public partial class SearchView : UserControl
         var sort = _sort;
         bool descending = _descending;
         StatusText.Text = "Sorting...";
-        await Task.Run(() => SearchRunner.Sort(items, current.Indexes, sort, descending, CancellationToken.None));
+        await Task.Run(() => SearchRunner.Sort(items, current.Indexes, current.Totals, sort, descending, CancellationToken.None));
         if (_result == current)
-            ShowResult(new SearchResult(current.Indexes, items, current.Searched));
+            ShowResult(new SearchResult(current.Indexes, items, current.Searched, current.Totals));
     }
 
     // ---------- Results: open, menu, drag ----------

@@ -290,6 +290,7 @@ public partial class OpusPlayerView : UserControl
         _media?.Dispose();
         _media = media;
         AspectScale.ScaleX = 1;
+        Picture.Visibility = Visibility.Visible;
         ShowFile();
         StageText.Visibility = Visibility.Collapsed;
         if (resumeAt > 0)
@@ -319,7 +320,7 @@ public partial class OpusPlayerView : UserControl
     {
         FileText.Text = _current is null ? "" : Path.GetFileName(_current);
         FileText.ToolTip = _current;
-        ShowInExplorerButton.IsEnabled = OpenExternalButton.IsEnabled = _current is not null;
+        ShowInExplorerButton.IsEnabled = OpenExternalButton.IsEnabled = CloseVideoButton.IsEnabled = _current is not null;
         int index = _current is null ? -1 : _folderVideos.FindIndex(p => string.Equals(p, _current, StringComparison.OrdinalIgnoreCase));
         CountText.Text = index >= 0 && _folderVideos.Count > 1 ? $"{index + 1} / {_folderVideos.Count}" : "";
     }
@@ -381,8 +382,8 @@ public partial class OpusPlayerView : UserControl
 
     private void TogglePlay()
     {
-        if (_player is null)
-            return;
+        if (_player is null || _current is null)
+            return; // No video (closed): nothing to play.
         if (_player.State == VLCState.Ended && _media is not null)
             _player.Play(_media); // From the start again.
         else if (_player.IsPlaying)
@@ -816,6 +817,45 @@ public partial class OpusPlayerView : UserControl
     {
         if (_current is { } path)
             ShowInExplorerRequested?.Invoke(path);
+    }
+
+    private void CloseVideo_Click(object sender, RoutedEventArgs e) => CloseVideo();
+
+    /// <summary>
+    /// "Close video": the video stops and VLC lets go of the file (it can be moved or deleted), the filmstrip stops,
+    /// and OpusHC shows its empty page; the session keeps no video. Where it stopped is kept for resume.
+    /// </summary>
+    public void CloseVideo()
+    {
+        if (_current is null)
+            return;
+        RememberPosition();
+        if (IsFullScreen)
+            SetFullScreen(false);
+        _thumbCancel?.Cancel();
+        _stripFor = null;
+        Strip.Reset(0);
+        HoverPopup.IsOpen = false;
+        if (_player is not null)
+        {
+            _player.Stop();
+            _player.Media = null; // VLC holds no reference to the file any more.
+        }
+        _media?.Dispose();
+        _media = null;
+        _current = null;
+        _pendingOpen = null;
+        _folderVideos = [];
+        Picture.Visibility = Visibility.Collapsed; // The last picture would stay; the next video shows it again.
+        TimeText.Text = LengthText.Text = "0:00";
+        Timeline.Value = 0;
+        ShowFile();
+        StageText.Text = "Double-click a video in the explorer, or drop one here.";
+        ShowEngineState();
+        UpdatePlayButton();
+        ActiveChanged?.Invoke();
+        StateChanged?.Invoke();
+        FocusView();
     }
 
     private void OpenExternal_Click(object sender, RoutedEventArgs e)

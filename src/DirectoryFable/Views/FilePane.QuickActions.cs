@@ -13,8 +13,8 @@ namespace DirectoryFable.Views;
 
 /// <summary>
 /// Quick actions bar between the navigation bar and the file list:
-/// paths to the clipboard as text, Copy / Cut / Paste / Duplicate, copy or move to the other
-/// pane, terminal here, open in Explorer. File actions use the same code as the keys, so ZIP
+/// paths to the clipboard as text, Copy / Cut / Paste, 7-Zip, Duplicate, copy or move to the other
+/// pane, Delete, terminal here, open in Explorer, SonnetSearch, Space, Thumbnails. File actions use the same code as the keys, so ZIP
 /// folders work the same way.
 /// </summary>
 public partial class FilePane
@@ -67,6 +67,8 @@ public partial class FilePane
     {
         bool any = FileList.SelectedItems.Count > 0;
         QuickFilePath.IsEnabled = any;
+        QuickCopy.IsEnabled = any;
+        QuickCut.IsEnabled = any;
         Quick7z.IsEnabled = any && SevenZip.GuiPath is not null;
         QuickDuplicate.IsEnabled = any;
         QuickCopyOther.IsEnabled = any;
@@ -113,6 +115,14 @@ public partial class FilePane
             _viewModel?.ShowStatus($"The clipboard is busy: {ex.Message}");
         }
     }
+
+    // ---------- Copy / Cut / Paste (as the keys) ----------
+
+    private void QuickCopy_Click(object sender, RoutedEventArgs e) => _ = RunSafeAsync(() => CopyToClipboard(cut: false));
+
+    private void QuickCut_Click(object sender, RoutedEventArgs e) => _ = RunSafeAsync(() => CopyToClipboard(cut: true));
+
+    private void QuickPaste_Click(object sender, RoutedEventArgs e) => _ = RunSafeAsync(PasteAsync);
 
     // ---------- 7-Zip ----------
 
@@ -257,6 +267,18 @@ public partial class FilePane
         if (ZipBrowser.TrySplit(path, out string zipFile, out _))
             path = Path.GetDirectoryName(zipFile) ?? "";
         return path.Length > 0 && !PathHelper.IsServerPath(path) && !PathHelper.IsThisPc(path) ? path : null;
+    }
+
+    /// <summary>GemmaChat in the shown folder (not This PC, a server list or inside a ZIP file).</summary>
+    private void QuickChat_Click(object sender, RoutedEventArgs e)
+    {
+        string path = _viewModel?.CurrentPath ?? "";
+        if (InArchive || path.Length == 0 || PathHelper.IsThisPc(path) || PathHelper.IsServerPath(path) || !Directory.Exists(path))
+        {
+            _viewModel?.ShowStatus("GemmaChat works in a folder on a drive or a network share.");
+            return;
+        }
+        OpenInChat?.Invoke(path);
     }
 
     /// <summary>Asks which shell to open: cmd or PowerShell.</summary>

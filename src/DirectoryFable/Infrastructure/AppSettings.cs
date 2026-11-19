@@ -98,6 +98,18 @@ public sealed class AppSettings
     /// <summary>The steps of the filmstrip slider on OpusHC's settings page.</summary>
     public static readonly int[] FilmstripCounts = [20, 30, 40, 50, 60, 80, 100, 120, 160, 200];
 
+    /// <summary>KeeSeek: lock after this many minutes without use (1-60); 0 = no timer, it locks when KeeSeek is left.</summary>
+    public int KeeSeekLockMinutes { get; set; } = 10;
+
+    /// <summary>KeeSeek: a copied user name or password is cleared from the clipboard after this many seconds (5-120).</summary>
+    public int KeeSeekClipboardSeconds { get; set; } = 20;
+
+    /// <summary>KeeSeek: entries as cards instead of rows.</summary>
+    public bool KeeSeekCards { get; set; }
+
+    /// <summary>KeeSeek: the height of an entry row in pixels (DIP), 16-88.</summary>
+    public int KeeSeekRowHeight { get; set; } = 52;
+
     /// <summary>AstraViewer: how a newly shown image starts, "fit" (into the window, never enlarged) or "actual" (100 %).</summary>
     public string ViewerZoom { get; set; } = "fit";
 
@@ -251,6 +263,14 @@ public sealed class AppSettings
           "playerFilmstrip": {{Json(s.PlayerFilmstrip)}},
           // OpusHC: pictures in the filmstrip: 20, 30, 40, 50, 60, 80, 100, 120, 160 or 200.
           "playerFilmstripCount": {{s.PlayerFilmstripCount.ToString(System.Globalization.CultureInfo.InvariantCulture)}},
+          // KeeSeek: lock after this many minutes without use (1 to 60); 0 = no timer, it locks when you leave KeeSeek.
+          "keeSeekLockMinutes": {{s.KeeSeekLockMinutes.ToString(System.Globalization.CultureInfo.InvariantCulture)}},
+          // KeeSeek: a copied user name or password leaves the clipboard after this many seconds (5 to 120).
+          "keeSeekClipboardSeconds": {{s.KeeSeekClipboardSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture)}},
+          // KeeSeek: entries as cards (true) or rows (false).
+          "keeSeekCards": {{Json(s.KeeSeekCards)}},
+          // KeeSeek: the height of an entry row in pixels (16 to 88).
+          "keeSeekRowHeight": {{s.KeeSeekRowHeight.ToString(System.Globalization.CultureInfo.InvariantCulture)}},
           // Start folders when there is no saved session.
           "leftPath": {{Json(s.LeftPath)}},
           "rightPath": {{Json(s.RightPath)}}

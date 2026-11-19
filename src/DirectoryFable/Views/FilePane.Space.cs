@@ -21,6 +21,7 @@ public partial class FilePane
     private void ShowContent(bool tabChanged)
     {
         HookContent();
+        ApplyTileMode();
         var tab = _viewModel;
         bool thisPc = tab?.IsThisPc == true;
         bool space = !thisPc && tab is { SpaceMode: true, CanShowSpace: true };

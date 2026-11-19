@@ -89,6 +89,7 @@ public sealed class PaneViewModel : ObservableObject
         Columns = CopyColumns(t.ColumnLayout),
         CollapsedGroups = t.CollapsedGroups.Count > 0 ? [.. t.CollapsedGroups] : null,
         Space = t.SpaceMode,
+        Tiles = t.TileMode,
     };
 
     /// <summary>Sort order, columns and closed groups of a saved tab (before its list is created).</summary>
@@ -101,6 +102,7 @@ public sealed class PaneViewModel : ObservableObject
         foreach (string group in saved.CollapsedGroups ?? [])
             t.CollapsedGroups.Add(group);
         t.SpaceMode = saved.Space;
+        t.TileMode = saved.Tiles;
     }
 
     // ---------- Closed tabs (Ctrl+Shift+T) ----------

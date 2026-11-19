@@ -32,6 +32,10 @@ These terms apply to this program and to every work based on it.
 
 - AvalonEdit (MIT license), the text editor of Notepad#, used as a NuGet
   package. License text: licenses/AvalonEdit.txt.
+- The Anthropic SDK for C# (Apache-2.0), GemmaChat's client for Claude's API,
+  used as a NuGet package. License text: licenses/Anthropic.txt. It brings
+  Microsoft.Extensions.AI.Abstractions and System.Net.ServerSentEvents (MIT
+  license, parts of .NET).
 - LibVLCSharp (LGPL-2.1-or-later), the .NET binding of VLC's engine for OpusHC, used as a NuGet package. License text: licenses/LibVLCSharp.txt.
   VLC's engine itself (libVLC, VideoLAN, GPL-2.0-or-later and LGPL-2.1-or-later)
   is not part of DirectoryFable: it is downloaded from VideoLAN on first use,

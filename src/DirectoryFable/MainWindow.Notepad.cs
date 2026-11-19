@@ -73,10 +73,11 @@ public partial class MainWindow
     private void ShowNotepad(bool show) => ShowView(show ? MainView.Notepad : MainView.Explorer);
 
     /// <summary>The views below the title bar, one per title bar tab.</summary>
-    private enum MainView { Explorer, Notepad, Viewer, Search, Player }
+    private enum MainView { Explorer, Notepad, Viewer, Search, Player, Vault, Chat }
 
     private MainView ShownView => NotepadShown ? MainView.Notepad : ViewerShown ? MainView.Viewer
-        : SearchShown ? MainView.Search : PlayerShown ? MainView.Player : MainView.Explorer;
+        : SearchShown ? MainView.Search : PlayerShown ? MainView.Player : KeeSeekShown ? MainView.Vault
+        : GemmaChatShown ? MainView.Chat : MainView.Explorer;
 
     /// <summary>
     /// Shows one view below the title bar; the others keep their state. A click on the tab of
@@ -89,10 +90,14 @@ public partial class MainWindow
         AstraViewerTab.IsChecked = view == MainView.Viewer;
         SearchTab.IsChecked = view == MainView.Search;
         PlayerTab.IsChecked = view == MainView.Player;
+        KeeSeekTab.IsChecked = view == MainView.Vault;
+        GemmaChatTab.IsChecked = view == MainView.Chat;
         if (view == ShownView)
             return;
         if (view != MainView.Player && PlayerPage.IsFullScreen)
             PlayerPage.SetFullScreen(false);
+        if (view != MainView.Vault && KeeSeekShown)
+            KeeSeekPage.OnHidden(); // With its timer off, KeeSeek locks when it is left.
 
         if (view != MainView.Explorer)
             ShowSettings(false); // The explorer's settings page belongs to the explorer.
@@ -100,6 +105,8 @@ public partial class MainWindow
         AstraViewerPage.Visibility = view == MainView.Viewer ? Visibility.Visible : Visibility.Collapsed;
         SearchPage.Visibility = view == MainView.Search ? Visibility.Visible : Visibility.Collapsed;
         PlayerPage.Visibility = view == MainView.Player ? Visibility.Visible : Visibility.Collapsed;
+        KeeSeekPage.Visibility = view == MainView.Vault ? Visibility.Visible : Visibility.Collapsed;
+        GemmaChatPage.Visibility = view == MainView.Chat ? Visibility.Visible : Visibility.Collapsed;
         SetExplorerShown(view == MainView.Explorer);
         switch (view)
         {
@@ -115,6 +122,12 @@ public partial class MainWindow
             case MainView.Player:
                 PlayerPage.FocusView();
                 PlayerShownFirstTime();
+                break;
+            case MainView.Vault:
+                KeeSeekPage.OnShown();
+                break;
+            case MainView.Chat:
+                GemmaChatPage.OnShown();
                 break;
             default:
                 ActivePaneView.FocusList();

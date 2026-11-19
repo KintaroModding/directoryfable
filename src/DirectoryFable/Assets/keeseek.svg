@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>KeeSeek</title>
+  <defs>
+    <linearGradient id="blue" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0" stop-color="#087DE0"/><stop offset="1" stop-color="#0041B8"/></linearGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0" stop-color="#27CCD9"/><stop offset="1" stop-color="#0099B8"/></linearGradient>
+  </defs>
+  <path fill="url(#cyan)" d="M 68,112 L 68,77 C 68,-1 188,-1 188,77 L 188,112 L 164,112 L 164,77 C 164,31 92,31 92,77 L 92,112 Z"/>
+  <path fill="url(#blue)" d="M 56,96 L 200,96 Q 220,96 220,116 L 220,216 Q 220,236 200,236 L 56,236 Q 36,236 36,216 L 36,116 Q 36,96 56,96 Z"/>
+  <path fill="#E8F9FF" d="M 151,148 C 151,128 105,128 105,148 C 105,158 111,164 117,168 L 111,194 Q 110,198 115,198 L 141,198 Q 146,198 145,194 L 139,168 C 145,164 151,158 151,148 Z"/>
+</svg>

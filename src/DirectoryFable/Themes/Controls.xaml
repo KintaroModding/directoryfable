@@ -7,7 +7,7 @@
     <infra:DepthToIndentConverter x:Key="DepthToIndent" />
     <infra:GroupExpandedConverter x:Key="GroupExpanded" />
 
-    <!-- Flat button: no border, light fill on hover. -->
+    <!-- Flat button: no border, square (like the field lists), light fill on hover. -->
     <Style x:Key="SubtleButton" TargetType="Button">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="#FFFFFF" />
@@ -19,7 +19,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="Bd" Background="{TemplateBinding Background}"
-                            CornerRadius="2" Padding="{TemplateBinding Padding}">
+                            Padding="{TemplateBinding Padding}">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
@@ -416,7 +416,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
-                    <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="2">
+                    <Border x:Name="Bd" Background="{TemplateBinding Background}">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
@@ -458,7 +458,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
-                    <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="2"
+                    <Border x:Name="Bd" Background="{TemplateBinding Background}"
                             Padding="{TemplateBinding Padding}">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
@@ -488,7 +488,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="2">
+                    <Border x:Name="Bd" Background="{TemplateBinding Background}">
                         <TextBlock Text="&#xE946;" FontFamily="{StaticResource IconFont}" FontSize="11"
                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
@@ -514,8 +514,10 @@
         <Setter Property="RenderOptions.BitmapScalingMode" Value="HighQuality" />
     </Style>
 
+    <!-- Flat like the field lists (user: "remove the rounded corner button style ... like the drop down menus"):
+         square, 26 px in the 28 px title bar; under the mouse the field color, the shown view the field's hover color. -->
     <Style x:Key="TitleTabButton" TargetType="ToggleButton">
-        <Setter Property="Height" Value="24" />
+        <Setter Property="Height" Value="26" />
         <Setter Property="Padding" Value="10,0" />
         <Setter Property="FontSize" Value="{StaticResource TitleFontSize}" />
         <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
@@ -525,16 +527,16 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
-                    <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                    <Border x:Name="Bd" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
                         <ContentPresenter VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource SubtleHoverBrush}" />
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource FieldBrush}" />
                             <Setter Property="Foreground" Value="{StaticResource ListTextBrush}" />
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource TitleTabActiveBrush}" />
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource FieldHoverBrush}" />
                             <Setter Property="Foreground" Value="{StaticResource ListTextBrush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -560,7 +562,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
                     <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="1" CornerRadius="3">
+                            BorderThickness="1">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
@@ -628,6 +630,144 @@
                                     CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
                         </StackPanel>
                     </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Lists as flat fields (user, GemmaChat: "go away from the button design ... more like a field with a slightly
+         different background"; then for SonnetSearch too): a flat #262626 field 26 px high, the bar's text
+         size, a small arrow on the right; editable lists get a plain text box. The standard combo box is taller
+         and rounded; this own template fits the bars. Used by GemmaChat's bar and SonnetSearch's filters. -->
+    <Style x:Key="FieldComboItem" TargetType="ComboBoxItem">
+        <Setter Property="Foreground" Value="{StaticResource ListTextBrush}" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ComboBoxItem">
+                    <Border x:Name="Bd" Background="Transparent" Padding="10,5">
+                        <ContentPresenter />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource ListHoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource ListSelectedBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="FieldComboBox" TargetType="ComboBox">
+        <Setter Property="Foreground" Value="{StaticResource ListTextBrush}" />
+        <Setter Property="Background" Value="{StaticResource FieldBrush}" />
+        <Setter Property="FontSize" Value="{StaticResource FavoritesFontSize}" />
+        <Setter Property="Height" Value="26" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="ItemContainerStyle" Value="{StaticResource FieldComboItem}" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ComboBox">
+                    <Grid>
+                        <!-- The whole field opens the list; the arrow sits on the right. -->
+                        <ToggleButton x:Name="Toggle" Focusable="False" ClickMode="Press" Padding="0" MinWidth="0" MinHeight="0"
+                                      HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                      HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
+                                      IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                            <ToggleButton.Template>
+                                <ControlTemplate TargetType="ToggleButton">
+                                    <Border x:Name="Bd" Background="{StaticResource FieldBrush}">
+                                        <TextBlock Text="&#xE70D;" FontFamily="{StaticResource IconFont}" FontSize="9" Margin="0,1,9,0"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                   Foreground="{StaticResource SecondaryTextBrush}" />
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource FieldHoverBrush}" />
+                                        </Trigger>
+                                        <Trigger Property="IsChecked" Value="True">
+                                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource FieldHoverBrush}" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </ToggleButton.Template>
+                        </ToggleButton>
+                        <ContentPresenter x:Name="ContentSite" IsHitTestVisible="False" Margin="10,0,26,0"
+                                          VerticalAlignment="Center" HorizontalAlignment="Left"
+                                          Content="{TemplateBinding SelectionBoxItem}"
+                                          ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                          ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}" />
+                        <TextBox x:Name="PART_EditableTextBox" Visibility="Hidden" Margin="8,0,24,0" VerticalAlignment="Center"
+                                 MinHeight="0" MinWidth="0" Padding="0" VerticalContentAlignment="Center"
+                                 Background="Transparent" BorderThickness="0" Foreground="{TemplateBinding Foreground}"
+                                 CaretBrush="{StaticResource ListTextBrush}" FontSize="{TemplateBinding FontSize}"
+                                 IsReadOnly="{TemplateBinding IsReadOnly}">
+                            <TextBox.Template>
+                                <ControlTemplate TargetType="TextBox">
+                                    <ScrollViewer x:Name="PART_ContentHost" Focusable="False" HorizontalScrollBarVisibility="Hidden"
+                                                  VerticalScrollBarVisibility="Hidden" />
+                                </ControlTemplate>
+                            </TextBox.Template>
+                        </TextBox>
+                        <Popup x:Name="PART_Popup" Placement="Bottom" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade"
+                               IsOpen="{TemplateBinding IsDropDownOpen}">
+                            <Border Background="{StaticResource FieldBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1"
+                                    MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                                    MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                    <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" />
+                                </ScrollViewer>
+                            </Border>
+                        </Popup>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsEditable" Value="True">
+                            <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="ContentSite" Property="Visibility" Value="Hidden" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Text boxes as the same flat field (SonnetSearch's search box and extensions box): #262626, 26 px high, the bar's
+         text size; a lighter field under the mouse and a thin blue line at the bottom while typing. -->
+    <Style x:Key="FieldTextBox" TargetType="TextBox">
+        <Setter Property="Foreground" Value="{StaticResource ListTextBrush}" />
+        <Setter Property="Background" Value="{StaticResource FieldBrush}" />
+        <Setter Property="CaretBrush" Value="{StaticResource ListTextBrush}" />
+        <Setter Property="FontSize" Value="{StaticResource FavoritesFontSize}" />
+        <Setter Property="Height" Value="26" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Padding" Value="8,0" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="Transparent" BorderThickness="0,0,0,1">
+                        <ScrollViewer x:Name="PART_ContentHost" Focusable="False" Margin="{TemplateBinding Padding}"
+                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                      HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource FieldHoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource GroupChevronBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

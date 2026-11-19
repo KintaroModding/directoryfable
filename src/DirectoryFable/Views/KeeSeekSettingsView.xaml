@@ -1,0 +1,133 @@
+<UserControl x:Class="DirectoryFable.Views.KeeSeekSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             FontFamily="{StaticResource UiFont}" FontSize="13"
+             Foreground="{StaticResource ListTextBrush}"
+             Background="{StaticResource WindowBackgroundBrush}">
+    <!-- KeeSeek settings: locking, the clipboard, the vault file, the master password. Saved at once. -->
+    <UserControl.Resources>
+        <Style x:Key="SectionTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource GroupChevronBrush}" />
+            <Setter Property="Margin" Value="0,26,0,6" />
+        </Style>
+        <Style x:Key="SettingHelp" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,3,0,0" />
+        </Style>
+        <Style x:Key="SettingRow" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="Padding" Value="0,12" />
+        </Style>
+        <SolidColorBrush x:Key="ErrorBrush" Color="#FF7A7A" />
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="40,24,40,40" MaxWidth="900" HorizontalAlignment="Left">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Close (Esc)" MinWidth="100" VerticalAlignment="Center" Click="Close_Click" />
+                <TextBlock Text="KeeSeek settings" FontSize="24" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </DockPanel>
+            <TextBlock x:Name="SaveStatus" Style="{StaticResource SettingHelp}" Margin="0,6,0,0"
+                       Text="Changes are saved at once to settings.json." />
+
+            <TextBlock Style="{StaticResource SectionTitle}" Text="Locking" />
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Text="Lock automatically" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="KeeSeek locks after this time without use in it. Fully left: no timer - it locks as soon as you switch to another view. It also locks when Windows locks and when DirectoryFable ends." />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <Slider x:Name="LockSlider" Minimum="0" Maximum="60" SmallChange="1" LargeChange="5" TickFrequency="1"
+                                IsSnapToTickEnabled="True" IsMoveToPointEnabled="True" Width="320" HorizontalAlignment="Left"
+                                ValueChanged="LockSlider_Changed" />
+                        <TextBlock x:Name="LockText" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <TextBlock Style="{StaticResource SectionTitle}" Text="Clipboard" />
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Text="Clear a copied user name or password after" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="Only if the clipboard still holds it (something you copy later stays). KeeSeek's copies never go into Windows' clipboard history (Win+V) or cloud clipboard." />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <Slider x:Name="ClipboardSlider" Minimum="5" Maximum="120" SmallChange="5" LargeChange="15" TickFrequency="5"
+                                IsSnapToTickEnabled="True" IsMoveToPointEnabled="True" Width="320" HorizontalAlignment="Left"
+                                ValueChanged="ClipboardSlider_Changed" />
+                        <TextBlock x:Name="ClipboardText" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <TextBlock Style="{StaticResource SectionTitle}" Text="Display" />
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Text="Row height" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="The height of an entry row (rows view). Below 48 pixels the category line under the title is left out; below 28 the rows are compact (no avatar, smaller text). Applies at once." />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <Slider x:Name="RowHeightSlider" Minimum="16" Maximum="88" SmallChange="2" LargeChange="8" TickFrequency="2"
+                                IsSnapToTickEnabled="True" IsMoveToPointEnabled="True" Width="320" HorizontalAlignment="Left"
+                                ValueChanged="RowHeightSlider_Changed" />
+                        <TextBlock x:Name="RowHeightText" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <TextBlock Style="{StaticResource SectionTitle}" Text="Vault" />
+            <Border Style="{StaticResource SettingRow}">
+                <StackPanel>
+                    <DockPanel>
+                        <Button x:Name="OpenFolderButton" DockPanel.Dock="Right" Content="Open the folder" Margin="8,0,0,0" Padding="10,3"
+                                Click="OpenFolder_Click" />
+                        <TextBox x:Name="VaultPathBox" IsReadOnly="True" Background="Transparent" BorderThickness="0" VerticalAlignment="Center" />
+                    </DockPanel>
+                    <TextBlock Style="{StaticResource SettingHelp}" Margin="0,8,0,0"
+                               Text="Encrypted with AES-256-GCM; the key comes from the master password (PBKDF2-SHA256, 600,000 rounds). Each save keeps the previous version as vault.kseek.bak. For a backup, copy both files somewhere safe - without the master password they cannot be read." />
+                </StackPanel>
+            </Border>
+
+            <TextBlock Style="{StaticResource SectionTitle}" Text="Master password" />
+            <Border Style="{StaticResource SettingRow}">
+                <StackPanel x:Name="PasswordSection" Width="420" HorizontalAlignment="Left">
+                    <TextBlock x:Name="PasswordLocked" Style="{StaticResource SettingHelp}" Text="Unlock KeeSeek to change its master password." />
+                    <StackPanel x:Name="PasswordFields">
+                        <TextBlock Text="Current master password" FontSize="12" Foreground="{StaticResource SecondaryTextBrush}" Margin="0,0,0,4" />
+                        <PasswordBox x:Name="CurrentBox" />
+                        <TextBlock Text="New master password" FontSize="12" Foreground="{StaticResource SecondaryTextBrush}" Margin="0,10,0,4" />
+                        <PasswordBox x:Name="NewBox" />
+                        <TextBlock Text="Repeat the new master password" FontSize="12" Foreground="{StaticResource SecondaryTextBrush}" Margin="0,10,0,4" />
+                        <PasswordBox x:Name="RepeatBox" />
+                        <Button x:Name="ChangeButton" Content="Change master password" Margin="0,14,0,0" Padding="12,5" HorizontalAlignment="Left"
+                                Click="Change_Click" />
+                        <TextBlock x:Name="ChangeStatus" Margin="0,8,0,0" TextWrapping="Wrap" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

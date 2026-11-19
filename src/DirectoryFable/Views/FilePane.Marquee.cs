@@ -40,6 +40,8 @@ public partial class FilePane
     /// <summary>Is the press on a row's Name cell (there it drags the files) rather than another column?</summary>
     private bool IsOnNameCell(object source)
     {
+        if (_tilesShown)
+            return RowAt(source) is not null; // A whole tile drags its file.
         for (var d = source as DependencyObject; d is not null && d != FileList; d = VisualTreeHelper.GetParent(d))
         {
             if (VisualTreeHelper.GetParent(d) is GridViewRowPresenter presenter)

@@ -29,7 +29,7 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <Button Padding="7,1" Height="24"
+                    <Button Padding="7,1" Height="26"
                             ToolTip="{Binding ToolTip}"
                             Click="Favorite_Click"
                             PreviewMouseLeftButtonDown="Favorite_PreviewMouseLeftButtonDown"

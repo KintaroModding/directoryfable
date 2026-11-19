@@ -103,7 +103,9 @@ public sealed class SearchQuery
         }
     }
 
-    public bool Matches(DriveIndex index, int i)
+    /// <param name="totals">The index's folder sizes: the size filter then also takes folders (by all files below
+    /// them); null = folder sizes off, the size filter takes files only.</param>
+    public bool Matches(DriveIndex index, int i, FolderTotals? totals = null)
     {
         bool folder = index.IsDirectory(i);
         switch (Type)
@@ -121,10 +123,12 @@ public sealed class SearchQuery
                 break;
             }
         }
-        if (MinSize is long min && (folder || index.Size[i] < min))
-            return false;
-        if (MaxSize is long max && (folder || index.Size[i] > max))
-            return false;
+        if (MinSize is not null || MaxSize is not null)
+        {
+            long size = !folder ? index.Size[i] : totals?.Total(i) ?? -1;
+            if (size < 0 || (MinSize is long min && size < min) || (MaxSize is long max && size > max))
+                return false;
+        }
         if (Since is long since)
         {
             bool recent = DateColumn switch
@@ -152,13 +156,30 @@ public sealed class SearchQuery
     }
 }
 
-/// <summary>The found entries: (index number &lt;&lt; 32 | entry) per item, in display order.</summary>
-public sealed class SearchResult(IReadOnlyList<DriveIndex> indexes, long[] items, long searched)
+/// <summary>
+/// The found entries: (index number &lt;&lt; 32 | entry) per item, in display order. Totals: per index the folder
+/// sizes (all files below each folder), or null when folder sizes are off.
+/// </summary>
+public sealed class SearchResult(IReadOnlyList<DriveIndex> indexes, long[] items, long searched, IReadOnlyList<FolderTotals>? totals = null)
 {
     public static readonly SearchResult Empty = new([], [], 0);
 
     public IReadOnlyList<DriveIndex> Indexes { get; } = indexes;
     public long[] Items { get; } = items;
+    public IReadOnlyList<FolderTotals>? Totals { get; } = totals;
+
+    /// <summary>A file's size; a folder's: all files below it (with folder sizes on), else -1.</summary>
+    public long SizeOf(long item) => SizeOf(Indexes, Totals, item);
+
+    internal static long SizeOf(IReadOnlyList<DriveIndex> indexes, IReadOnlyList<FolderTotals>? totals, long item)
+    {
+        int d = (int)(item >> 32);
+        int i = EntryOf(item);
+        var index = indexes[d];
+        if (!index.IsDirectory(i))
+            return index.Size[i];
+        return totals is { } t ? t[d].Total(i) : -1;
+    }
 
     /// <summary>How many entries were looked at.</summary>
     public long Searched { get; } = searched;
@@ -172,8 +193,9 @@ public sealed class SearchResult(IReadOnlyList<DriveIndex> indexes, long[] items
 public static class SearchRunner
 {
     /// <param name="scopeFolder">Per index: only entries below this folder entry (null = all; -1 = root).</param>
+    /// <param name="totals">Per index the folder sizes (for the size sort and the Size column), or null.</param>
     public static SearchResult Run(IReadOnlyList<DriveIndex> indexes, IReadOnlyList<int?> scopeFolder, SearchQuery query,
-        ResultSort sort, bool descending, CancellationToken token)
+        ResultSort sort, bool descending, IReadOnlyList<FolderTotals>? totals, CancellationToken token)
     {
         query.Compile();
         var found = new ConcurrentBag<long[]>();
@@ -181,6 +203,7 @@ public static class SearchRunner
         for (int d = 0; d < indexes.Count; d++)
         {
             var index = indexes[d];
+            var folderTotals = totals?[d];
             int? scope = scopeFolder[d];
             sbyte[]? memo = scope is int s && s >= 0 ? new sbyte[index.Count] : null;
             long high = (long)d << 32;
@@ -194,7 +217,7 @@ public static class SearchRunner
                     if (scope is int s2 && (s2 < 0 ? false : !InScope(index, i, s2, memo!)))
                         continue;
                     looked++;
-                    if (query.Matches(index, i))
+                    if (query.Matches(index, i, folderTotals))
                         local.Add(high | (uint)i);
                 }
                 Interlocked.Add(ref searched, looked);
@@ -204,8 +227,8 @@ public static class SearchRunner
         }
         token.ThrowIfCancellationRequested();
         var items = found.SelectMany(x => x).ToArray();
-        Sort(items, indexes, sort, descending, token);
-        return new SearchResult(indexes, items, searched);
+        Sort(items, indexes, totals, sort, descending, token);
+        return new SearchResult(indexes, items, searched, totals);
     }
 
     /// <summary>Is entry <paramref name="i"/> inside folder <paramref name="scope"/> (any depth)? Remembered per folder.</summary>
@@ -239,7 +262,8 @@ public static class SearchRunner
         return result;
     }
 
-    public static void Sort(long[] items, IReadOnlyList<DriveIndex> indexes, ResultSort sort, bool descending, CancellationToken token)
+    public static void Sort(long[] items, IReadOnlyList<DriveIndex> indexes, IReadOnlyList<FolderTotals>? totals, ResultSort sort,
+        bool descending, CancellationToken token)
     {
         if (sort == ResultSort.None || items.Length < 2)
             return;
@@ -255,7 +279,7 @@ public static class SearchRunner
                 int i = Entry(items[k]);
                 keys[k] = sort switch
                 {
-                    ResultSort.Size => index.IsDirectory(i) ? -1 : index.Size[i],
+                    ResultSort.Size => SearchResult.SizeOf(indexes, totals, items[k]),
                     ResultSort.Modified => index.Modified[i],
                     ResultSort.Accessed => index.Accessed[i],
                     _ => index.Created[i],

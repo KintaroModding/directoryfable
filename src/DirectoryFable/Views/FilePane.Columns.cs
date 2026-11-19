@@ -185,9 +185,12 @@ public partial class FilePane
 
         using (_view.DeferRefresh())
         {
-            _view.CustomSort = new FileItemComparer(tab.SortColumn, tab.SortDescending, tab.GroupByType);
+            bool groups = tab.GroupByType && !tab.TileMode; // The tile view has its own categories.
+            var sort = new FileItemComparer(tab.SortColumn, tab.SortDescending, groups);
+            // Tiles: folders, videos, images, other files (TilePanel draws the headers).
+            _view.CustomSort = tab.TileMode ? new TileCategories.Comparer(sort) : sort;
             _view.GroupDescriptions.Clear();
-            if (tab.GroupByType)
+            if (groups)
                 _view.GroupDescriptions.Add(new PropertyGroupDescription(nameof(FileItem.TypeName)));
         }
         UpdateHeaders();

@@ -52,7 +52,8 @@
     <SolidColorBrush x:Key="LineDarkBrush" Color="#1E1E1E" />
     <SolidColorBrush x:Key="LineLightBrush" Color="#363636" />
     <SolidColorBrush x:Key="SecondaryTextBrush" Color="#A0A0A0" />
-    <SolidColorBrush x:Key="SubtleHoverBrush" Color="#2A2A2A" />
+    <!-- Flat buttons under the mouse: the same color as a field list under the mouse (FieldHoverBrush). -->
+    <SolidColorBrush x:Key="SubtleHoverBrush" Color="#2E2E2E" />
     <SolidColorBrush x:Key="SubtlePressedBrush" Color="#333333" />
     <SolidColorBrush x:Key="GroupChevronBrush" Color="#3399FF" />
 
@@ -74,8 +75,10 @@
     <SolidColorBrush x:Key="EditorLineNumberBrush" Color="#6E6E6E" />
     <SolidColorBrush x:Key="EditorCurrentLineBrush" Color="#242424" />
     <SolidColorBrush x:Key="EditorSelectionBrush" Color="#264F78" />
-    <!-- Title bar view tabs ([folder] [Notepad#]). -->
-    <SolidColorBrush x:Key="TitleTabActiveBrush" Color="#3A3A3A" />
+    <!-- Flat fields (FieldComboBox, FieldTextBox) and the title bar view tabs: the field, and the field under the
+         mouse (also the shown view's tab). -->
+    <SolidColorBrush x:Key="FieldBrush" Color="#262626" />
+    <SolidColorBrush x:Key="FieldHoverBrush" Color="#2E2E2E" />
     <SolidColorBrush x:Key="HeaderToggleOffBrush" Color="#707070" />
     <SolidColorBrush x:Key="FavoriteSeparatorBrush" Color="#8C8C8C" />
     <system:Double xmlns:system="clr-namespace:System;assembly=mscorlib" x:Key="FavoritesGap">14</system:Double>

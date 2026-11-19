@@ -113,6 +113,17 @@ public sealed class TabViewModel : ObservableObject, IDisposable
         set => SetField(ref _spaceMode, value);
     }
 
+    // ---------- Tile view ----------
+
+    private bool _tileMode;
+
+    /// <summary>The file list shows large tiles with Windows' thumbnails instead of rows (stays on in other folders).</summary>
+    public bool TileMode
+    {
+        get => _tileMode;
+        set => SetField(ref _tileMode, value);
+    }
+
     /// <summary>A folder on a drive or share (not This PC, a ZIP file or a server's share list).</summary>
     public bool CanShowSpace =>
         CurrentPath.Length > 0 && !PathHelper.IsThisPc(CurrentPath) && !IsInArchive && !PathHelper.IsServerPath(CurrentPath);

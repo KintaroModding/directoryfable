@@ -19,6 +19,10 @@ public partial class FilePane
     private const int CmdOpenInNotepad = ShellContextMenu.ExtraCommandFirst + 5;
     private const int CmdOpenInViewer = ShellContextMenu.ExtraCommandFirst + 6;
     private const int CmdOpenInPlayer = ShellContextMenu.ExtraCommandFirst + 7;
+    private const int CmdOpenInChat = ShellContextMenu.ExtraCommandFirst + 8;
+
+    /// <summary>Set by the main window: a new GemmaChat chat that works in this folder.</summary>
+    public static Action<string>? OpenInChat { get; set; }
 
     /// <summary>Set when a right-button drag started; the next right-button release opens no menu.</summary>
     private bool _suppressContextMenu;
@@ -86,6 +90,8 @@ public partial class FilePane
             extras.Add((CmdOpenInNewTab, "Open in new tab"));
             if (FavoritesViewModel.Current?.Contains(folder.FullPath) == false)
                 extras.Add((CmdAddFavorite, "Add to favorites"));
+            if (!InArchive && OpenInChat is not null)
+                extras.Add((CmdOpenInChat, "Open in GemmaChat (let the AI work in it)"));
         }
 
         // Files (no folders, not inside an archive): open them in Notepad#.
@@ -107,6 +113,8 @@ public partial class FilePane
             extras.Add((CmdNewFolder, "New folder\tCtrl+Shift+N"));
             if (FavoritesViewModel.Current?.Contains(_viewModel.CurrentPath) == false)
                 extras.Add((CmdAddFavorite, "Add this folder to favorites"));
+            if (!InArchive && OpenInChat is not null && System.IO.Directory.Exists(_viewModel.CurrentPath))
+                extras.Add((CmdOpenInChat, "Open this folder in GemmaChat"));
         }
 
         ShellMenuResult result;
@@ -150,6 +158,9 @@ public partial class FilePane
                 break;
             case ShellMenuOutcome.Extra when result.ExtraCommandId == CmdOpenInPlayer && selected is [var toPlay]:
                 OpenInPlayer?.Invoke(toPlay.FullPath);
+                break;
+            case ShellMenuOutcome.Extra when result.ExtraCommandId == CmdOpenInChat:
+                OpenInChat?.Invoke(selected.Count == 1 ? selected[0].FullPath : _viewModel.CurrentPath);
                 break;
             case ShellMenuOutcome.Extra when result.ExtraCommandId == CmdAddFavorite:
                 FavoritesViewModel.Current?.Add(selected.Count == 1 ? selected[0].FullPath : _viewModel.CurrentPath);

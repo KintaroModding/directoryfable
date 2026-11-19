@@ -390,7 +390,7 @@ public sealed class ResultScrubber : FrameworkElement
         switch (_sort)
         {
             case ResultSort.Size:
-                return SizeSection(index.IsDirectory(i) ? -1 : index.Size[i]);
+                return SizeSection(_result.SizeOf(_result.Items[row]));
             case ResultSort.Modified:
                 return DateSection(index.Modified[i]);
             case ResultSort.Accessed:
@@ -422,7 +422,9 @@ public sealed class ResultScrubber : FrameworkElement
         string name = index.Name(i).ToString();
         return _sort switch
         {
-            ResultSort.Size => folder ? $"Folder   {name}" : $"{DisplayFormat.Size(index.Size[i])}   {name}",
+            ResultSort.Size => _result.SizeOf(_result.Items[row]) is var size and >= 0
+                ? $"{DisplayFormat.Size(size)}   {(folder ? "Folder " : "")}{name}"
+                : $"Folder   {name}",
             ResultSort.Modified => $"{DateText(index.Modified[i])}   {name}",
             ResultSort.Accessed => $"{DateText(index.Accessed[i])}   {name}",
             ResultSort.Created => $"{DateText(index.Created[i])}   {name}",

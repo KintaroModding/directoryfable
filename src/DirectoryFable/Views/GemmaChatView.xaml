@@ -1,0 +1,339 @@
+<UserControl x:Class="DirectoryFable.Views.GemmaChatView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:DirectoryFable.Views"
+             FontFamily="{StaticResource UiFont}" FontSize="13"
+             Foreground="{StaticResource ListTextBrush}"
+             Background="{StaticResource WindowBackgroundBrush}"
+             Focusable="True" FocusVisualStyle="{x:Null}"
+             PreviewKeyDown="View_PreviewKeyDown">
+    <!-- GemmaChat: chats with an AI through any OpenAI-compatible API. Chats on the left, the conversation on the
+         right, the input at the bottom. Logic: GemmaChatView.xaml.cs; files: Chat/ChatStore.cs. -->
+    <UserControl.Resources>
+        <SolidColorBrush x:Key="SideBrush" Color="#161616" />
+        <SolidColorBrush x:Key="BubbleBrush" Color="#202020" />
+        <SolidColorBrush x:Key="UserBubbleBrush" Color="#163A5C" />
+        <SolidColorBrush x:Key="CodeBrush" Color="#121212" />
+        <SolidColorBrush x:Key="ErrorBrush" Color="#FF7A7A" />
+
+        <Style x:Key="BarIcon" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{StaticResource IconFont}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Margin" Value="0,1,6,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <!-- Selectable text that looks like plain text. -->
+        <Style x:Key="ReadText" TargetType="TextBox">
+            <Setter Property="IsReadOnly" Value="True" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Foreground" Value="{StaticResource ListTextBrush}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <ScrollViewer x:Name="PART_ContentHost" Focusable="False" HorizontalScrollBarVisibility="{TemplateBinding HorizontalScrollBarVisibility}"
+                                      VerticalScrollBarVisibility="Disabled" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- A piece of a message: text, or a code block with its language and a copy button. -->
+        <DataTemplate x:Key="TextSegment">
+            <TextBox Style="{StaticResource ReadText}" Text="{Binding Text, Mode=OneWay}" Margin="0,2" />
+        </DataTemplate>
+        <!-- The AI's text with its Markdown (bold, headings, lists, tables, inline code), selectable like plain text. -->
+        <DataTemplate x:Key="RichSegment">
+            <local:MarkdownBox Markdown="{Binding Text, Mode=OneWay}" Margin="0,2" Background="Transparent" BorderThickness="0"
+                               Padding="0" MinHeight="0" FontSize="13" Foreground="{StaticResource ListTextBrush}">
+                <local:MarkdownBox.Template>
+                    <ControlTemplate TargetType="local:MarkdownBox">
+                        <ScrollViewer x:Name="PART_ContentHost" Focusable="False" HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Disabled" />
+                    </ControlTemplate>
+                </local:MarkdownBox.Template>
+            </local:MarkdownBox>
+        </DataTemplate>
+        <DataTemplate x:Key="CodeSegment">
+            <Border Background="{StaticResource CodeBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1"
+                    CornerRadius="6" Margin="0,6">
+                <DockPanel>
+                    <DockPanel DockPanel.Dock="Top" Margin="10,4,4,0">
+                        <Button DockPanel.Dock="Right" Style="{StaticResource SubtleButton}" Padding="7,2" Click="CopyCode_Click"
+                                ToolTip="Copy the code">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE8C8;" FontFamily="{StaticResource IconFont}" FontSize="11" Margin="0,1,5,0" />
+                                <TextBlock Text="Copy" FontSize="11" />
+                            </StackPanel>
+                        </Button>
+                        <TextBlock Text="{Binding Language}" FontSize="11" VerticalAlignment="Center"
+                                   Foreground="{StaticResource SecondaryTextBrush}" />
+                    </DockPanel>
+                    <TextBox Style="{StaticResource ReadText}" Text="{Binding Text, Mode=OneWay}" FontFamily="Consolas" FontSize="12.5"
+                             TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" Margin="10,4,10,10" />
+                </DockPanel>
+            </Border>
+        </DataTemplate>
+        <local:ChatSegmentSelector x:Key="SegmentSelector" Text="{StaticResource TextSegment}" Rich="{StaticResource RichSegment}"
+                                   Code="{StaticResource CodeSegment}" />
+
+        <!-- A message: the user's on the right (blue), the AI's on the left; an error with a red frame. -->
+        <DataTemplate x:Key="MessageTemplate">
+            <Border x:Name="Bubble" Margin="0,0,0,14" Padding="14,10" CornerRadius="10" Background="{StaticResource BubbleBrush}"
+                    HorizontalAlignment="Stretch">
+                <StackPanel>
+                    <TextBlock x:Name="Status" Text="{Binding Status}" FontStyle="Italic" Foreground="{StaticResource SecondaryTextBrush}"
+                               Visibility="{Binding HasStatus, Converter={StaticResource BoolToVisibility}}" />
+                    <ItemsControl ItemsSource="{Binding Segments}" ItemTemplateSelector="{StaticResource SegmentSelector}" />
+                    <DockPanel Margin="0,4,0,0">
+                        <Button x:Name="CopyAll" DockPanel.Dock="Right" Style="{StaticResource SubtleButton}" Padding="6,1"
+                                ToolTip="Copy the whole message" Click="CopyMessage_Click">
+                            <TextBlock Text="&#xE8C8;" FontFamily="{StaticResource IconFont}" FontSize="11" />
+                        </Button>
+                        <TextBlock Text="{Binding TimeText}" FontSize="11" VerticalAlignment="Center" Foreground="{StaticResource SecondaryTextBrush}" />
+                    </DockPanel>
+                </StackPanel>
+            </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsUser}" Value="True">
+                    <Setter TargetName="Bubble" Property="Background" Value="{StaticResource UserBubbleBrush}" />
+                    <Setter TargetName="Bubble" Property="HorizontalAlignment" Value="Right" />
+                    <Setter TargetName="Bubble" Property="MaxWidth" Value="720" />
+                    <Setter TargetName="Bubble" Property="Margin" Value="80,0,0,14" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsError}" Value="True">
+                    <Setter TargetName="Bubble" Property="BorderBrush" Value="{StaticResource ErrorBrush}" />
+                    <Setter TargetName="Bubble" Property="BorderThickness" Value="1" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- A tool step: a small gray line ("Read Program.cs (120 lines)"). -->
+        <DataTemplate x:Key="ActivityTemplate">
+            <StackPanel Orientation="Horizontal" Margin="6,0,0,10">
+                <TextBlock Text="&#xE8A5;" FontFamily="{StaticResource IconFont}" FontSize="11" Margin="0,2,8,0"
+                           Foreground="{StaticResource SecondaryTextBrush}" />
+                <TextBlock Text="{Binding Summary}" FontSize="12" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" />
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- A file change: what and where, the diff, then Allow / Allow all / Refuse, later the decision and Undo. -->
+        <DataTemplate x:Key="ChangeTemplate">
+            <Border Margin="0,0,0,14" CornerRadius="10" Background="{StaticResource BubbleBrush}" BorderThickness="1"
+                    BorderBrush="{Binding FrameBrush}">
+                <StackPanel>
+                    <DockPanel Margin="14,10,10,8">
+                        <TextBlock DockPanel.Dock="Left" Text="{Binding ChangeIcon}" FontFamily="{StaticResource IconFont}" FontSize="13"
+                                   Margin="0,2,8,0" Foreground="{StaticResource GroupChevronBrush}" />
+                        <TextBlock Text="{Binding ChangeTitle}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                    </DockPanel>
+                    <Border Background="{StaticResource CodeBrush}" Margin="10,0,10,0" CornerRadius="6" MaxHeight="360">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Padding="0,6">
+                            <ItemsControl ItemsSource="{Binding DiffRows}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{Binding Background}" Padding="10,0">
+                                            <TextBlock Text="{Binding Text}" FontFamily="Consolas" FontSize="12" Foreground="{Binding Foreground}" />
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+                    <DockPanel Margin="14,8,10,10">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                                    Visibility="{Binding IsPending, Converter={StaticResource BoolToVisibility}}">
+                            <Button Content="Refuse" Padding="12,4" Margin="0,0,8,0" Click="Refuse_Click" />
+                            <Button Content="Allow all in this chat" Padding="12,4" Margin="0,0,8,0" Click="AllowAll_Click"
+                                    Visibility="{Binding CanAllowAll, Converter={StaticResource BoolToVisibility}}"
+                                    ToolTip="Allow this and every further change in this chat without asking (deleting still asks)" />
+                            <Button Style="{DynamicResource AccentButtonStyle}" Content="{Binding AllowText}" Padding="14,4" Click="Allow_Click" />
+                        </StackPanel>
+                        <Button DockPanel.Dock="Right" Style="{StaticResource SubtleButton}" Padding="10,3" Click="Undo_Click"
+                                Visibility="{Binding CanUndo, Converter={StaticResource BoolToVisibility}}"
+                                ToolTip="Put the file back as it was before this change">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE7A7;" FontFamily="{StaticResource IconFont}" FontSize="12" Margin="0,1,6,0" />
+                                <TextBlock Text="Undo" />
+                            </StackPanel>
+                        </Button>
+                        <TextBlock Text="{Binding DecisionText}" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource SecondaryTextBrush}" />
+                    </DockPanel>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+        <local:ChatItemSelector x:Key="ItemSelector" Text="{StaticResource MessageTemplate}" Activity="{StaticResource ActivityTemplate}"
+                                Change="{StaticResource ChangeTemplate}" />
+
+        <Style x:Key="ChatItem" TargetType="ListBoxItem">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Bd" Background="Transparent" Padding="12,7" Margin="6,1" CornerRadius="4">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource ListHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource ListSelectedBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Bar: same size and look as the other views'. -->
+        <Border Grid.Row="0" Height="{StaticResource FavoritesBarHeight}" BorderBrush="{StaticResource LineBrush}"
+                BorderThickness="0,0,0,1" Background="{StaticResource WindowBackgroundBrush}">
+            <DockPanel Margin="4,0" LastChildFill="True">
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center" TextElement.FontSize="{StaticResource FavoritesFontSize}">
+                    <ToggleButton x:Name="SettingsButton" Style="{StaticResource BarToggleButton}" Padding="7,1" Height="26"
+                                  ToolTip="GemmaChat settings: providers, API keys, models, instructions" Click="Settings_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource BarIcon}" Text="&#xE713;" FontSize="14" />
+                            <TextBlock Text="Settings" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </ToggleButton>
+                    <Rectangle Width="1" Height="14" Margin="10,0" Fill="{StaticResource LineBrush}" />
+                    <Button Style="{StaticResource SubtleButton}" Padding="7,1" Height="26" ToolTip="A new chat (Ctrl+N)" Click="NewChat_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource BarIcon}" Text="&#xE710;" />
+                            <TextBlock Text="New chat" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Rectangle Width="1" Height="14" Margin="10,0" Fill="{StaticResource LineBrush}" />
+                    <TextBlock Text="Provider:" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{StaticResource SecondaryTextBrush}" />
+                    <ComboBox x:Name="ProviderBox" Style="{StaticResource FieldComboBox}" Width="180"
+                              SelectionChanged="ProviderBox_SelectionChanged">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBlock Text="Model:" VerticalAlignment="Center" Margin="12,0,6,0" Foreground="{StaticResource SecondaryTextBrush}" />
+                    <!-- The provider's models (fetched when the list opens the first time); a name can be typed too. -->
+                    <!-- A list to choose from (a model name is typed only on the settings page). -->
+                    <ComboBox x:Name="ModelBarBox" Style="{StaticResource FieldComboBox}" Width="220"
+                              ToolTip="The model for the next message (the provider's models; another name: settings page)"
+                              DropDownOpened="ModelBarBox_DropDownOpened" SelectionChanged="ModelBarBox_SelectionChanged" />
+                    <TextBlock Text="Effort:" VerticalAlignment="Center" Margin="12,0,6,0" Foreground="{StaticResource SecondaryTextBrush}" />
+                    <ComboBox x:Name="EffortBox" Style="{StaticResource FieldComboBox}" Width="105"
+                              SelectionChanged="EffortBox_SelectionChanged"
+                              ToolTip="How hard a reasoning model thinks (reasoning_effort). Default: not sent - the provider decides. Models that do not support it may ignore it or report an error.">
+                        <ComboBoxItem Content="Default" Tag="" />
+                        <ComboBoxItem Content="Low" Tag="low" />
+                        <ComboBoxItem Content="Medium" Tag="medium" />
+                        <ComboBoxItem Content="High" Tag="high" />
+                        <ComboBoxItem Content="Extra high" Tag="xhigh" />
+                        <ComboBoxItem Content="Max" Tag="max" />
+                    </ComboBox>
+                    <Rectangle Width="1" Height="14" Margin="10,0" Fill="{StaticResource LineBrush}" />
+                    <!-- The folder the AI may work in (this chat). -->
+                    <Button x:Name="WorkspaceButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="26" MaxWidth="420"
+                            Click="Workspace_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource BarIcon}" Text="&#xE8B7;" />
+                            <TextBlock x:Name="WorkspaceText" Text="Work in a folder..." VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="CloseWorkspaceButton" Style="{StaticResource SubtleButton}" Padding="6,1" Height="26" Visibility="Collapsed"
+                            ToolTip="Stop working in this folder" Click="CloseWorkspace_Click">
+                        <TextBlock Text="&#xE711;" FontFamily="{StaticResource IconFont}" FontSize="10" />
+                    </Button>
+                </StackPanel>
+                <TextBlock x:Name="BarText" Margin="12,0,8,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                           Foreground="{StaticResource SecondaryTextBrush}" />
+            </DockPanel>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="250" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Chats, the newest first. -->
+            <Border Background="{StaticResource SideBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,1,0">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Chats" Margin="20,16,0,6" FontSize="12" Foreground="{StaticResource SecondaryTextBrush}" />
+                    <ListBox x:Name="ChatList" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource ChatItem}"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             SelectionChanged="ChatList_SelectionChanged" MouseRightButtonUp="ChatList_MouseRightButtonUp">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <!-- A chat that works in a folder: a blue folder mark, the folder's name next to the date. -->
+                                <DockPanel ToolTip="{Binding WorkspaceToolTip}">
+                                    <TextBlock DockPanel.Dock="Left" Text="&#xE8B7;" FontFamily="{StaticResource IconFont}" FontSize="14"
+                                               Margin="0,2,9,0" VerticalAlignment="Top" Foreground="{StaticResource GroupChevronBrush}"
+                                               Visibility="{Binding HasWorkspace, Converter={StaticResource BoolToVisibility}}" />
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding ModifiedText}" FontSize="11" TextTrimming="CharacterEllipsis"
+                                                   Foreground="{StaticResource SecondaryTextBrush}" />
+                                    </StackPanel>
+                                </DockPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+
+            <!-- The conversation and the input. -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <ScrollViewer x:Name="MessagesScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                              ScrollChanged="MessagesScroller_ScrollChanged">
+                    <ItemsControl x:Name="Messages" ItemTemplateSelector="{StaticResource ItemSelector}" Margin="28,22,28,8"
+                                  MaxWidth="1000" HorizontalAlignment="Stretch" />
+                </ScrollViewer>
+                <StackPanel x:Name="EmptyPanel" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="40">
+                    <Image x:Name="EmptyIcon" Source="/Assets/gemmachat.ico" Width="56" Height="56" RenderOptions.BitmapScalingMode="HighQuality" />
+                    <TextBlock Text="GemmaChat" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,10,0,4" />
+                    <TextBlock x:Name="EmptyText" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="480"
+                               Foreground="{StaticResource SecondaryTextBrush}" />
+                </StackPanel>
+
+                <Border Grid.Row="1" Margin="28,0,28,18" Padding="12,8" CornerRadius="10" Background="{StaticResource BubbleBrush}"
+                        BorderBrush="{StaticResource LineBrush}" BorderThickness="1" MaxWidth="1000">
+                    <DockPanel>
+                        <Button x:Name="SendButton" DockPanel.Dock="Right" Style="{DynamicResource AccentButtonStyle}" Margin="10,0,0,0"
+                                Padding="14,5" VerticalAlignment="Bottom" Click="Send_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock x:Name="SendIcon" Text="&#xE724;" FontFamily="{StaticResource IconFont}" FontSize="12" Margin="0,1,7,0" />
+                                <TextBlock x:Name="SendText" Text="Send" />
+                            </StackPanel>
+                        </Button>
+                        <Grid>
+                            <TextBox x:Name="InputBox" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="34" MaxHeight="220"
+                                     VerticalScrollBarVisibility="Auto" BorderThickness="0" Background="Transparent" Padding="2,6"
+                                     PreviewKeyDown="InputBox_PreviewKeyDown" TextChanged="InputBox_TextChanged" />
+                            <TextBlock x:Name="InputHint" Text="Ask anything... (Enter sends, Shift+Enter: new line)" Margin="5,8,0,0"
+                                       IsHitTestVisible="False" Foreground="{StaticResource SecondaryTextBrush}" />
+                        </Grid>
+                    </DockPanel>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <local:GemmaChatSettingsView x:Name="SettingsPage" Grid.Row="1" Visibility="Collapsed" />
+    </Grid>
+</UserControl>

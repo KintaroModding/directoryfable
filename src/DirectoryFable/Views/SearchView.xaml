@@ -14,10 +14,8 @@
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="Margin" Value="14,0,6,0" />
         </Style>
-        <Style x:Key="FilterBox" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
-            <Setter Property="MinHeight" Value="0" />
-            <Setter Property="Height" Value="26" />
-            <Setter Property="Padding" Value="8,2" />
+        <!-- The filter lists as flat fields, as in GemmaChat's bar (FieldComboBox in Themes/Controls.xaml). -->
+        <Style x:Key="FilterBox" TargetType="ComboBox" BasedOn="{StaticResource FieldComboBox}">
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
         <!-- Drive toggle: lit while the drive is searched. -->
@@ -31,7 +29,7 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ToggleButton">
                         <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{StaticResource LineBrush}"
-                                BorderThickness="1" CornerRadius="3" Padding="8,0">
+                                BorderThickness="1" Padding="8,0">
                             <ContentPresenter VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
@@ -99,7 +97,7 @@
                 <ToggleButton x:Name="CaseToggle" DockPanel.Dock="Right" Style="{StaticResource SearchOptionToggle}" Width="28" Height="26"
                               Margin="6,0,0,0" Content="Aa" ToolTip="Match case" Checked="Option_Changed" Unchecked="Option_Changed" />
                 <Grid>
-                    <TextBox x:Name="QueryBox" MinHeight="0" Height="28" Padding="6,0" VerticalContentAlignment="Center" FontSize="13"
+                    <TextBox x:Name="QueryBox" Style="{StaticResource FieldTextBox}" FontSize="13"
                              TextChanged="QueryBox_TextChanged" />
                     <TextBlock x:Name="QueryHint" Margin="10,0" VerticalAlignment="Center" IsHitTestVisible="False" FontSize="13"
                                Foreground="{StaticResource SecondaryTextBrush}"
@@ -127,7 +125,7 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Margin="0,0,4,0" Height="24" Padding="8,0,2,0" CornerRadius="3" Background="#1F3A54"
+                            <Border Margin="0,0,4,0" Height="24" Padding="8,0,2,0" Background="#1F3A54"
                                     BorderBrush="{StaticResource GroupChevronBrush}" BorderThickness="1" ToolTip="{Binding Path}">
                                 <StackPanel Orientation="Horizontal">
                                     <Image Source="{Binding Icon}" Width="16" Height="16" Margin="0,0,6,0" />
@@ -242,8 +240,8 @@
                     <ComboBoxItem Content="Text files" />
                     <ComboBoxItem Content="Extensions..." />
                 </ComboBox>
-                <TextBox x:Name="ExtensionsBox" MinHeight="0" Height="26" Width="160" Margin="6,0,0,0" Padding="6,0"
-                         VerticalContentAlignment="Center" Visibility="Collapsed" ToolTip=".sav .dat .ini (separated by spaces)"
+                <TextBox x:Name="ExtensionsBox" Style="{StaticResource FieldTextBox}" Width="160" Margin="6,0,0,0"
+                         Visibility="Collapsed" ToolTip=".sav .dat .ini (separated by spaces)"
                          TextChanged="Extensions_TextChanged" />
                 <TextBlock Style="{StaticResource FilterLabel}" Text="Size" />
                 <ComboBox x:Name="SizeBox" Style="{StaticResource FilterBox}" Width="150" SelectionChanged="Filter_Changed">

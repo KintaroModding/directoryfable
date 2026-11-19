@@ -22,7 +22,7 @@
                 BorderThickness="0,0,0,1" Background="{StaticResource WindowBackgroundBrush}">
             <DockPanel Margin="4,0" LastChildFill="True">
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center" TextElement.FontSize="{StaticResource FavoritesFontSize}">
-                    <ToggleButton x:Name="SettingsButton" Style="{StaticResource BarToggleButton}" Padding="7,1" Height="24"
+                    <ToggleButton x:Name="SettingsButton" Style="{StaticResource BarToggleButton}" Padding="7,1" Height="26"
                                   ToolTip="OpusHC settings" Click="Settings_Click">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE713;" FontFamily="{StaticResource IconFont}" FontSize="14" Margin="0,1,6,0" VerticalAlignment="Center" />
@@ -30,29 +30,38 @@
                         </StackPanel>
                     </ToggleButton>
                     <Rectangle Width="1" Height="14" Margin="10,0" Fill="{StaticResource LineBrush}" />
-                    <Button x:Name="AudioButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="24" ToolTip="Audio track (language)" Click="Audio_Click">
+                    <Button x:Name="AudioButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="26" ToolTip="Audio track (language)" Click="Audio_Click">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE8D6;" FontFamily="{StaticResource IconFont}" FontSize="14" Margin="0,1,6,0" VerticalAlignment="Center" />
                             <TextBlock x:Name="AudioText" Text="Audio" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
-                    <Button x:Name="SubtitleButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="24" ToolTip="Subtitles" Click="Subtitles_Click">
+                    <Button x:Name="SubtitleButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="26" ToolTip="Subtitles" Click="Subtitles_Click">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xED1E;" FontFamily="{StaticResource IconFont}" FontSize="14" Margin="0,1,6,0" VerticalAlignment="Center" />
                             <TextBlock x:Name="SubtitleText" Text="Subtitles" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
                     <Rectangle Width="1" Height="14" Margin="10,0" Fill="{StaticResource LineBrush}" />
-                    <Button x:Name="ShowInExplorerButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="24" ToolTip="Show the video in the explorer" Click="ShowInExplorer_Click">
+                    <Button x:Name="ShowInExplorerButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="26" ToolTip="Show the video in the explorer" Click="ShowInExplorer_Click">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE838;" FontFamily="{StaticResource IconFont}" FontSize="14" Margin="0,1,6,0" VerticalAlignment="Center" />
                             <TextBlock Text="Show in explorer" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
-                    <Button x:Name="OpenExternalButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="24" ToolTip="Open the video with its Windows program" Click="OpenExternal_Click">
+                    <Button x:Name="OpenExternalButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="26" ToolTip="Open the video with its Windows program" Click="OpenExternal_Click">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE8A7;" FontFamily="{StaticResource IconFont}" FontSize="14" Margin="0,1,6,0" VerticalAlignment="Center" />
                             <TextBlock Text="Open with Windows" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Rectangle Width="1" Height="14" Margin="10,0" Fill="{StaticResource LineBrush}" />
+                    <Button x:Name="CloseVideoButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="26"
+                            ToolTip="Close the video: it stops, the file is free again, and OpusHC is empty (the position is kept for the next time)"
+                            Click="CloseVideo_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE711;" FontFamily="{StaticResource IconFont}" FontSize="12" Margin="0,1,6,0" VerticalAlignment="Center" />
+                            <TextBlock Text="Close video" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
                 </StackPanel>

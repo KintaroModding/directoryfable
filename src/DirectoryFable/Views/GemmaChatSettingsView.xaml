@@ -1,0 +1,109 @@
+<UserControl x:Class="DirectoryFable.Views.GemmaChatSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             FontFamily="{StaticResource UiFont}" FontSize="13"
+             Foreground="{StaticResource ListTextBrush}"
+             Background="{StaticResource WindowBackgroundBrush}">
+    <!-- GemmaChat settings: providers (address, API key, model), instructions, where the files are. -->
+    <UserControl.Resources>
+        <Style x:Key="SectionTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource GroupChevronBrush}" />
+            <Setter Property="Margin" Value="0,26,0,6" />
+        </Style>
+        <Style x:Key="SettingHelp" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,3,0,0" />
+        </Style>
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
+            <Setter Property="Margin" Value="0,12,0,4" />
+        </Style>
+        <SolidColorBrush x:Key="ErrorBrush" Color="#FF7A7A" />
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="40,24,40,40" MaxWidth="900" HorizontalAlignment="Left">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Style="{DynamicResource AccentButtonStyle}" Content="Save" MinWidth="100" Margin="0,0,8,0" Click="Save_Click" />
+                    <Button Content="Close (Esc)" MinWidth="100" Click="Close_Click" />
+                </StackPanel>
+                <TextBlock Text="GemmaChat settings" FontSize="24" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </DockPanel>
+            <TextBlock x:Name="SaveStatus" Style="{StaticResource SettingHelp}" Margin="0,6,0,0"
+                       Text="Claude (Anthropic API) and any provider with an OpenAI-compatible chat API: OpenAI (GPT), DeepSeek, a local Ollama or LM Studio, and many more." />
+
+            <TextBlock Style="{StaticResource SectionTitle}" Text="Providers" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="220" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <DockPanel Margin="0,0,24,0">
+                    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button x:Name="AddButton" Content="Add &#x25BE;" Padding="12,3" Margin="0,0,6,0" Click="AddProvider_Click"
+                                ToolTip="Add a ready-made provider (Claude, OpenAI, DeepSeek, Ollama, LM Studio) or another one" />
+                        <Button x:Name="RemoveButton" Content="Remove" Padding="12,3" Click="RemoveProvider_Click" />
+                    </StackPanel>
+                    <ListBox x:Name="ProvidersList" MinHeight="180" DisplayMemberPath="Name" SelectionChanged="ProvidersList_SelectionChanged" />
+                </DockPanel>
+                <StackPanel Grid.Column="1" x:Name="ProviderFields">
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Name" Margin="0,0,0,4" />
+                    <TextBox x:Name="NameBox" TextChanged="Field_Changed" />
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="API" />
+                    <ComboBox x:Name="KindBox" Style="{StaticResource FieldComboBox}" HorizontalAlignment="Left" Width="300"
+                              FontSize="13" SelectionChanged="KindBox_SelectionChanged">
+                        <ComboBoxItem Content="OpenAI-compatible (OpenAI, DeepSeek, ...)" Tag="" />
+                        <ComboBoxItem Content="Claude (Anthropic API)" Tag="anthropic" />
+                    </ComboBox>
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Address (base URL of the API)" />
+                    <TextBox x:Name="UrlBox" TextChanged="Field_Changed" />
+                    <TextBlock x:Name="UrlHelp" Style="{StaticResource SettingHelp}" />
+                    <TextBlock x:Name="KeyLabel" Style="{StaticResource FieldLabel}" Text="API key (empty for local servers)" />
+                    <DockPanel>
+                        <ToggleButton x:Name="ShowKeyButton" DockPanel.Dock="Right" Style="{StaticResource BarToggleButton}" Margin="6,0,0,0"
+                                      Padding="8,4" ToolTip="Show / hide the key" Click="ShowKey_Click">
+                            <TextBlock Text="&#xE7B3;" FontFamily="{StaticResource IconFont}" FontSize="13" />
+                        </ToggleButton>
+                        <Grid>
+                            <PasswordBox x:Name="KeyBox" PasswordChanged="KeyBox_PasswordChanged" />
+                            <TextBox x:Name="KeyPlain" Visibility="Collapsed" FontFamily="Consolas" TextChanged="KeyPlain_TextChanged" />
+                        </Grid>
+                    </DockPanel>
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="Model" />
+                    <DockPanel>
+                        <Button x:Name="LoadModelsButton" DockPanel.Dock="Right" Content="Load models" Margin="6,0,0,0" Padding="10,3"
+                                ToolTip="Ask the provider for its models (free; also tests the address and the key)" Click="LoadModels_Click" />
+                        <ComboBox x:Name="ModelBox" IsEditable="True" IsTextSearchEnabled="False"
+                                  TextBoxBase.TextChanged="Field_Changed" />
+                    </DockPanel>
+                    <TextBlock x:Name="ModelStatus" Style="{StaticResource SettingHelp}" Margin="0,6,0,0" />
+                </StackPanel>
+            </Grid>
+
+            <TextBlock Style="{StaticResource SectionTitle}" Text="Instructions" />
+            <TextBlock Style="{StaticResource SettingHelp}" Margin="0,0,0,6"
+                       Text="Sent before every chat (a &quot;system prompt&quot;), for example &quot;Answer briefly, in English.&quot; Empty: none." />
+            <TextBox x:Name="SystemPromptBox" AcceptsReturn="True" TextWrapping="Wrap" Height="110" VerticalScrollBarVisibility="Auto"
+                     VerticalContentAlignment="Top" />
+
+            <TextBlock Style="{StaticResource SectionTitle}" Text="Working on files" />
+            <CheckBox x:Name="NoAskBox" Content="Make changes without asking first (creating and changing files; deleting always asks)" />
+            <TextBlock Style="{StaticResource SettingHelp}"
+                       Text="Off (the default): every change the AI wants shows its diff and waits for Allow. On: changes are made at once and only shown. Every change can still be undone from its card." />
+
+            <TextBlock Style="{StaticResource SectionTitle}" Text="Files" />
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Open the folder" Margin="8,0,0,0" Padding="10,3" Click="OpenFolder_Click" />
+                <TextBox x:Name="FolderBox" IsReadOnly="True" Background="Transparent" BorderThickness="0" VerticalAlignment="Center" />
+            </DockPanel>
+            <TextBlock Style="{StaticResource SettingHelp}" Margin="0,8,0,0"
+                       Text="gemmachat.json holds the providers with their API keys as plain text, next to DirectoryFable (portable). Keep the folder private. Each chat is its own file in the folder chats." />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

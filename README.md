@@ -59,6 +59,13 @@ yourself, see [Build](#build).
   kind (video, images, archives, programs, ...); point at a box to see its path
   and size, click to select its row, double-click to open. `Blocks` switches it
   on and off; drag the line above it to change its height.
+- **Thumbnails** (button in the quick bar, after Space): the list as large
+  tiles with Windows' own thumbnails (videos with their length, pictures,
+  documents; other files with their icon), the name and the size. Always in
+  categories: folders first, then videos, images and other files, each under
+  its own header. Selection, keys, the right-click menu, drag and drop, rename
+  and the quick filter work as in the rows. The slider next to the button (or
+  `Ctrl`+mouse wheel) sets the size; per tab, it stays on in other folders.
 - **Quick filter**: type in the list and only the names that match stay
   (words in any order, `*` and `?` as wildcards); the box at the right end of
   the quick bar shows the text and "shown / all". `Backspace` takes back a
@@ -88,11 +95,13 @@ yourself, see [Build](#build).
   it makes a copy under a new name.
 - **The Windows context menu** in dark mode, so your shell extensions work.
 - **Quick actions bar** in each pane, in two rows. First: Folder path, File
-  path, 7z (7-Zip's "Add to archive" window), Duplicate, Copy to other, Move to
-  other, Delete (to the Recycle Bin, as the `Delete` key; the arrow next to it
-  deletes permanently after a question, as `Shift+Delete`). Second: Terminal (Command Prompt or PowerShell), Explorer,
+  path, Copy, Cut, Paste (as `Ctrl+C`, `Ctrl+X`, `Ctrl+V`), 7z (7-Zip's "Add
+  to archive" window), Duplicate, Copy to other, Move to other, Delete (to the
+  Recycle Bin, as the `Delete` key; the arrow next to it deletes permanently
+  after a question, as `Shift+Delete`). Second: GemmaChat (a new chat that
+  works in this folder), Terminal (Command Prompt or PowerShell), Explorer,
   SonnetSearch (search this folder and its subfolders, like `Ctrl+F`), Space
-  (the Space view), and the quick filter box. "Quick bar: icons only" on the
+  (the Space view), Thumbnails, and the quick filter box. "Quick bar: icons only" on the
   settings page hides the labels for narrow panes.
 - **Archives as folders**: ZIP read and write; 7z and RAR read only, through an
   installed [7-Zip](https://www.7-zip.org/).
@@ -107,7 +116,9 @@ yourself, see [Build](#build).
   from the internet" mark (tiny files and streams that NTFS keeps inside its
   file table count 0; compressed and sparse files count what is stored; every
   name of a hard link counts).
-- **Status bar**: selected and total folders, files and size; free space.
+- **Status bar**: selected and total folders, files and size; free space. The
+  right pane also shows DirectoryFable's RAM use (as Task Manager's Memory
+  column, every 2 seconds).
 - **Settings page** behind the gear button. A normal window with a taskbar
   button (the default), or tray mode: only a tray icon, and closing the window
   hides it. Only one copy runs.
@@ -197,12 +208,16 @@ yourself, see [Build](#build).
 - `Reset` empties the text and the filters (places and the mark stay).
 - **Filters**: type (files, folders, images, text, own extensions), size, and
   a date range for Last Modified, Creation Date, Last Accessed or any of them.
+  The size filter also takes folders by their size (all files below them);
+  type "Files" leaves the folders out.
 - **Time mark**: `Set mark` remembers the moment; "Since the mark" then shows
   only what changed after it (for example where a game wrote its save file).
 - Columns: `#` (row number), Name, Containing Path, Size, Last Modified,
   Last Accessed, Creation Date, Type; every second row is a little lighter.
-  Click a header to sort (size and dates: biggest / newest first). The results open, drag, copy and have the Windows menu like
-  the files in the explorer.
+  A folder's size is the size of all files below it (with "Folder sizes" on
+  in the settings), so folders sort by size together with the files. Click a
+  header to sort (size and dates: biggest / newest first). The results open,
+  drag, copy and have the Windows menu like the files in the explorer.
 - **Scroll rail** instead of a scroll bar: the thumb stays big enough to grab
   with millions of results, and a click anywhere jumps there. With the mouse
   on the rail, a panel shows where each part of the sort order starts
@@ -234,12 +249,108 @@ yourself, see [Build](#build).
   or at the timeline, to see the picture of that moment bigger; click to jump
   there. In the player's settings: on / off, and a slider for how many
   pictures (20 to 200; 40 by default).
+- **Close video** in the player's bar: the video stops, the file is free
+  again (to move or delete it), and OpusHC is empty, also after a restart.
+  Where it stopped is kept for resume.
 - **Resume**: a video starts where you left it (the last 300 videos). At the end
   the next video of the folder plays (for series). Both are settings.
 - Keys: `Space` play / pause, `Left` / `Right` 5 s (`Ctrl`: 30 s), `Up` /
   `Down` or the mouse wheel volume, `M` mute, `F`, `F11`, `Alt+Enter` or a
   double-click full screen (`Esc` leaves), `Page Up` / `Page Down` previous /
   next video, `Home` from the start.
+
+## KeeSeek
+
+- The sixth view in the title bar: your passwords in one encrypted file,
+  `data\keeseek\vault.kseek` next to the exe. Nothing leaves the PC.
+- **Master password**: the first visit creates the vault (the password twice);
+  after that KeeSeek opens locked and asks for it. There is no way back from a
+  forgotten master password.
+- **Encryption**: AES-256-GCM; the key comes from the master password through
+  PBKDF2-SHA256 with 600,000 rounds and a random salt. Every save keeps the
+  previous version as `vault.kseek.bak`.
+- **Categories** on the left ("All entries" first), each with an icon: drag
+  them into your order (or `Alt+Up` / `Alt+Down`); new, rename, icon, delete
+  with a right-click.
+- **Colors and dividers**: any entry can have a color (12 ready colors or your
+  own `#RRGGBB`): a light tint and a stripe on its row, a frame on its card.
+  "Show as a divider" turns an entry into a bar with only its title
+  in its color, to set your own sections; dividers are not counted and not
+  searched.
+- **Your order for the entries too**: drag a row up or down (or `Alt+Up` /
+  `Alt+Down`); drag it onto a category on the left to move it there. "Sort
+  entries A-Z" in a category's right-click menu sorts it once.
+- The entries of the chosen category as **rows** (or as **cards**, a switch in
+  the bar): title, user name, password (hidden; the eye shows it), web address,
+  when it changed. In the rows: `Enter` edits, `Ctrl+B` copies the user name,
+  `Ctrl+C` the password, `Ctrl+U` opens the web address. The row height is a
+  setting (16 to 88 pixels, 52 by default; below 28 the rows are compact).
+- **A click copies** a user name or password. The copy stays out of Windows'
+  clipboard history and cloud clipboard and is cleared after 20 seconds (a
+  setting, 5 to 120), but only if the clipboard still holds it. A click on the
+  web address opens it in the browser.
+- **Search**: just type; all categories are searched (title, user name, web
+  address, notes, category).
+- **New entry** (`Ctrl+N`) or a double-click on a card: title, category, user
+  name, password with a **generator** (length 8 to 64, letters, digits,
+  symbols) and a strength bar, web address, notes. `Ctrl+S` saves.
+- **Import CSV**: entries from a CSV export of another password manager (groups
+  become categories); afterwards KeeSeek offers to delete the CSV file, since it
+  holds the passwords as plain text.
+- **Locking**: `Ctrl+L` or Lock; by itself after 10 minutes without use (a
+  slider, 1 to 60; fully left: no timer, it locks when you leave KeeSeek);
+  always when Windows locks and when the window closes.
+
+## GemmaChat
+
+- The seventh view in the title bar: chat with an AI without a browser
+  window. It works with Claude (Anthropic's API, through the official
+  Anthropic SDK) and with any provider that offers an OpenAI-compatible chat
+  API: OpenAI (GPT), DeepSeek, a local Ollama or LM Studio (free, nothing
+  leaves the PC), and many more.
+- **Settings**: providers with their API type, address, API key and model;
+  "Add" offers ready-made ones (Claude, OpenAI, DeepSeek, Ollama, LM Studio).
+  "Load models" asks the provider for its models (free; it also tests the
+  address and the key). The provider is chosen in the bar. Optional
+  instructions are sent before every chat.
+- **Claude**: an API key from the Claude Console (platform.claude.com); API
+  use is billed there, apart from a Claude subscription (a subscription token
+  for Claude Code is refused). Claude thinks adaptively ("Thinking..."), its
+  thinking is sent back unchanged in the chat's next requests, and the chat
+  so far is cached, so each further message reads it at a lower price. When
+  Claude's safety check declines a request, Anthropic's recommended model
+  answers instead (server-side fallback); a request that stays declined shows
+  a red note and is not sent again.
+- The answer streams in as it is written; **Stop** (or `Esc`) ends it. Code
+  blocks get their own box with a Copy button; every message can be copied.
+  The AI's Markdown is shown formatted and stays selectable: headings, bold,
+  italic, `inline code`, lists, tables, quotes and links. Under each answer
+  stand its time, the model that gave it (as the provider reports it, also a
+  fallback model) and the effort. The instructions tell the AI its model and
+  effort, so it can answer when asked.
+- **Model and effort in the bar**: a click shows the provider's models (the
+  list is fetched when it opens first; another name is typed on the settings
+  page); effort Default / Low / Medium / High (sent
+  as `reasoning_effort`; for Claude as `output_config.effort`, also Extra high
+  and Max). After each answer the bar shows the chat's size for
+  the model ("Context 12,345 tokens") when the provider reports it - every
+  message sends the whole chat again, so long chats cost more and can reach
+  the model's limit; a new chat starts small.
+- **Work on files**: choose a folder in the bar ("Work in a folder..."), or
+  right-click a folder in the explorer: "Open in GemmaChat". The AI can then
+  list, read and search the files there, and create, change or delete them -
+  nothing outside that folder. Every change first shows its diff and waits for
+  Allow, "Allow all in this chat" or Refuse (a setting turns the asking off;
+  deleting always asks, and goes to the Recycle Bin). Each change keeps a copy
+  of the file before it, so its card has an Undo button. Line endings and the
+  UTF-8 byte order mark of a file stay as they were. In the chat list, a chat
+  that works in a folder has a blue folder mark and the folder's name.
+- `Enter` sends, `Shift+Enter` makes a new line, `Ctrl+N` starts a new chat.
+  Chats are listed on the left, the newest first (rename and delete with a
+  right-click).
+- Everything is in `data\gemmachat\` next to the exe: `gemmachat.json` holds
+  the providers with their API keys as plain text (portable; keep the folder
+  private), and every chat is its own file in `chats\`.
 
 ## Updates
 

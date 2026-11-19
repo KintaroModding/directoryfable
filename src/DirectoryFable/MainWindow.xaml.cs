@@ -35,6 +35,8 @@ public partial class MainWindow : Window
         InitNotepad();
         InitAstraViewer();
         InitOpusPlayer();
+        InitKeeSeek();
+        InitGemmaChat();
         InitSearch();
         InitUpdate(settings);
 
@@ -46,6 +48,7 @@ public partial class MainWindow : Window
 
         LeftPane.DataContext = _left;
         RightPane.DataContext = _right;
+        RightPane.ShowsMemory = true; // DF's RAM use once, at the window's bottom right.
         // Quick actions "Copy/Move to other": the folder of the pane that does not hold the file pane.
         FilePane.OtherPaneFolder = pane => (LeftPane.IsAncestorOf(pane) ? _right : _left).CurrentFolder;
         SetActive(_left);
@@ -89,6 +92,7 @@ public partial class MainWindow : Window
 
         Views.SpaceView.SavedColumns = session?.SpaceColumns;
         Views.SpaceView.ShowBlocks = session?.SpaceBlocks ?? true;
+        Views.FilePane.TileSize = session?.TileSize ?? 256;
         Views.SpaceView.BlocksShare = session?.SpaceBlocksShare ?? 0.45;
         RecentFolders.Max = settings.RecentFoldersCount;
         RecentFolders.Restore(session?.RecentFolders);
@@ -135,6 +139,8 @@ public partial class MainWindow : Window
             await AstraViewerPage.RestoreAsync(session?.Viewer);
             SearchPage.RestoreState(session?.Search);
             PlayerPage.RestoreState(session?.Player);
+            KeeSeekPage.CategoryId = session?.KeeSeekCategory;
+            GemmaChatPage.CurrentChatId = session?.GemmaChatId;
             if (session?.NotepadShown == true && NotepadPage.Documents.Any())
                 ShowView(MainView.Notepad);
             else if (session?.ViewerShown == true && AstraViewerPage.CurrentPath is not null)
@@ -143,6 +149,10 @@ public partial class MainWindow : Window
                 ShowView(MainView.Search);
             else if (session?.PlayerShown == true)
                 ShowView(MainView.Player);
+            else if (session?.KeeSeekShown == true)
+                ShowView(MainView.Vault); // Locked: it asks for the master password.
+            else if (session?.GemmaChatShown == true)
+                ShowView(MainView.Chat);
 
             // Restoring tabs queues "focus this list" steps; activate the saved pane after all of them.
             bool rightActive = leftFolder is null && rightFolder is null && session?.RightPaneActive == true;
@@ -230,8 +240,13 @@ public partial class MainWindow : Window
             Search = SearchPage.CaptureState(),
             PlayerShown = PlayerShown,
             Player = PlayerPage.CaptureState(),
+            KeeSeekShown = KeeSeekShown,
+            KeeSeekCategory = KeeSeekPage.CategoryId,
+            GemmaChatShown = GemmaChatShown,
+            GemmaChatId = GemmaChatPage.CurrentChatId,
             SpaceColumns = Views.SpaceView.SavedColumns,
             SpaceBlocks = Views.SpaceView.ShowBlocks,
+            TileSize = Views.FilePane.TileSize,
             SpaceBlocksShare = Views.SpaceView.BlocksShare,
             RecentFolders = RecentFolders.Capture(),
             Left = _left.CaptureState(),
@@ -295,8 +310,10 @@ public partial class MainWindow : Window
         }
         // Saved on every close: in tray mode the app may run for days before it exits.
         SaveSession();
+        KeeSeekPage.Shutdown(); // Closing the window always locks the vault (also when it only goes to the tray).
         if (AllowClose)
         {
+            GemmaChatPage.Shutdown(); // A running answer stops.
             PlayerPage.Shutdown(); // VLC stops before the app ends.
             return;
         }

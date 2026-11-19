@@ -37,6 +37,23 @@ public partial class MainWindow
         StateChanged += (_, _) => UpdateMaximizedLayout();
         DpiChanged += (_, _) => UpdateMaximizedLayout();
         UpdateMaximizedLayout();
+        // The view tabs' icons: the icon's own picture for the size on screen (not the 16 px one scaled).
+        Loaded += (_, _) => SharpenTabIcons();
+        DpiChanged += (_, _) => SharpenTabIcons();
+    }
+
+    private void SharpenTabIcons()
+    {
+        var style = (Style)FindResource("TitleTabIcon");
+        var pending = new Stack<DependencyObject>([TitleBar]);
+        while (pending.Count > 0)
+        {
+            var node = pending.Pop();
+            if (node is System.Windows.Controls.Image { } image && image.Style == style)
+                IconFrames.Sharpen(image);
+            for (int i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(node); i++)
+                pending.Push(System.Windows.Media.VisualTreeHelper.GetChild(node, i));
+        }
     }
 
     /// <summary>
@@ -66,6 +83,8 @@ public partial class MainWindow
             MainView.Viewer => image ?? "AstraViewer",
             MainView.Search => search.Length == 0 ? "SonnetSearch" : $"SonnetSearch: {search}",
             MainView.Player => video ?? "OpusHC",
+            MainView.Vault => KeeSeekPage.TitleText,
+            MainView.Chat => GemmaChatPage.TitleText,
             _ => folder,
         };
     }

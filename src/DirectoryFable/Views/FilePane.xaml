@@ -7,6 +7,94 @@
              FontSize="{StaticResource UiFontSize}"
              PreviewKeyDown="Pane_PreviewKeyDown"
              PreviewMouseDown="Pane_PreviewMouseDown">
+    <UserControl.Resources>
+        <!-- Tile view (FilePane.Tiles.cs): sizes follow the size slider through these resources. -->
+        <system:Double x:Key="TilePictureWidth" xmlns:system="clr-namespace:System;assembly=System.Runtime">256</system:Double>
+        <system:Double x:Key="TilePictureHeight" xmlns:system="clr-namespace:System;assembly=System.Runtime">144</system:Double>
+        <system:Double x:Key="TileWidth" xmlns:system="clr-namespace:System;assembly=System.Runtime">276</system:Double>
+        <system:Double x:Key="TileHeight" xmlns:system="clr-namespace:System;assembly=System.Runtime">216</system:Double>
+
+        <!-- A tile: hover, selection, focus, drop target and "cut" as the rows show them. -->
+        <Style x:Key="FileTileStyle" TargetType="ListViewItem">
+            <Setter Property="Foreground" Value="{StaticResource ListTextBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListViewItem">
+                        <Border x:Name="Bd" Margin="3" Background="{TemplateBinding Background}" BorderBrush="Transparent"
+                                BorderThickness="1" CornerRadius="3" SnapsToDevicePixels="True">
+                            <ContentPresenter x:Name="Content" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource ListHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource ListSelectedBrush}" />
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsSelected" Value="True" />
+                                    <Condition Property="IsMouseOver" Value="True" />
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource ListSelectedHoverBrush}" />
+                            </MultiTrigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource FocusRectBrush}" />
+                            </Trigger>
+                            <DataTrigger Binding="{Binding IsDropTarget}" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource ListHoverBrush}" />
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource GroupChevronBrush}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsCut}" Value="True">
+                                <Setter TargetName="Content" Property="Opacity" Value="0.45" />
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Picture (a video's length in the corner), the name in up to two lines, the size. -->
+        <DataTemplate x:Key="FileTileTemplate">
+            <StackPanel Margin="6,6,6,4">
+                <Grid Width="{DynamicResource TilePictureWidth}" Height="{DynamicResource TilePictureHeight}">
+                    <local:ThumbImage x:Name="Thumb" Item="{Binding}" BoxWidth="{DynamicResource TilePictureWidth}" />
+                    <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,4,4" Padding="4,0,4,1"
+                            CornerRadius="2" Background="#C0000000">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Duration, ElementName=Thumb}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="{Binding Duration, ElementName=Thumb}" FontSize="11" Foreground="White" />
+                    </Border>
+                </Grid>
+                <Grid Margin="0,4,0,0" Width="{DynamicResource TilePictureWidth}" Height="32">
+                    <TextBlock Text="{Binding DisplayName}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
+                               TextAlignment="Center" ToolTip="{Binding DisplayName}" />
+                    <!-- In-place rename (F2), as in the rows. -->
+                    <TextBox Text="{Binding DisplayName, Mode=OneTime}" VerticalAlignment="Top"
+                             MinHeight="0" Height="20" Padding="2,0" VerticalContentAlignment="Center"
+                             Visibility="{Binding IsRenaming, Converter={StaticResource BoolToVisibility}}"
+                             IsVisibleChanged="RenameBox_IsVisibleChanged"
+                             KeyDown="RenameBox_KeyDown"
+                             LostKeyboardFocus="RenameBox_LostKeyboardFocus" />
+                </Grid>
+                <TextBlock Text="{Binding SizeText}" TextAlignment="Center" FontSize="11"
+                           Foreground="{StaticResource SecondaryTextBrush}" />
+            </StackPanel>
+        </DataTemplate>
+
+        <ItemsPanelTemplate x:Key="TilePanelTemplate">
+            <local:TilePanel TileWidth="{DynamicResource TileWidth}" TileHeight="{DynamicResource TileHeight}" />
+        </ItemsPanelTemplate>
+    </UserControl.Resources>
     <Grid Background="{StaticResource ListBackgroundBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -139,7 +227,30 @@
                         </StackPanel>
                     </Button>
                     <Rectangle Width="1" Height="14" Margin="6,0" Fill="{StaticResource LineBrush}" />
-                    <!-- No Copy / Cut / Paste (the keys do that); 7-Zip "Add to archive" window instead. -->
+                    <!-- The same as Ctrl+C / Ctrl+X / Ctrl+V. -->
+                    <Button x:Name="QuickCopy" Style="{StaticResource QuickButton}" Click="QuickCopy_Click"
+                            ToolTip="Copy the selection to the clipboard (Ctrl+C)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource QuickIcon}" Text="&#xE8C8;" />
+                            <TextBlock Text="Copy" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="QuickCut" Style="{StaticResource QuickButton}" Click="QuickCut_Click"
+                            ToolTip="Cut the selection to the clipboard (Ctrl+X)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource QuickIcon}" Text="&#xE8C6;" />
+                            <TextBlock Text="Cut" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource QuickButton}" Click="QuickPaste_Click"
+                            ToolTip="Paste into this folder (Ctrl+V)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource QuickIcon}" Text="&#xE77F;" />
+                            <TextBlock Text="Paste" />
+                        </StackPanel>
+                    </Button>
+                    <Rectangle Width="1" Height="14" Margin="6,0" Fill="{StaticResource LineBrush}" />
+                    <!-- 7-Zip's "Add to archive" window. -->
                     <Button x:Name="Quick7z" Style="{StaticResource QuickButton}" Click="Quick7z_Click"
                             ToolTip="7-Zip: add the selection to an archive (choose format and compression)">
                         <StackPanel Orientation="Horizontal">
@@ -211,6 +322,13 @@
                     </StackPanel>
                 </Grid>
                     <StackPanel x:Name="QuickButtons2" Orientation="Horizontal" VerticalAlignment="Center" ClipToBounds="True">
+                    <Button x:Name="QuickChat" Style="{StaticResource QuickButton}" Click="QuickChat_Click"
+                            ToolTip="GemmaChat in this folder: a new chat where the AI can work on its files (you approve every change)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource QuickIcon}" Text="&#xE8BD;" />
+                            <TextBlock Text="GemmaChat" />
+                        </StackPanel>
+                    </Button>
                     <Button x:Name="QuickTerminal" Style="{StaticResource QuickButton}" Click="QuickTerminal_Click"
                             ToolTip="Open a terminal in this folder (Command Prompt or PowerShell)">
                         <StackPanel Orientation="Horizontal">
@@ -249,6 +367,42 @@
                             <TextBlock Text="Space" />
                         </StackPanel>
                     </Button>
+                    <!-- Tile view on / off (highlighted while on), with its size slider while on. -->
+                    <Button x:Name="QuickTiles" Click="QuickTiles_Click"
+                            ToolTip="Thumbnails: large pictures of the files instead of rows (Ctrl+mouse wheel: size)">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource QuickButton}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding TileMode}" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource TreeSelectedBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource QuickIcon}" Text="&#xF0E2;" />
+                            <TextBlock Text="Thumbnails" />
+                        </StackPanel>
+                    </Button>
+                    <!-- Scaled down: the standard slider (with its thumb) is taller than the 24 px row, which clips. -->
+                    <Slider x:Name="TileSizeSlider" Width="130" Margin="4,0,0,0" VerticalAlignment="Center"
+                            Minimum="128" Maximum="512" SmallChange="16" LargeChange="64" IsMoveToPointEnabled="True"
+                            Focusable="False" ToolTip="Size of the thumbnails (Ctrl+mouse wheel in the list)"
+                            ValueChanged="TileSizeSlider_ValueChanged">
+                        <Slider.LayoutTransform>
+                            <ScaleTransform ScaleX="0.75" ScaleY="0.75" />
+                        </Slider.LayoutTransform>
+                        <Slider.Style>
+                            <Style TargetType="Slider" BasedOn="{StaticResource {x:Type Slider}}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding TileMode}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Slider.Style>
+                    </Slider>
                     </StackPanel>
                 </DockPanel>
             </StackPanel>
@@ -270,6 +424,7 @@
                   MouseDoubleClick="FileList_MouseDoubleClick"
                   KeyDown="FileList_KeyDown"
                   PreviewTextInput="FileList_PreviewTextInput"
+                  PreviewMouseWheel="FileList_PreviewMouseWheel"
                   AllowDrop="True"
                   PreviewMouseDown="FileList_PreviewMouseDown"
                   PreviewMouseUp="FileList_PreviewMouseUp"
@@ -393,6 +548,14 @@
                         <Border x:Name="StatusUsedBar" Background="{StaticResource GroupChevronBrush}"
                                 HorizontalAlignment="Left" Width="0" />
                     </Grid>
+                </StackPanel>
+
+                <!-- DirectoryFable's RAM use, left of the free space (one pane only, see FilePane.ShowsMemory). -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center"
+                            x:Name="StatusMemoryPanel" Visibility="Collapsed"
+                            ToolTip="RAM used by DirectoryFable (private working set, as Task Manager's Memory column); every 2 seconds">
+                    <TextBlock x:Name="StatusMemory" VerticalAlignment="Center" Foreground="{StaticResource SecondaryTextBrush}" />
+                    <Rectangle Width="1" Height="14" Margin="9,0" Fill="{StaticResource LineBrush}" />
                 </StackPanel>
 
                 <!-- Messages ("3 item(s) copied", errors) between the two parts. -->

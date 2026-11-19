@@ -19,7 +19,7 @@ public sealed class SearchRow
         Name = index.Name(i).ToString();
         Folder = index.FolderPath(i);
         IsDirectory = index.IsDirectory(i);
-        SizeValue = IsDirectory ? -1 : index.Size[i];
+        SizeValue = result.SizeOf(item); // A folder: all files below it (folder sizes on), else -1.
         Modified = Date(index.Modified[i]);
         Accessed = Date(index.Accessed[i]);
         Created = Date(index.Created[i]);
@@ -41,7 +41,7 @@ public sealed class SearchRow
 
     public long SizeValue { get; }
 
-    public string SizeText => IsDirectory ? "" : DisplayFormat.Size(SizeValue);
+    public string SizeText => SizeValue < 0 ? "" : DisplayFormat.Size(SizeValue);
 
     public string Modified { get; }
     public string Accessed { get; }

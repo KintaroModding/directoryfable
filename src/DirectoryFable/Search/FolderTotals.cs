@@ -40,7 +40,7 @@ public sealed class FolderTotals
     public int RootFolders { get; }
 
     /// <summary>Total bytes below a folder, or a file's size. -1 = the root.</summary>
-    public long Total(int entry) => entry < 0 ? RootTotal : _total[entry];
+    public long Total(int entry) => entry < 0 ? RootTotal : (uint)entry < (uint)_total.Length ? _total[entry] : 0;
 
     /// <summary>Files below a folder (all levels); 0 for a file. -1 = the root.</summary>
     public int Files(int entry) => entry < 0 ? RootFiles : _files[entry];
