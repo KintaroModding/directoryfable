@@ -1,0 +1,46 @@
+<Window x:Class="DirectoryFable.Views.ResizeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Resize"
+        SizeToContent="WidthAndHeight" ResizeMode="NoResize"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner"
+        Background="{StaticResource WindowBackgroundBrush}"
+        Foreground="{StaticResource ListTextBrush}"
+        FontFamily="{StaticResource UiFont}" FontSize="{StaticResource UiFontSize}">
+    <!-- AstraViewer: the new size of the picture in pixels (the aspect ratio kept or not), or a share of it. -->
+    <StackPanel Margin="16" MinWidth="340">
+        <TextBlock x:Name="NowText" Margin="0,0,0,12" Foreground="{StaticResource SecondaryTextBrush}" />
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="110" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <TextBlock Text="Width" VerticalAlignment="Center" Margin="0,0,12,0" />
+            <TextBox x:Name="WidthBox" Grid.Column="1" Style="{StaticResource FieldTextBox}" TextChanged="WidthBox_TextChanged" />
+            <TextBlock Grid.Column="2" Text="px" VerticalAlignment="Center" Margin="8,0,0,0" Foreground="{StaticResource SecondaryTextBrush}" />
+            <TextBlock Grid.Row="1" Text="Height" VerticalAlignment="Center" Margin="0,8,12,0" />
+            <TextBox x:Name="HeightBox" Grid.Row="1" Grid.Column="1" Margin="0,8,0,0" Style="{StaticResource FieldTextBox}"
+                     TextChanged="HeightBox_TextChanged" />
+            <TextBlock Grid.Row="1" Grid.Column="2" Text="px" VerticalAlignment="Center" Margin="8,8,0,0"
+                       Foreground="{StaticResource SecondaryTextBrush}" />
+        </Grid>
+        <CheckBox x:Name="KeepRatio" Content="Keep the aspect ratio" IsChecked="True" Margin="0,12,0,0" />
+        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+            <TextBlock Text="Size:" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{StaticResource SecondaryTextBrush}" />
+            <Button Content="25 %" Tag="25" MinWidth="56" Margin="0,0,6,0" Click="Percent_Click" />
+            <Button Content="50 %" Tag="50" MinWidth="56" Margin="0,0,6,0" Click="Percent_Click" />
+            <Button Content="75 %" Tag="75" MinWidth="56" Margin="0,0,6,0" Click="Percent_Click" />
+            <Button Content="200 %" Tag="200" MinWidth="56" Click="Percent_Click" />
+        </StackPanel>
+        <TextBlock x:Name="ProblemText" Margin="0,10,0,0" Foreground="{StaticResource ErrorTextBrush}" TextWrapping="Wrap" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button x:Name="OkButton" Content="Resize" IsDefault="True" MinWidth="80" Margin="0,0,8,0" Click="Ok_Click" />
+            <Button Content="Cancel" IsCancel="True" MinWidth="80" />
+        </StackPanel>
+    </StackPanel>
+</Window>

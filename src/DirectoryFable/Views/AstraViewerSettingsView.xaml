@@ -145,9 +145,9 @@
                     <StackPanel Grid.RowSpan="3" Margin="0,0,24,0">
                         <TextBlock Text="Double-click opens in AstraViewer" />
                         <TextBlock Style="{StaticResource SettingHelp}"
-                                   Text="A double-click (or Enter) on these image types in DirectoryFable opens them here. Only inside DirectoryFable: the Windows defaults are not changed. The list also decides which images show in the thumbnail strip. HEIC and AVIF work only with the matching Windows codecs installed." />
+                                   Text="A double-click (or Enter) on these types in DirectoryFable opens them here: images and PDF (.pdf). Only inside DirectoryFable: the Windows defaults are not changed. The list also decides which files show in the thumbnail strip. HEIC and AVIF work only with the matching Windows codecs installed." />
                     </StackPanel>
-                    <CheckBox x:Name="OpensTypes" Grid.Column="1" Content="Open these image types in AstraViewer"
+                    <CheckBox x:Name="OpensTypes" Grid.Column="1" Content="Open these types in AstraViewer"
                               Checked="OpensTypes_Changed" Unchecked="OpensTypes_Changed" />
                     <TextBox x:Name="TypesBox" Grid.Row="1" Grid.Column="1" Margin="0,8,0,0" MinHeight="0" Height="60"
                              Padding="6,4" TextWrapping="Wrap" AcceptsReturn="False" VerticalContentAlignment="Top"

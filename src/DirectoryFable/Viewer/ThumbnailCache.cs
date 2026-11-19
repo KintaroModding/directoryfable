@@ -61,6 +61,13 @@ public static class ThumbnailCache
         return image;
     }
 
+    /// <summary>One file changed (AstraViewer saved it): its thumbnail is made again.</summary>
+    public static void Forget(string path)
+    {
+        if (Cache.Remove(path, out var entry))
+            Order.Remove(entry.Node);
+    }
+
     /// <summary>F5 in AstraViewer: changed files get new thumbnails.</summary>
     public static void Clear()
     {

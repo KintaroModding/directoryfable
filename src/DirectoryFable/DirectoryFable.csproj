@@ -6,6 +6,11 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <!-- Viewer/PdfFile.cs and Viewer/WebPEncoder.cs hand pixel buffers to native libraries. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- The native DLLs (pdfium, libwebp) go into the single-file exe; .NET unpacks them once per version into the
+         user's temp folder and loads them from there. The release stays one exe. -->
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <!-- Only for the tray icon (NotifyIcon); part of the Windows Desktop runtime, no extra package. -->
     <UseWindowsForms>true</UseWindowsForms>
     <!-- WPF0001: ThemeMode (Fluent theme) is marked experimental.
@@ -55,6 +60,11 @@
          it is downloaded on first use into the data folder (Player/VlcEngine.cs). -->
     <PackageReference Include="LibVLCSharp" Version="3.10.2" />
     <PackageReference Include="System.Management" Version="11.0.0" />
+    <!-- AstraViewer: PDFium (the PDF engine of Chromium; BSD-3-Clause / Apache-2.0) draws PDF pages and gives their text
+         (Viewer/PdfFile.cs). A native pdfium.dll: it is inside the single-file exe and unpacked at the start. -->
+    <PackageReference Include="bblanchon.PDFium.Win32" Version="159.0.8152" />
+    <!-- AstraViewer: Google's libwebp (BSD-3-Clause) writes WebP files (Viewer/WebPEncoder.cs); native DLLs, as above. -->
+    <PackageReference Include="Imazen.WebP.NativeRuntime.win-x64" Version="1.6.1" />
   </ItemGroup>
 
 </Project>

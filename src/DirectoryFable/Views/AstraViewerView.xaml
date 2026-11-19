@@ -101,12 +101,58 @@
                 <Button Style="{StaticResource SubtleButton}" Padding="7,1" Height="26" ToolTip="Zoom in (+, mouse wheel)" Click="ZoomIn_Click">
                     <TextBlock Text="&#xE8A3;" FontFamily="{StaticResource IconFont}" FontSize="14" />
                 </Button>
-                <Button Style="{StaticResource SubtleButton}" Padding="7,1" Height="26" ToolTip="Rotate the view to the right (R; Shift+R to the left). The file is not changed." Click="Rotate_Click">
+                <Button x:Name="RotateButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="26" ToolTip="Rotate the view to the right (R; Shift+R to the left). Save writes the turn into the file." Click="Rotate_Click">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="&#xE7AD;" FontFamily="{StaticResource IconFont}" FontSize="14" Margin="0,1,6,0" VerticalAlignment="Center" />
                         <TextBlock Text="Rotate" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
+                <!-- Pictures only: simple edits (AstraViewerView.Edit.cs). -->
+                <StackPanel x:Name="EditBar" Orientation="Horizontal">
+                    <Rectangle Width="1" Height="14" Margin="10,0" Fill="{StaticResource LineBrush}" />
+                    <Button x:Name="CropButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="26"
+                            ToolTip="Crop: drag a frame on the picture (or its handles), Enter keeps the frame, Esc cancels" Click="Crop_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE7A8;" FontFamily="{StaticResource IconFont}" FontSize="14" Margin="0,1,6,0" VerticalAlignment="Center" />
+                            <TextBlock Text="Crop" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="ResizeButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="26"
+                            ToolTip="Resize: a new width and height in pixels" Click="Resize_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE740;" FontFamily="{StaticResource IconFont}" FontSize="14" Margin="0,1,6,0" VerticalAlignment="Center" />
+                            <TextBlock Text="Resize" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="SaveButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="26"
+                            ToolTip="Save the changes into the file (Ctrl+S); the original goes to the Recycle Bin first" Click="Save_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE74E;" FontFamily="{StaticResource IconFont}" FontSize="14" Margin="0,1,6,0" VerticalAlignment="Center" />
+                            <TextBlock Text="Save" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="SaveAsButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="26"
+                            ToolTip="Save as a new file: JPEG, PNG, WebP, BMP, TIFF or GIF (Ctrl+Shift+S)" Click="SaveAs_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE792;" FontFamily="{StaticResource IconFont}" FontSize="14" Margin="0,1,6,0" VerticalAlignment="Center" />
+                            <TextBlock Text="Save as" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+                <!-- PDF only: the page in view, previous / next page. -->
+                <StackPanel x:Name="PageBar" Orientation="Horizontal" Visibility="Collapsed">
+                    <Rectangle Width="1" Height="14" Margin="10,0" Fill="{StaticResource LineBrush}" />
+                    <Button x:Name="PreviousPageButton" Style="{StaticResource SubtleButton}" Width="26" Height="26" Padding="0"
+                            ToolTip="Previous page (Page Up)" Click="PreviousPage_Click">
+                        <TextBlock Text="&#xE70E;" FontFamily="{StaticResource IconFont}" FontSize="12" />
+                    </Button>
+                    <TextBlock x:Name="PageText" MinWidth="86" TextAlignment="Center" VerticalAlignment="Center"
+                               ToolTip="The page in view" />
+                    <Button x:Name="NextPageButton" Style="{StaticResource SubtleButton}" Width="26" Height="26" Padding="0"
+                            ToolTip="Next page (Page Down)" Click="NextPage_Click">
+                        <TextBlock Text="&#xE70D;" FontFamily="{StaticResource IconFont}" FontSize="12" />
+                    </Button>
+                </StackPanel>
                 <Rectangle Width="1" Height="14" Margin="10,0" Fill="{StaticResource LineBrush}" />
                 <Button x:Name="ShowInExplorerButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="26" ToolTip="Show the image in the explorer" Click="ShowInExplorer_Click">
                     <StackPanel Orientation="Horizontal">
@@ -241,6 +287,55 @@
                     </StackPanel>
                 </Border>
 
+                <!-- PDF only: every page small with its number; the page in view is marked and stays in the upper part, so the
+                     next pages show below it. A click goes to that page; the wheel scrolls the rail. -->
+                <Border x:Name="PageRail" DockPanel.Dock="Right" Width="150" Background="#141414" Visibility="Collapsed"
+                        BorderBrush="{StaticResource LineBrush}" BorderThickness="1,0,0,0">
+                    <ListBox x:Name="PageThumbs" Background="Transparent" BorderThickness="0" Padding="0,6"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Standard"
+                             VirtualizingPanel.ScrollUnit="Pixel" SelectionChanged="PageThumbs_SelectionChanged">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type viewer:PdfPageItem}">
+                                <StackPanel Loaded="PageThumb_Loaded" Unloaded="PageThumb_Unloaded">
+                                    <Border Width="{Binding ThumbWidth}" Height="{Binding ThumbHeight}" Background="White" HorizontalAlignment="Center">
+                                        <Image Source="{Binding Thumbnail}" Stretch="Fill" RenderOptions.BitmapScalingMode="HighQuality" />
+                                    </Border>
+                                    <TextBlock Text="{Binding Number}" HorizontalAlignment="Center" FontSize="11" Margin="0,3,0,0"
+                                               Foreground="{StaticResource SecondaryTextBrush}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Margin" Value="0,2" />
+                                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                                <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <Border x:Name="Bd" Background="Transparent" BorderThickness="2" BorderBrush="Transparent"
+                                                    Padding="4,4,4,2" HorizontalAlignment="Center" Opacity="0.8">
+                                                <ContentPresenter />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Bd" Property="Opacity" Value="1" />
+                                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource LineBrush}" />
+                                                </Trigger>
+                                                <Trigger Property="IsSelected" Value="True">
+                                                    <Setter TargetName="Bd" Property="Opacity" Value="1" />
+                                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource GroupChevronBrush}" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                    </ListBox>
+                </Border>
+
                 <!-- The image: wheel = zoom at the mouse, drag = move, double-click = fit / 100 %. -->
                 <Grid x:Name="Stage" ClipToBounds="True" Background="#1A1A1A" SizeChanged="Stage_SizeChanged"
                       MouseWheel="Stage_MouseWheel" MouseLeftButtonDown="Stage_MouseLeftButtonDown"
@@ -252,9 +347,91 @@
                         <Rectangle x:Name="Checker" Fill="{StaticResource CheckerBrush}" Visibility="Collapsed" />
                         <Image x:Name="Picture" Stretch="Fill" Visibility="Collapsed" />
                     </Canvas>
+                    <!-- Crop: the rest of the picture darkened, the frame with its handles, the frame's size. The mouse is handled
+                         by the stage (AstraViewerView.Edit.cs). -->
+                    <Canvas x:Name="CropLayer" IsHitTestVisible="False" Visibility="Collapsed">
+                        <Path x:Name="CropShade" Fill="#A0000000" />
+                        <Path x:Name="CropFrame" Stroke="White" StrokeThickness="1" />
+                        <Path x:Name="CropHandles" Fill="White" Stroke="#202020" StrokeThickness="1" />
+                        <Border x:Name="CropSizeBox" Background="#C0000000" Padding="6,1">
+                            <TextBlock x:Name="CropSizeText" Foreground="White" FontSize="12" />
+                        </Border>
+                    </Canvas>
+                    <Border x:Name="CropBar" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,10,0,0"
+                            Background="#E0202020" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" Padding="10,6"
+                            MouseLeftButtonDown="CropBar_MouseLeftButtonDown">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Crop" VerticalAlignment="Center" Margin="0,0,10,0" />
+                            <TextBlock Text="Aspect" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{StaticResource SecondaryTextBrush}" />
+                            <ComboBox x:Name="CropAspectBox" Style="{StaticResource FieldComboBox}" Width="110" VerticalAlignment="Center"
+                                      SelectionChanged="CropAspect_Changed">
+                                <ComboBoxItem Content="Free" Tag="0" />
+                                <ComboBoxItem Content="As the picture" Tag="-1" />
+                                <ComboBoxItem Content="1 : 1" Tag="1" />
+                                <ComboBoxItem Content="4 : 3" Tag="1.3333333333" />
+                                <ComboBoxItem Content="3 : 2" Tag="1.5" />
+                                <ComboBoxItem Content="16 : 9" Tag="1.7777777778" />
+                                <ComboBoxItem Content="3 : 4" Tag="0.75" />
+                                <ComboBoxItem Content="2 : 3" Tag="0.6666666667" />
+                                <ComboBoxItem Content="9 : 16" Tag="0.5625" />
+                            </ComboBox>
+                            <Button Content="Crop" Height="26" MinWidth="70" Margin="10,0,0,0" ToolTip="Keep only the frame (Enter)" Click="CropApply_Click" />
+                            <Button Content="Cancel" Height="26" MinWidth="70" Margin="6,0,0,0" ToolTip="Esc" Click="CropCancel_Click" />
+                        </StackPanel>
+                    </Border>
                     <TextBlock x:Name="MessageText" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
                                TextWrapping="Wrap" Margin="40" FontSize="13" Foreground="{StaticResource SecondaryTextBrush}"
                                IsHitTestVisible="False" />
+                    <!-- A PDF with a password: asked here, inside the viewer (the password is kept for this run only). -->
+                    <Border x:Name="PdfPasswordPanel" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Background="#202020" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" Padding="18,14"
+                            MouseLeftButtonDown="CropBar_MouseLeftButtonDown">
+                        <StackPanel Width="360">
+                            <TextBlock x:Name="PdfPasswordTitle" TextWrapping="Wrap" Margin="0,0,0,10" />
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Content="Open" Height="26" MinWidth="70" Margin="8,0,0,0" Click="PdfPasswordOpen_Click" />
+                                <PasswordBox x:Name="PdfPasswordBox" MinHeight="0" Height="26" Padding="4,0" VerticalContentAlignment="Center"
+                                             KeyDown="PdfPasswordBox_KeyDown" />
+                            </DockPanel>
+                            <TextBlock x:Name="PdfPasswordProblem" Margin="0,8,0,0" Foreground="{StaticResource ErrorTextBrush}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                    <!-- A PDF: its pages one below the other (wheel = scroll, Ctrl+wheel = zoom); only the pages in view
+                         are drawn. Standard virtualization (not recycling): each page row gets Loaded / Unloaded. -->
+                    <ItemsControl x:Name="PdfPages" Visibility="Collapsed" Focusable="False"
+                                  VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Standard"
+                                  VirtualizingPanel.ScrollUnit="Pixel" ScrollViewer.CanContentScroll="True"
+                                  PreviewMouseWheel="PdfPages_PreviewMouseWheel" SizeChanged="PdfPages_SizeChanged">
+                        <ItemsControl.Template>
+                            <ControlTemplate TargetType="ItemsControl">
+                                <ScrollViewer x:Name="PdfScroller" Focusable="False" CanContentScroll="True"
+                                              HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                                              ScrollChanged="PdfScroller_ScrollChanged">
+                                    <ItemsPresenter />
+                                </ScrollViewer>
+                            </ControlTemplate>
+                        </ItemsControl.Template>
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type viewer:PdfPageItem}">
+                                <Border Width="{Binding Width}" Height="{Binding Height}" Margin="{x:Static views:AstraViewerView.PageMargin}"
+                                        HorizontalAlignment="Center" Background="White" BorderBrush="#3A3A3A" BorderThickness="1"
+                                        Loaded="PdfPage_Loaded" Unloaded="PdfPage_Unloaded"
+                                        MouseLeftButtonDown="PdfPage_MouseLeftButtonDown" MouseMove="PdfPage_MouseMove"
+                                        MouseLeftButtonUp="PdfPage_MouseLeftButtonUp" LostMouseCapture="PdfPage_LostMouseCapture">
+                                    <!-- The page's picture, and over it the highlight of selected text. -->
+                                    <Grid>
+                                        <Image Source="{Binding Bitmap}" Stretch="Fill" RenderOptions.BitmapScalingMode="HighQuality" />
+                                        <views:PdfSelectionOverlay Rects="{Binding SelectionRects}" IsHitTestVisible="False" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </Grid>
             </DockPanel>
         </Grid>

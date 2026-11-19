@@ -14,11 +14,12 @@ using DirectoryFable.Viewer;
 namespace DirectoryFable.Views;
 
 /// <summary>
-/// AstraViewer: an image viewer next to the explorer and Notepad# (like VS Code's image preview).
-/// It opens only from inside DirectoryFable (double-click on the chosen image types, "Open in
+/// AstraViewer: an image and PDF viewer next to the explorer and Notepad# (like VS Code's image preview).
+/// It opens only from inside DirectoryFable (double-click on the chosen file types, "Open in
 /// AstraViewer", drops); Windows' file associations are not changed. Left: the history of opened
-/// images, newest first. Right: the image (fit / 100 %, zoom at the mouse, drag to move, view-only
-/// rotation), the other images of its folder as thumbnails with "n / N", and its properties.
+/// files, newest first. Right: the image (fit / 100 %, zoom at the mouse, drag to move, view-only
+/// rotation) or the PDF's pages (AstraViewerView.Pdf.cs), the other files of its folder as thumbnails
+/// with "n / N", and its properties.
 /// </summary>
 public partial class AstraViewerView : UserControl
 {
@@ -49,6 +50,7 @@ public partial class AstraViewerView : UserControl
         InitializeComponent();
         HistoryList.ItemsSource = _history;
         Strip.ItemsSource = _album;
+        InitPdf();
         _stateTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         _stateTimer.Tick += (_, _) =>
         {
@@ -130,10 +132,17 @@ public partial class AstraViewerView : UserControl
     /// </summary>
     private async Task ShowImageAsync(string path, bool addToHistory, bool reloadFolder = false)
     {
+        // Unsaved crop / resize: save, drop or stay (the strip and history then show the current picture again).
+        if (IsEdited && !await ConfirmLeaveAsync())
+        {
+            SyncSelections();
+            return;
+        }
         _loading?.Cancel();
         var loading = new CancellationTokenSource();
         _loading = loading;
         int version = ++_loadVersion;
+        HidePdfPassword();
 
         CurrentPath = path;
         ActiveChanged?.Invoke();
@@ -150,11 +159,32 @@ public partial class AstraViewerView : UserControl
 
         try
         {
+            if (ImageFileTypes.IsPdf(path))
+            {
+                var pdf = await PdfFile.OpenAsync(path, PdfPasswords.For(path), loading.Token);
+                if (version != _loadVersion)
+                {
+                    pdf.Dispose();
+                    return;
+                }
+                _pending = 0;
+                ResetEdits();
+                ShowPdf(pdf);
+                UpdateEditButtons();
+                UpdatePdfDetails(path);
+                if (addToHistory)
+                    AddToHistory(path);
+                MarkMissing(path, false);
+                return;
+            }
             var image = await ImageLoader.LoadAsync(path, loading.Token);
             if (version != _loadVersion)
                 return;
             _pending = 0;
+            ClosePdf();
             _image = image;
+            _animatedWebP = WebPEncoder.IsWebP(path) && WebPEncoder.Describe(path).Animated;
+            ResetEdits();
             Picture.Source = image.Image;
             MessageText.Text = "";
             _rotation = 0;
@@ -163,6 +193,7 @@ public partial class AstraViewerView : UserControl
             _zoom = 1;
             UpdateView();
             UpdateDetails();
+            UpdateEditButtons();
             if (addToHistory)
                 AddToHistory(path);
             MarkMissing(path, false);
@@ -171,15 +202,32 @@ public partial class AstraViewerView : UserControl
         {
             // Another image was chosen meanwhile.
         }
+        catch (PdfPasswordException ex)
+        {
+            if (version != _loadVersion)
+                return;
+            _pending = 0;
+            ClosePdf();
+            _image = null;
+            ResetEdits();
+            Picture.Source = null;
+            MessageText.Text = "";
+            UpdateView();
+            DetailsText.Text = Path.GetFileName(path);
+            PdfPasswords.Forget(path);
+            AskPdfPassword(path, ex.Wrong, addToHistory);
+        }
         catch (Exception ex)
         {
             // Any decoding problem (broken file, missing codec, no access) is shown, never thrown.
             if (version != _loadVersion)
                 return;
             _pending = 0;
+            ClosePdf();
             _image = null;
+            ResetEdits();
             Picture.Source = null;
-            MessageText.Text = $"Cannot show {Path.GetFileName(path)}.\n\n{Explain(ex)}";
+            MessageText.Text = $"Cannot show {Path.GetFileName(path)}.\n\n{Explain(ex, ImageFileTypes.IsPdf(path))}";
             UpdateView();
             DetailsText.Text = Path.GetFileName(path);
             if (ex is FileNotFoundException or DirectoryNotFoundException)
@@ -190,15 +238,17 @@ public partial class AstraViewerView : UserControl
             if (_loading == loading)
                 _loading = null;
             loading.Dispose();
+            ScheduleStateSave();
         }
-        ScheduleStateSave();
     }
 
     /// <summary>A plain reason first, Windows' own message below it.</summary>
-    private static string Explain(Exception ex) => ex switch
+    private static string Explain(Exception ex, bool pdf) => ex switch
     {
         FileNotFoundException or DirectoryNotFoundException => "The file no longer exists.",
         UnauthorizedAccessException => $"No access to the file.\n({ex.Message})",
+        DllNotFoundException or EntryPointNotFoundException or BadImageFormatException when pdf =>
+            $"The PDF library (pdfium) could not be loaded.\n({ex.Message})",
         NotSupportedException or FileFormatException or COMException or ArgumentException =>
             $"Windows cannot read this image: the file is damaged, or its format needs a codec that is not installed.\n({ex.Message})",
         _ => ex.Message,
@@ -289,11 +339,14 @@ public partial class AstraViewerView : UserControl
         _loadVersion++;
         _loading?.Cancel();
         CurrentPath = null;
+        ClosePdf();
+        HidePdfPassword();
         _image = null;
+        ResetEdits();
         Picture.Source = null;
         _album.Clear();
         _albumFolder = null;
-        MessageText.Text = "No image is open.\n\nDouble-click an image in the explorer (or right-click it: \"Open in AstraViewer\"),\nor drop images here or on the AstraViewer tab.";
+        MessageText.Text = "No image is open.\n\nDouble-click an image or a PDF in the explorer (or right-click it: \"Open in AstraViewer\"),\nor drop files here or on the AstraViewer tab.";
         DetailsText.Text = "";
         UpdateView();
         SyncSelections();
@@ -481,9 +534,16 @@ public partial class AstraViewerView : UserControl
             return;
         e.Handled = true;
         var menu = NewMenu(Stage);
-        AddHistoryItem(menu, path, enabled: _image is not null);
+        AddHistoryItem(menu, path, enabled: _image is not null || IsPdfShown);
         menu.Items.Add(new Separator());
-        Add(menu, "Copy image", "Ctrl+C", CopyImage, enabled: _image is not null);
+        if (IsPdfShown)
+        {
+            Add(menu, "Copy text", "Ctrl+C", CopyFromPdf, enabled: HasTextSelection);
+            Add(menu, "Select all text of the page", "Ctrl+A", SelectPageText);
+            Add(menu, "Copy page as image", "", CopyPdfPage);
+        }
+        else
+            Add(menu, "Copy image", "Ctrl+C", CopyImage, enabled: _image is not null);
         AddFileItems(menu, path, missing: false);
         menu.IsOpen = true;
     }
@@ -554,7 +614,8 @@ public partial class AstraViewerView : UserControl
             return;
         try
         {
-            Clipboard.SetImage(_image.Image);
+            var pixels = ShownPixels ?? _image.Image;
+            Clipboard.SetImage(_rotation == 0 ? pixels : Rotated(pixels, _rotation));
         }
         catch (COMException)
         {
@@ -568,6 +629,8 @@ public partial class AstraViewerView : UserControl
     /// <summary>Places the image (and the checkerboard behind it) for zoom, pan and rotation.</summary>
     private void UpdateView()
     {
+        if (IsPdfShown)
+            return; // The PDF's pages have their own zoom (ApplyPdfZoom).
         if (_image is null || Stage.ActualWidth <= 0 || Stage.ActualHeight <= 0)
         {
             Picture.Visibility = Checker.Visibility = Visibility.Collapsed;
@@ -575,8 +638,11 @@ public partial class AstraViewerView : UserControl
             return;
         }
         double scale = DpiScale;
-        // Size at 100 % in DIP: one image pixel per screen pixel (also for images decoded smaller).
-        double width = _image.Details.PixelWidth / scale, height = _image.Details.PixelHeight / scale;
+        // Size at 100 % in DIP: one image pixel per screen pixel (also for images decoded smaller); edits have their own size.
+        (int pixelWidth, int pixelHeight) = _edited is { } edited
+            ? (edited.PixelWidth, edited.PixelHeight)
+            : (_image.Details.PixelWidth, _image.Details.PixelHeight);
+        double width = pixelWidth / scale, height = pixelHeight / scale;
         bool turned = _rotation % 180 != 0;
         double shownWidth = turned ? height : width, shownHeight = turned ? width : height;
         double stageWidth = Stage.ActualWidth, stageHeight = Stage.ActualHeight;
@@ -604,7 +670,7 @@ public partial class AstraViewerView : UserControl
         RenderOptions.SetEdgeMode(Picture, pixels ? EdgeMode.Aliased : EdgeMode.Unspecified);
         Picture.Visibility = Visibility.Visible;
 
-        bool checker = Checker.Tag is true && HasTransparency(_image.Image);
+        bool checker = Checker.Tag is true && HasTransparency(ShownPixels ?? _image.Image);
         Checker.Visibility = checker ? Visibility.Visible : Visibility.Collapsed;
         if (checker)
         {
@@ -615,9 +681,15 @@ public partial class AstraViewerView : UserControl
             Checker.Width = bounds.Width;
             Checker.Height = bounds.Height;
         }
-        // Whole percents (59 %, 74 %, 1.600 %); below 10 % one decimal (2,5 %).
-        double percent = _zoom * 100;
-        ZoomText.Text = percent >= 10 ? $"{percent:N0} %" : $"{percent:0.#} %";
+        ZoomText.Text = ZoomPercent(_zoom);
+        UpdateCropOverlay();
+    }
+
+    /// <summary>Whole percents (59 %, 74 %, 1.600 %); below 10 % one decimal (2,5 %).</summary>
+    private static string ZoomPercent(double zoom)
+    {
+        double percent = zoom * 100;
+        return percent >= 10 ? $"{percent:N0} %" : $"{percent:0.#} %";
     }
 
     private static bool HasTransparency(BitmapSource image) =>
@@ -655,19 +727,45 @@ public partial class AstraViewerView : UserControl
 
     private void Rotate(int degrees)
     {
-        if (_image is null)
+        if (_image is null || _cropping)
             return;
         _rotation = ((_rotation + degrees) % 360 + 360) % 360;
         UpdateView();
+        UpdateDetails();
+        UpdateEditButtons();
     }
 
-    private void Fit_Click(object sender, RoutedEventArgs e) => SetFit();
+    private void Fit_Click(object sender, RoutedEventArgs e)
+    {
+        if (IsPdfShown)
+            PdfZoomTo(1, fit: true);
+        else
+            SetFit();
+    }
 
-    private void Actual_Click(object sender, RoutedEventArgs e) => ZoomTo(1);
+    private void Actual_Click(object sender, RoutedEventArgs e)
+    {
+        if (IsPdfShown)
+            PdfZoomTo(1);
+        else
+            ZoomTo(1);
+    }
 
-    private void ZoomIn_Click(object sender, RoutedEventArgs e) => ZoomStep(1);
+    private void ZoomIn_Click(object sender, RoutedEventArgs e)
+    {
+        if (IsPdfShown)
+            PdfZoomStep(1);
+        else
+            ZoomStep(1);
+    }
 
-    private void ZoomOut_Click(object sender, RoutedEventArgs e) => ZoomStep(-1);
+    private void ZoomOut_Click(object sender, RoutedEventArgs e)
+    {
+        if (IsPdfShown)
+            PdfZoomStep(-1);
+        else
+            ZoomStep(-1);
+    }
 
     private void Rotate_Click(object sender, RoutedEventArgs e) => Rotate(90);
 
@@ -682,6 +780,11 @@ public partial class AstraViewerView : UserControl
         Focus();
         if (_image is null)
             return;
+        if (_cropping)
+        {
+            CropMouseDown(e);
+            return;
+        }
         if (e.ClickCount == 2)
         {
             // Double-click: fit <-> 100 % at the mouse.
@@ -698,6 +801,11 @@ public partial class AstraViewerView : UserControl
 
     private void Stage_MouseMove(object sender, MouseEventArgs e)
     {
+        if (_cropping)
+        {
+            CropMouseMove(e);
+            return;
+        }
         if (_dragFrom is not { } from)
             return;
         var at = e.GetPosition(Stage);
@@ -713,6 +821,7 @@ public partial class AstraViewerView : UserControl
     private void EndDrag()
     {
         _dragFrom = null;
+        _cropDrag = null;
         Stage.Cursor = null;
         if (Stage.IsMouseCaptured)
             Stage.ReleaseMouseCapture();
@@ -733,15 +842,21 @@ public partial class AstraViewerView : UserControl
     /// <summary>"name · 4000 × 3000 px (12.0 MP) · JPEG · 24-bit · 72 dpi · 3,2 MB · modified ...".</summary>
     private void UpdateDetails()
     {
+        if (IsPdfShown && CurrentPath is { } pdfPath)
+        {
+            UpdatePdfDetails(pdfPath);
+            return;
+        }
         if (_image is not { Details: var d } || CurrentPath is null)
         {
             DetailsText.Text = "";
             return;
         }
+        var (shownWidth, shownHeight) = HasChanges ? OutputSize() : (d.PixelWidth, d.PixelHeight);
         var parts = new List<string>
         {
             Path.GetFileName(CurrentPath),
-            $"{d.PixelWidth:N0} × {d.PixelHeight:N0} px ({d.PixelWidth * (double)d.PixelHeight / 1_000_000:0.0} MP)",
+            $"{shownWidth:N0} × {shownHeight:N0} px ({shownWidth * (double)shownHeight / 1_000_000:0.0} MP)",
             d.Format,
             $"{d.BitsPerPixel}-bit",
         };
@@ -757,6 +872,8 @@ public partial class AstraViewerView : UserControl
             parts.Add(d.Camera);
         if (_image.Reduced)
             parts.Add("very large: shown reduced");
+        if (HasChanges)
+            parts.Insert(1, "changed, not saved");
         DetailsText.Text = string.Join("   ·   ", parts);
         DetailsText.ToolTip = string.Join("\n", parts);
     }
@@ -774,10 +891,15 @@ public partial class AstraViewerView : UserControl
             }
             return;
         }
-        if (Keyboard.FocusedElement is TextBoxBase)
+        if (Keyboard.FocusedElement is TextBoxBase or PasswordBox)
             return;
         var modifiers = Keyboard.Modifiers;
         bool plain = modifiers == ModifierKeys.None;
+        if (EditKey(e.Key, modifiers) || PdfKey(e.Key, modifiers))
+        {
+            e.Handled = true;
+            return;
+        }
         bool handled = true;
         switch (e.Key)
         {
@@ -816,7 +938,10 @@ public partial class AstraViewerView : UserControl
                 Refresh();
                 break;
             case Key.C when modifiers == ModifierKeys.Control:
-                CopyImage();
+                if (IsPdfShown)
+                    CopyFromPdf();
+                else
+                    CopyImage();
                 break;
             default:
                 handled = false;

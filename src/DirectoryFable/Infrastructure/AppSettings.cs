@@ -83,8 +83,14 @@ public sealed class AppSettings
     /// <summary>A double-click in DirectoryFable opens <see cref="ViewerFileTypes"/> in AstraViewer (Windows' defaults stay untouched).</summary>
     public bool ViewerOpensFileTypes { get; set; } = true;
 
-    /// <summary>Image types for AstraViewer, separated by spaces (".png .jpg .gif").</summary>
+    /// <summary>Image types (and ".pdf") for AstraViewer, separated by spaces (".png .jpg .gif .pdf").</summary>
     public string ViewerFileTypes { get; set; } = Viewer.ImageFileTypes.DefaultList;
+
+    /// <summary>
+    /// ".pdf" was added once to an older <see cref="ViewerFileTypes"/> list (when AstraViewer learned PDF). After that
+    /// the list is the user's: a ".pdf" taken out stays out.
+    /// </summary>
+    public bool ViewerPdfAdded { get; set; }
 
     /// <summary>A double-click in DirectoryFable opens <see cref="PlayerFileTypes"/> in OpusHC (Windows' defaults stay untouched).</summary>
     public bool PlayerOpensFileTypes { get; set; } = true;
@@ -164,13 +170,32 @@ public sealed class AppSettings
                 Directory.CreateDirectory(DataFolder);
                 File.WriteAllText(path, FileText(new AppSettings()));
             }
-            return FillNulls(JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(path), ReadOptions) ?? new AppSettings());
+            return AddPdfOnce(FillNulls(JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(path), ReadOptions) ?? new AppSettings()));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
             // A broken settings file must not stop the app; defaults apply.
             return new AppSettings();
         }
+    }
+
+    /// <summary>AstraViewer shows PDF files: an older file type list gets ".pdf" once (saved at once).</summary>
+    private static AppSettings AddPdfOnce(AppSettings settings)
+    {
+        if (settings.ViewerPdfAdded)
+            return settings;
+        if (!Editor.EditorFileTypes.Parse(settings.ViewerFileTypes).Contains(".pdf"))
+            settings.ViewerFileTypes = (settings.ViewerFileTypes.Trim() + " .pdf").Trim();
+        settings.ViewerPdfAdded = true;
+        try
+        {
+            settings.Save();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Read-only data folder: the list gets ".pdf" again at the next start, nothing worse.
+        }
+        return settings;
     }
 
     /// <summary>A hand-edited <c>"key": null</c> gets the default value (text settings are never null).</summary>
@@ -255,9 +280,11 @@ public sealed class AppSettings
           // Notepad# file list: files in no own group are grouped "type" or "folder".
           "notepadAutoGroupBy": {{Json(s.NotepadAutoGroupBy)}},
           "notepadFileTypes": {{Json(s.NotepadFileTypes)}},
-          // AstraViewer: a double-click in DirectoryFable opens these image types in AstraViewer (Windows' defaults are not changed).
+          // AstraViewer: a double-click in DirectoryFable opens these image types (and PDF) in AstraViewer (Windows' defaults are not changed).
           "viewerOpensFileTypes": {{Json(s.ViewerOpensFileTypes)}},
           "viewerFileTypes": {{Json(s.ViewerFileTypes)}},
+          // Set by DirectoryFable: ".pdf" was added once to an older list above (take it out there to keep PDFs in their own program).
+          "viewerPdfAdded": {{Json(s.ViewerPdfAdded)}},
           // AstraViewer: start zoom "fit" (into the window) or "actual" (100 %); background "dark", "black" or "light";
           // checkerboard behind transparent images; images kept in the history (10 to 1000).
           "viewerZoom": {{Json(s.ViewerZoom)}},

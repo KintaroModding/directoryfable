@@ -1,8 +1,8 @@
 # DirectoryFable
 
 A two-pane file manager for Windows with a built-in text editor, Notepad#, an
-image viewer, AstraViewer, a fast file search, SonnetSearch, and a video player,
-OpusHC.
+image and PDF viewer, AstraViewer, a fast file search, SonnetSearch, and a video
+player, OpusHC.
 Dark, dense and made for the keyboard. Written in C# with WPF on .NET 10.
 
 ![DirectoryFable: two panes with tabs, folder tree and favorites bar](docs/screenshot-explorer.png)
@@ -203,16 +203,28 @@ yourself, see [Build](#build).
 
 - A third view in the title bar: `[folder] [Notepad#] [AstraViewer]`.
 - **Opens only from DirectoryFable**: a double-click (or Enter) on the image
-  types you choose, "Open in AstraViewer" in the right-click menu, or images
-  dropped onto the `[AstraViewer]` tab. The file associations of Windows do
-  not change.
+  types you choose (and PDF), "Open in AstraViewer" in the right-click menu, or
+  files dropped onto the `[AstraViewer]` tab. The file associations of Windows
+  do not change.
 - **History** on the left: the images you opened, the newest at the top.
   Click one to show it again; the order stays. A right-click on the image or
   on a thumbnail adds that image ("Add to history").
 - **The image** fits into the window (or starts at 100 %). Mouse wheel = zoom
   at the mouse, drag = move, double-click = fit / 100 %, `R` = rotate the view
-  (the file is not changed). Transparent parts show a checkerboard. The bar
-  shows the current zoom between its zoom out and zoom in buttons.
+  (Save writes it into the file). Transparent parts show a checkerboard. The
+  bar shows the current zoom between its zoom out and zoom in buttons.
+- **Simple edits** in the bar: **Crop** (drag a frame on the picture or its
+  eight handles, an aspect list: free, as the picture, 1:1, 4:3, 3:2, 16:9
+  and upright; `Enter` or a double-click in the frame crops, `Esc` cancels),
+  **Resize** (width and height in pixels, the aspect ratio kept or not, 25 /
+  50 / 75 / 200 %), **Save** (`Ctrl+S`: into the same file, after a
+  question; the original goes to the Recycle Bin first) and **Save as**
+  (`Ctrl+Shift+S`: JPEG, PNG, WebP - lossy or lossless -, BMP, TIFF or GIF).
+  `Ctrl+Z` takes back the last edit. JPEG keeps the photo's date taken and
+  camera; transparent parts become white in JPEG and BMP. A WebP file stays
+  lossy or lossless as it was. Going to another picture with unsaved edits
+  asks first. Not for animated or multi-size images (and ICO, HEIC are saved
+  with Save as, as Windows cannot write them).
 - **Thumbnails** of the other images in the folder, with "n / N", like VS
   Code's image preview. The arrows next to "n / N", `Left` / `Right` or the
   mouse side buttons go to the previous / next image.
@@ -224,6 +236,23 @@ yourself, see [Build](#build).
 - Formats: those that Windows can read (PNG, JPEG, BMP, GIF, TIFF, ICO, WebP,
   JPEG XR; HEIC and AVIF with the matching Windows codecs). Animated GIFs show
   their first frame.
+- **PDF**: the pages one below the other, drawn by PDFium, the PDF engine of
+  Chromium (only the pages in view). Fit (the start) shows every page whole, each by
+  its own size, and the mouse wheel, `Up` / `Down` and `Page Up` / `Page Down`
+  go a whole page back or on. Zoomed (`+`, `-`, `Ctrl`+wheel at the mouse;
+  100 % = the paper's real size), the wheel scrolls; `F` fits again. The bar
+  shows the page in view ("3 / 12"), `Home` / `End` go to the first / last
+  page; `Left` / `Right` still go to the previous / next file. The **page
+  rail** on the right shows all pages small: the page in view is marked and
+  stays in its upper part, so the next pages show below it; a click goes to
+  a page, the wheel scrolls the rail. **Text**: drag over it to select
+  (double-click a word, triple-click a line, `Ctrl+A` the page; one page at
+  a time), `Ctrl+C` copies it; without a selection `Ctrl+C` copies the page
+  in view as a picture. A PDF with a **password** asks for it in the viewer
+  (kept until DirectoryFable closes, never saved). The properties show the
+  page count and the paper size (A4, Letter, ...).
+  Updating adds `.pdf` once to an older type list; take it out there to keep
+  PDFs in their own program.
 
 ## SonnetSearch
 
@@ -509,6 +538,9 @@ DirectoryFable.exe [leftFolder] [rightFolder] [--multi] [--taskbar|--tray] [--da
 | AstraViewer: `Left` / `Right`, `Home` / `End` | Previous / next, first / last image |
 | AstraViewer: `F` / `1` / `+` / `-` | Fit / 100 % / zoom in / zoom out |
 | AstraViewer: `R` / `Shift+R`, `Ctrl+C`, `F5` | Rotate the view, copy the image, read the folder again |
+| AstraViewer: `Ctrl+S`, `Ctrl+Shift+S`, `Ctrl+Z` | Save, save as, take back the last edit (crop: `Enter` / `Esc`) |
+| AstraViewer, PDF: wheel, `Up` / `Down`, `Page Up` / `Page Down` | Previous / next page (in Fit; zoomed, the wheel scrolls) |
+| AstraViewer, PDF: `Home` / `End`, `Ctrl`+wheel, `F` | First / last page, zoom at the mouse, fit the page again |
 | SonnetSearch: `Enter` / `F5`, `Esc` | Read the drives again and search, stop reading |
 | SonnetSearch: `Ctrl+C` / `Ctrl+Shift+C` | Copy the found files / their paths |
 
@@ -536,7 +568,7 @@ src/DirectoryFable/
   Infrastructure/  Settings, session, folder watchers, sorting, formatting.
   Shell/           Windows shell: icons, context menu, file operations, undo, archives, 7-Zip.
   Editor/          Notepad#: documents, groups, syntax highlighting, minimap.
-  Viewer/          AstraViewer: image loading, thumbnails, image types.
+  Viewer/          AstraViewer: image loading, PDF pages, thumbnails, file types.
   Search/          SonnetSearch: NTFS file table reader, folder walk, query and sorting.
   Updates/         The Update button: GitHub releases, release notes, download, exe swap.
   Themes/          Colors and control styles.

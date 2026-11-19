@@ -38,6 +38,14 @@ These terms apply to this program and to every work based on it.
   license, parts of .NET).
 - System.Management (MIT license, part of .NET), for the disk type and health
   on the This PC tiles, used as a NuGet package.
+- PDFium (BSD-3-Clause and Apache-2.0), the PDF engine of AstraViewer (pages
+  and their text), used unchanged as the binary of the pdfium-binaries project
+  (MIT license) in a NuGet package. PDFium contains other software (FreeType,
+  ICU, libjpeg-turbo, OpenJPEG, Little CMS, libpng, zlib and more). All
+  license texts: licenses/PDFium.txt.
+- libwebp (BSD-3-Clause, Google), which writes AstraViewer's WebP files, used
+  unchanged as a binary in a NuGet package of Imazen (MIT license). License
+  text: licenses/libwebp.txt.
 - LibVLCSharp (LGPL-2.1-or-later), the .NET binding of VLC's engine for OpusHC, used as a NuGet package. License text: licenses/LibVLCSharp.txt.
   VLC's engine itself (libVLC, VideoLAN, GPL-2.0-or-later and LGPL-2.1-or-later)
   is not part of DirectoryFable: it is downloaded from VideoLAN on first use,

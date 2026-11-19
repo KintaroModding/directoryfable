@@ -80,6 +80,8 @@ public static class ImageLoader
     /// <summary>A small picture (about <paramref name="height"/> device pixels high) for the thumbnail strip and the history.</summary>
     public static BitmapSource LoadThumbnail(string path, int height)
     {
+        if (ImageFileTypes.IsPdf(path))
+            return PdfFile.FirstPage(path, height);
         byte[] bytes = File.ReadAllBytes(path);
         if (IsIcon(path))
             return LargestFrame(bytes);

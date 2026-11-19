@@ -351,7 +351,7 @@ public partial class MainWindow : Window
     private void Window_Closing(object? sender, CancelEventArgs e)
     {
         // A real exit asks about unsaved Notepad# files first (not at logoff: that would block Windows).
-        if (AllowClose && !SkipUnsavedPrompt && !NotepadPage.ConfirmExit(this))
+        if (AllowClose && !SkipUnsavedPrompt && (!NotepadPage.ConfirmExit(this) || !AstraViewerPage.ConfirmExit(this)))
         {
             e.Cancel = true;
             return;
