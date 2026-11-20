@@ -20,6 +20,7 @@ public partial class ConflictDialog : Window
     private ConflictDialog(Conflict conflict, int number, int count, string verb)
     {
         InitializeComponent();
+        DirectoryFable.Shell.DarkMode.PrepareWindow(this); // No white flash when it comes up.
         string name = Path.GetFileName(conflict.Target);
         string targetFolder = Path.GetFileName(Path.GetDirectoryName(conflict.Target)?.TrimEnd('\\') ?? "") is { Length: > 0 } f ? f : Path.GetDirectoryName(conflict.Target) ?? "";
         string sourceFolder = Path.GetFileName(Path.GetDirectoryName(conflict.Source)?.TrimEnd('\\') ?? "") is { Length: > 0 } s ? s : Path.GetDirectoryName(conflict.Source) ?? "";

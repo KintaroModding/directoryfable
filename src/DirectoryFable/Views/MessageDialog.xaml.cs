@@ -19,6 +19,7 @@ public partial class MessageDialog : Window
     private MessageDialog(string text, string caption, MessageBoxButton buttons, MessageBoxImage image, MessageBoxResult defaultResult)
     {
         InitializeComponent();
+        DirectoryFable.Shell.DarkMode.PrepareWindow(this); // No white flash when it comes up.
         Title = caption;
         MessageText.Text = text;
 

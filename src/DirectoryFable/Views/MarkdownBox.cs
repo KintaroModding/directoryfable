@@ -53,6 +53,14 @@ public sealed partial class MarkdownBox : RichTextBox
     [GeneratedRegex(@"(`+)(.+?)\1|\*\*(.+?)\*\*|__(?=\S)(.+?)(?<=\S)__(?!\w)|~~(.+?)~~|(?<![\w*])\*(?=\S)(.+?)(?<=\S)\*(?![\w*])|\[([^\]]+)\]\((https?://[^\s)]+)\)")]
     private static partial Regex Inline();
 
+    /// <summary>Headings and inline code are sized from FontSize when built: a new size builds the document again.</summary>
+    protected override void OnPropertyChanged(DependencyPropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        if (e.Property == FontSizeProperty)
+            Build();
+    }
+
     private void Build()
     {
         // Font, size and color come from the box (the document inherits them).

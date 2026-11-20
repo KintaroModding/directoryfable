@@ -21,7 +21,7 @@
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <!-- The app's version: the update check compares it with the GitHub release tags (v<Version>),
          and build.ps1 names the release zip after it. -->
-    <Version>1.4.1</Version>
+    <Version>1.4.2</Version>
     <!-- The version text is only the number (no "+<commit id>" of the build's repository). -->
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <!-- Release: the debug data in the exe (and stack traces) name the source files by their place in the project

@@ -23,6 +23,7 @@ public partial class DuplicateDialog : Window
     private DuplicateDialog(string name, string folder, bool isDirectory, bool canSkip)
     {
         InitializeComponent();
+        DirectoryFable.Shell.DarkMode.PrepareWindow(this); // No white flash when it comes up.
         _folder = folder;
         OldNameBox.Text = name;
         NewNameBox.Text = name;

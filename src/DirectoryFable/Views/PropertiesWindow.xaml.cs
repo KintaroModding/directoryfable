@@ -27,6 +27,7 @@ public partial class PropertiesWindow : Window
     private PropertiesWindow(string path, ImageSource? icon)
     {
         InitializeComponent();
+        DirectoryFable.Shell.DarkMode.PrepareWindow(this); // No white flash when it comes up.
         _path = path;
         string name = PathHelper.GetName(path);
         Title = $"Properties - {name}";

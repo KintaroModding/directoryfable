@@ -8,6 +8,7 @@ public partial class InputDialog : Window
     private InputDialog(string prompt, string text)
     {
         InitializeComponent();
+        DirectoryFable.Shell.DarkMode.PrepareWindow(this); // No white flash when it comes up.
         PromptText.Text = prompt;
         InputBox.Text = text;
         Loaded += (_, _) =>

@@ -18,6 +18,7 @@ public partial class NameDialog : Window
     private NameDialog(string folder, string? oldName, string hidden, bool isDirectory)
     {
         InitializeComponent();
+        DirectoryFable.Shell.DarkMode.PrepareWindow(this); // No white flash when it comes up.
         _folder = folder;
         _oldName = oldName;
         _hidden = hidden;

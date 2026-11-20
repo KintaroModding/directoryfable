@@ -32,6 +32,7 @@ public partial class FileProgressWindow : Window
     internal FileProgressWindow(OperationProgress progress)
     {
         InitializeComponent();
+        DirectoryFable.Shell.DarkMode.PrepareWindow(this); // No white flash when it comes up.
         _progress = progress;
         TaskbarItemInfo = new TaskbarItemInfo { ProgressState = TaskbarItemProgressState.Normal };
         if (Application.Current?.MainWindow is { IsVisible: true } main && main != this)

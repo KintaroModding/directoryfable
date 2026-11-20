@@ -59,6 +59,12 @@ public sealed class AppSettings
     /// <summary>Notepad#'s look inside a file: "default", "vscode" or "midnight" (the Theme menu of its bar).</summary>
     public string NotepadTheme { get; set; } = "default";
 
+    /// <summary>GemmaChat's look of the conversation: "default", "soft", "midnight", "warm", "sage" or "dusk" (the Theme menu of its bar).</summary>
+    public string GemmaChatTheme { get; set; } = "default";
+
+    /// <summary>GemmaChat's message text size (the < > size arrows of its bar), 11 to 20.</summary>
+    public double GemmaChatFontSize { get; set; } = 13;
+
     /// <summary>The "+" of a pane's tab strip opens This PC (true, default) or the current tab's folder; always at the end.</summary>
     public bool NewTabThisPc { get; set; } = true;
 
@@ -276,6 +282,10 @@ public sealed class AppSettings
           "newTabThisPc": {{Json(s.NewTabThisPc)}},
           // Notepad#'s look inside a file (its Theme menu): "default", "vscode" or "midnight".
           "notepadTheme": {{Json(s.NotepadTheme)}},
+          // GemmaChat's look of the conversation (its Theme menu): "default", "soft", "midnight", "warm", "sage" or "dusk".
+          "gemmaChatTheme": {{Json(s.GemmaChatTheme)}},
+          // GemmaChat's message text size (its bar's size arrows): 11 to 20.
+          "gemmaChatFontSize": {{s.GemmaChatFontSize.ToString(System.Globalization.CultureInfo.InvariantCulture)}},
           // File list background while inside a ZIP file ("#RRGGBB"; normal list: "#191919").
           "archiveBackground": {{Json(s.ArchiveBackground)}},
           // Folder of 7-Zip (7zG.exe, 7z.exe) for the "7z" button and 7z / RAR archives; "" = find it automatically.

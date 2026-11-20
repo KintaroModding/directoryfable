@@ -428,8 +428,25 @@ public partial class FilePane : UserControl
 
     private void RowProperties_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is FrameworkElement { DataContext: FileItem item })
+        if (sender is not FrameworkElement { DataContext: FileItem item } button)
+            return;
+        // The button's tooltip is open under the mouse. Closed by the new window coming up, it flashed white (Alt+Enter,
+        // without a tooltip, never did): it is switched off first, the window comes a moment later. Back on when the
+        // mouse leaves the button.
+        ToolTipService.SetIsEnabled(button, false);
+        void Restore(object s, MouseEventArgs a)
+        {
+            button.MouseLeave -= Restore;
+            ToolTipService.SetIsEnabled(button, true);
+        }
+        button.MouseLeave += Restore;
+        var later = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
+        later.Tick += (_, _) =>
+        {
+            later.Stop();
             ShowProperties(item);
+        };
+        later.Start();
     }
 
     private void ShowProperties(FileItem item)

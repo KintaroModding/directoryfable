@@ -17,6 +17,7 @@ public partial class ResizeDialog : Window
     private ResizeDialog(int width, int height)
     {
         InitializeComponent();
+        DirectoryFable.Shell.DarkMode.PrepareWindow(this); // No white flash when it comes up.
         _width = width;
         _height = height;
         NowText.Text = $"Now: {width:N0} × {height:N0} px";

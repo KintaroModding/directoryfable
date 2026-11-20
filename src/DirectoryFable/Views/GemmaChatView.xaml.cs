@@ -76,6 +76,9 @@ public partial class GemmaChatView : UserControl
             ShowProviders();
         };
         Loaded += (_, _) => IconFrames.Sharpen(EmptyIcon);
+        var settings = AppSettings.Load();
+        ApplyTheme(ChatTheme.ById(settings.GemmaChatTheme));
+        ApplyTextSize(settings.GemmaChatFontSize);
     }
 
     /// <summary>The title text changed (another chat).</summary>
@@ -1007,6 +1010,113 @@ public partial class GemmaChatView : UserControl
             e.Handled = true;
             OpenChat(null);
         }
+    }
+
+    // ---------- Theme menu ----------
+
+    private ChatTheme _theme = ChatTheme.Default;
+
+    /// <summary>"Default", "Soft", "Midnight", "Warm": the look of the conversation. Kept in settings.json.</summary>
+    private void Theme_Click(object sender, RoutedEventArgs e)
+    {
+        var menu = new ContextMenu
+        {
+            PlacementTarget = ThemeButton,
+            Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom,
+            FontFamily = (FontFamily)FindResource("UiFont"),
+            FontSize = (double)FindResource("UiFontSize"),
+        };
+        foreach (var theme in ChatTheme.All)
+        {
+            var item = new MenuItem { Header = theme.Name, IsCheckable = true, IsChecked = theme == _theme };
+            item.Click += (_, _) => SetTheme(theme);
+            menu.Items.Add(item);
+        }
+        menu.IsOpen = true;
+    }
+
+    private void PreviousTheme_Click(object sender, RoutedEventArgs e) => StepTheme(-1);
+
+    private void NextTheme_Click(object sender, RoutedEventArgs e) => StepTheme(1);
+
+    /// <summary>The theme before / after the current one, in the menu's order; wraps at both ends.</summary>
+    private void StepTheme(int step)
+    {
+        var all = ChatTheme.All;
+        int at = Math.Max(0, all.ToList().IndexOf(_theme));
+        SetTheme(all[(at + step + all.Count) % all.Count]);
+    }
+
+    private void SetTheme(ChatTheme theme)
+    {
+        if (theme == _theme)
+            return;
+        ApplyTheme(theme);
+        try
+        {
+            AppSettings.Update(s => s.GemmaChatTheme = theme.Id);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            BarText.Text = $"The theme could not be saved: {ex.Message}";
+        }
+    }
+
+    /// <summary>Replaces the view's themed brushes (DynamicResource in the XAML), so every message follows at once.</summary>
+    private void ApplyTheme(ChatTheme theme)
+    {
+        static Brush Solid(Color color)
+        {
+            var brush = new SolidColorBrush(color);
+            brush.Freeze();
+            return brush;
+        }
+        _theme = theme;
+        Resources["ChatBackBrush"] = Solid(theme.Background);
+        Resources["SideBrush"] = Solid(theme.Side);
+        Resources["BubbleBrush"] = Solid(theme.Bubble);
+        Resources["UserBubbleBrush"] = Solid(theme.UserBubble);
+        Resources["CodeBrush"] = Solid(theme.Code);
+        Resources["ChatTextBrush"] = Solid(theme.Text);
+        ThemeText.Text = theme.Name;
+    }
+
+    // ---------- Text size ----------
+
+    private const double MinTextSize = 11, MaxTextSize = 20, DefaultTextSize = 13;
+
+    private double _textSize = DefaultTextSize;
+
+    private void SmallerText_Click(object sender, RoutedEventArgs e) => SetTextSize(_textSize - 1);
+
+    private void LargerText_Click(object sender, RoutedEventArgs e) => SetTextSize(_textSize + 1);
+
+    private void ResetTextSize_Click(object sender, RoutedEventArgs e) => SetTextSize(DefaultTextSize);
+
+    private void SetTextSize(double size)
+    {
+        size = Math.Clamp(Math.Round(size), MinTextSize, MaxTextSize);
+        if (size == _textSize)
+            return;
+        ApplyTextSize(size);
+        try
+        {
+            AppSettings.Update(s => s.GemmaChatFontSize = size);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            BarText.Text = $"The text size could not be saved: {ex.Message}";
+        }
+    }
+
+    /// <summary>Replaces the view's size resources (DynamicResource in the XAML): every message follows at once.</summary>
+    private void ApplyTextSize(double size)
+    {
+        size = double.IsFinite(size) ? Math.Clamp(Math.Round(size), MinTextSize, MaxTextSize) : DefaultTextSize;
+        _textSize = size;
+        Resources["ChatFontSize"] = size;
+        Resources["ChatCodeFontSize"] = size - 0.5;
+        TextSizeText.Text = size.ToString(System.Globalization.CultureInfo.InvariantCulture);
     }
 
     // ---------- Settings ----------
