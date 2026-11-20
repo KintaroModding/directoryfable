@@ -236,6 +236,19 @@ public sealed class ChatThread
         ? $"{System.IO.Path.GetFileName(System.IO.Path.TrimEndingDirectorySeparator(folder))} · {Modified:g}"
         : Modified.ToString("g");
 
+    /// <summary>
+    /// What the chat does right now, for the list ("Answering...", "Waits for your decision"); empty = nothing. Not
+    /// saved: an answer runs only while DirectoryFable runs.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string Activity { get; set; } = "";
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsBusy => Activity.Length > 0;
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsIdle => Activity.Length == 0;
+
     /// <summary>The chat works in a folder: the list marks it.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public bool HasWorkspace => Workspace is not null;

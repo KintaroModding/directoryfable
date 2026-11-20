@@ -54,6 +54,14 @@ public sealed class PdfFile : IDisposable
     public Task<PdfPageText> TextAsync(int index, CancellationToken token) =>
         PdfWorker.Run(() => Text(index), token);
 
+    /// <summary>
+    /// Where a text stands on a page: the first and last character of every hit (see <see cref="PdfSearchText"/>).
+    /// <paramref name="query"/> must come from <see cref="PdfSearchText.Normalize"/>. A page's search text is kept
+    /// after the first search, so the next text is found without reading the page again.
+    /// </summary>
+    public Task<IReadOnlyList<(int From, int To)>> FindAsync(int index, string query, bool matchCase, CancellationToken token) =>
+        PdfWorker.Run(() => SearchText(index).Find(query, matchCase), token);
+
     /// <summary>The first page about <paramref name="height"/> pixels high (thumbnails); call off the UI thread.</summary>
     public static BitmapSource FirstPage(string path, int height)
     {
@@ -171,6 +179,41 @@ public sealed class PdfFile : IDisposable
         var picture = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgr32, null, pixels, stride);
         picture.Freeze();
         return picture;
+    }
+
+    /// <summary>The pages' search texts, made on the first search (used on the worker thread only).</summary>
+    private readonly Dictionary<int, PdfSearchText> _searchTexts = [];
+
+    private PdfSearchText SearchText(int index)
+    {
+        if (_searchTexts.TryGetValue(index, out var known))
+            return known;
+        IntPtr document = _document;
+        ObjectDisposedException.ThrowIf(document == IntPtr.Zero, this);
+        int[] codes = [];
+        IntPtr page = Pdfium.FPDF_LoadPage(document, index);
+        if (page != IntPtr.Zero)
+        {
+            IntPtr text = IntPtr.Zero;
+            try
+            {
+                text = Pdfium.FPDFText_LoadPage(page);
+                int count = text == IntPtr.Zero ? 0 : Pdfium.FPDFText_CountChars(text);
+                if (count > 0)
+                {
+                    codes = new int[count];
+                    for (int i = 0; i < count; i++)
+                        codes[i] = (int)Pdfium.FPDFText_GetUnicode(text, i);
+                }
+            }
+            finally
+            {
+                if (text != IntPtr.Zero)
+                    Pdfium.FPDFText_ClosePage(text);
+                Pdfium.FPDF_ClosePage(page);
+            }
+        }
+        return _searchTexts[index] = PdfSearchText.From(codes);
     }
 
     private PdfPageText Text(int index)

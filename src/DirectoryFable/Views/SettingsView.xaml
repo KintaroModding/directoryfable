@@ -164,6 +164,23 @@
             </Border>
 
             <!-- ===== Columns ===== -->
+            <TextBlock Style="{StaticResource SectionTitle}" Text="Tabs" />
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Style="{StaticResource SettingName}" Text="New tab (+)" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="The + at the end of a pane's tabs adds a tab at the very right. On: it opens This PC. Off: it opens the folder of the current tab. Ctrl+T always adds a copy of the current tab next to it." />
+                    </StackPanel>
+                    <CheckBox x:Name="NewTabThisPc" Grid.Column="1" VerticalAlignment="Center" Content="Open This PC"
+                              Checked="NewTabThisPc_Changed" Unchecked="NewTabThisPc_Changed" />
+                </Grid>
+            </Border>
+
             <TextBlock Style="{StaticResource SectionTitle}" Text="Columns" />
 
             <Border Style="{StaticResource SettingRow}">

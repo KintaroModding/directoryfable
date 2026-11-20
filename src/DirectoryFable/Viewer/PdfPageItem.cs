@@ -109,6 +109,22 @@ public sealed class PdfPageItem(int index, Size baseSize) : ObservableObject
         set => SetField(ref _selection, value);
     }
 
+    private IReadOnlyList<Rect> _findRects = [], _currentFindRects = [];
+
+    /// <summary>The marks of the search hits on this page, without the current hit (rectangles in the 0..1 square).</summary>
+    public IReadOnlyList<Rect> FindRects
+    {
+        get => _findRects;
+        set => SetField(ref _findRects, value);
+    }
+
+    /// <summary>The mark of the current search hit, when it is on this page.</summary>
+    public IReadOnlyList<Rect> CurrentFindRects
+    {
+        get => _currentFindRects;
+        set => SetField(ref _currentFindRects, value);
+    }
+
     /// <summary>Reads the page's text once (for the text cursor and for selecting); a page without text gives an empty one.</summary>
     public async Task<PdfPageText> LoadTextAsync(PdfFile pdf)
     {

@@ -30,18 +30,42 @@ public partial class GemmaChatView : UserControl
 
     private ChatConfig _config = new();
     private readonly ObservableCollection<ChatThread> _chats = [];
-    private readonly ObservableCollection<MessageItem> _items = [];
     private ChatThread? _chat;
-    private CancellationTokenSource? _sending;
     private bool _stickToBottom = true;
     private bool _loaded;
-    private bool _allowAllInChat;
+
+    /// <summary>
+    /// What a chat shows and does while DirectoryFable runs: its message items, its running answer (each chat answers
+    /// on its own, also while another chat is shown), its waiting approval card and its "allow all" choices.
+    /// </summary>
+    private sealed class ChatRun
+    {
+        public ObservableCollection<MessageItem> Items { get; } = [];
+        public CancellationTokenSource? Cancel;
+        public MessageItem? PendingCard;
+        public bool AllowAll, AllowCommands;
+        public bool IsAnswering => Cancel is not null;
+    }
+
+    private readonly Dictionary<ChatThread, ChatRun> _runs = [];
+
+    private ChatRun RunOf(ChatThread chat)
+    {
+        if (!_runs.TryGetValue(chat, out var run))
+            _runs[chat] = run = new ChatRun();
+        return run;
+    }
+
+    /// <summary>The shown chat's items (what the message list shows).</summary>
+    private ObservableCollection<MessageItem> _items => _chat is null ? [] : RunOf(_chat).Items;
+
+    /// <summary>The shown chat has a running answer.</summary>
+    private bool ShownIsAnswering => _chat is not null && _runs.TryGetValue(_chat, out var run) && run.IsAnswering;
 
     public GemmaChatView()
     {
         InitializeComponent();
         ChatList.ItemsSource = _chats;
-        Messages.ItemsSource = _items;
         AttachmentStrip.ItemsSource = _attachments;
         _attachments.CollectionChanged += (_, _) =>
             AttachmentStrip.Visibility = _attachments.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -89,8 +113,6 @@ public partial class GemmaChatView : UserControl
     public void StartInFolder(string folder)
     {
         EnsureLoaded();
-        if (_sending is not null)
-            return;
         OpenChat(null);
         SetWorkspace(folder);
     }
@@ -101,8 +123,12 @@ public partial class GemmaChatView : UserControl
             InputBox.Focus();
     }
 
-    /// <summary>DirectoryFable ends: a running answer stops (what came is kept).</summary>
-    public void Shutdown() => _sending?.Cancel();
+    /// <summary>DirectoryFable ends: the running answers stop (what came is kept).</summary>
+    public void Shutdown()
+    {
+        foreach (var run in _runs.Values)
+            run.Cancel?.Cancel();
+    }
 
     // ---------- Providers ----------
 
@@ -240,7 +266,7 @@ public partial class GemmaChatView : UserControl
 
     private void Workspace_Click(object sender, RoutedEventArgs e)
     {
-        if (_sending is not null || _chat is null)
+        if (ShownIsAnswering || _chat is null)
             return;
         var dialog = new Microsoft.Win32.OpenFolderDialog
         {
@@ -253,7 +279,7 @@ public partial class GemmaChatView : UserControl
 
     private void CloseWorkspace_Click(object sender, RoutedEventArgs e)
     {
-        if (_sending is null)
+        if (!ShownIsAnswering)
             SetWorkspace(null);
     }
 
@@ -262,7 +288,8 @@ public partial class GemmaChatView : UserControl
         if (_chat is null)
             return;
         _chat.Workspace = folder;
-        _allowAllInChat = _allowCommandsInChat = false;
+        var run = RunOf(_chat);
+        run.AllowAll = run.AllowCommands = false;
         if (_chat.Messages.Count > 0)
             SaveChat(_chat);
         RefreshList(); // The list's folder mark.
@@ -288,16 +315,23 @@ public partial class GemmaChatView : UserControl
     /// <summary>Shows a chat (null = a new, empty one, saved with its first message).</summary>
     private void OpenChat(ChatThread? chat)
     {
-        if (_sending is not null)
-            return; // Not while an answer streams in.
+        // The chat that is left: without a running answer its items and "allow all" choices go (they are made
+        // again from its messages); with one, it goes on in the background and keeps them.
+        if (_chat is { } left && _runs.TryGetValue(left, out var leftRun) && !leftRun.IsAnswering)
+            _runs.Remove(left);
         _chat = chat ?? new ChatThread();
         CurrentChatId = chat?.Id;
-        _allowAllInChat = _allowCommandsInChat = false;
         if (chat is null)
             ChatList.SelectedItem = null;
-        _items.Clear();
-        foreach (var item in ItemsOf(_chat))
-            _items.Add(item);
+        var run = RunOf(_chat);
+        if (!run.IsAnswering)
+        {
+            run.Items.Clear();
+            foreach (var item in ItemsOf(_chat))
+                run.Items.Add(item);
+        }
+        Messages.ItemsSource = run.Items;
+        ShowSending(run.IsAnswering);
         ShowEmpty();
         ShowWorkspace();
         ShowProviderState();
@@ -347,6 +381,11 @@ public partial class GemmaChatView : UserControl
         var delete = new MenuItem { Header = "Delete..." };
         delete.Click += (_, _) =>
         {
+            if (_runs.TryGetValue(chat, out var running) && running.IsAnswering)
+            {
+                BarText.Text = $"\"{chat.Title}\" is answering: stop it first (open it, then Stop).";
+                return;
+            }
             if (MessageDialog.Show(Window.GetWindow(this), $"Delete the chat \"{chat.Title}\"?\n\nIt cannot be brought back (also the Undo copies of its file changes go).",
                     "GemmaChat", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
                 return;
@@ -360,6 +399,7 @@ public partial class GemmaChatView : UserControl
                 return;
             }
             _chats.Remove(chat);
+            _runs.Remove(chat);
             if (chat == _chat)
                 OpenChat(null);
         };
@@ -551,8 +591,8 @@ public partial class GemmaChatView : UserControl
 
     private void Send_Click(object sender, RoutedEventArgs e)
     {
-        if (_sending is not null)
-            _sending.Cancel(); // "Stop".
+        if (_chat is not null && _runs.TryGetValue(_chat, out var run) && run.Cancel is { } cancel)
+            cancel.Cancel(); // "Stop".
         else
             _ = SendAsync();
     }
@@ -560,7 +600,7 @@ public partial class GemmaChatView : UserControl
     private async Task SendAsync()
     {
         string text = InputBox.Text.Trim();
-        if (_sending is not null || (text.Length == 0 && _attachments.Count == 0) || _chat is null)
+        if (ShownIsAnswering || (text.Length == 0 && _attachments.Count == 0) || _chat is null)
             return;
         if (_config.Selected is not { } provider || provider.Model.Trim().Length == 0
             || (provider.IsClaude ? provider.ApiKey.Trim().Length == 0 : provider.BaseUrl.Trim().Length == 0))
@@ -603,18 +643,21 @@ public partial class GemmaChatView : UserControl
         CurrentChatId = chat.Id;
         RefreshList();
         SaveChat(chat);
-        _items.Add(new MessageItem(question));
+        var run = RunOf(chat);
+        run.Items.Add(new MessageItem(question));
         InputBox.Clear();
         ShowEmpty();
         ActiveChanged?.Invoke();
         _stickToBottom = true;
 
-        var cancel = _sending = new CancellationTokenSource();
+        var cancel = run.Cancel = new CancellationTokenSource();
+        chat.Activity = "Answering...";
+        RefreshList();
         ShowSending(true);
         try
         {
             var tools = chat.Workspace is { } root && Directory.Exists(root)
-                ? new WorkspaceTools(root, chat.Id, ApproveAsync, DeleteToRecycleBinAsync) { Token = cancel.Token }
+                ? new WorkspaceTools(root, chat.Id, request => ApproveAsync(chat, run, request), DeleteToRecycleBinAsync) { Token = cancel.Token }
                 : null;
             var parts = new List<string>();
             if (_config.SystemPrompt.Trim().Length > 0)
@@ -625,13 +668,13 @@ public partial class GemmaChatView : UserControl
             string system = string.Join("\n\n", parts);
             for (int round = 0; round < MaxRounds; round++)
             {
-                var answer = await StreamAnswerAsync(provider, system, chat, tools is null ? null : WorkspaceTools.Definitions, cancel.Token);
+                var answer = await StreamAnswerAsync(provider, system, chat, run, tools is null ? null : WorkspaceTools.Definitions, cancel.Token);
                 if (answer.ToolCalls is not { Count: > 0 } calls || tools is null || answer.IsError)
                     break;
                 foreach (var call in calls)
                 {
                     cancel.Token.ThrowIfCancellationRequested();
-                    _pendingCard = null;
+                    run.PendingCard = null;
                     var outcome = await tools.RunAsync(call);
                     var result = new ChatMessage
                     {
@@ -642,18 +685,18 @@ public partial class GemmaChatView : UserControl
                         Change = outcome.Change,
                     };
                     chat.Messages.Add(result);
-                    if (outcome.Change is { } change && _pendingCard is { } card)
+                    if (outcome.Change is { } change && run.PendingCard is { } card)
                         card.Finish(result, change); // The card that asked shows the decision (and Undo).
                     else if (outcome.Change is { } made)
-                        _items.Add(MessageItem.ForChange(result, made));
+                        run.Items.Add(MessageItem.ForChange(result, made));
                     else
-                        _items.Add(MessageItem.ForActivity(result));
-                    _pendingCard = null;
+                        run.Items.Add(MessageItem.ForActivity(result));
+                    run.PendingCard = null;
                     SaveChat(chat);
-                    ScrollDownSoon();
+                    ScrollDownSoon(chat);
                 }
                 if (round == MaxRounds - 1)
-                    _items.Add(new MessageItem(new ChatMessage { Role = "assistant", Content = $"(stopped after {MaxRounds} rounds of tool use)", IsError = true }));
+                    run.Items.Add(new MessageItem(new ChatMessage { Role = "assistant", Content = $"(stopped after {MaxRounds} rounds of tool use)", IsError = true }));
             }
         }
         catch (OperationCanceledException)
@@ -662,17 +705,27 @@ public partial class GemmaChatView : UserControl
         }
         finally
         {
-            _sending = null;
-            ShowSending(false);
-            if (_pendingCard is { IsPending: true } waiting)
+            run.Cancel = null;
+            chat.Activity = "";
+            if (chat == _chat)
+                ShowSending(false);
+            if (run.PendingCard is { IsPending: true } waiting)
                 waiting.Decide(false, "stopped");
-            _pendingCard = null;
+            run.PendingCard = null;
+            cancel.Dispose();
         }
         chat.Modified = DateTime.Now;
         SaveChat(chat);
         RefreshList();
-        ScrollDownSoon();
-        FocusView();
+        if (chat == _chat)
+        {
+            ScrollDownSoon(chat);
+            FocusView();
+        }
+        else
+        {
+            _runs.Remove(chat); // Answered in the background: made again from its messages when it is opened.
+        }
     }
 
     /// <summary>
@@ -693,18 +746,18 @@ public partial class GemmaChatView : UserControl
     };
 
     /// <summary>One streamed answer of the AI, shown as it comes; added to the chat (with its tool calls, if any).</summary>
-    private async Task<ChatMessage> StreamAnswerAsync(ChatProvider provider, string system, ChatThread chat, System.Text.Json.JsonElement? tools,
-        CancellationToken token)
+    private async Task<ChatMessage> StreamAnswerAsync(ChatProvider provider, string system, ChatThread chat, ChatRun run,
+        System.Text.Json.JsonElement? tools, CancellationToken token)
     {
         var answer = new ChatMessage { Role = "assistant", Model = provider.Model.Trim(), Effort = provider.Effort.Trim() };
         var item = new MessageItem(answer) { Status = "Waiting for the answer..." };
-        _items.Add(item);
-        ScrollDownSoon();
+        run.Items.Add(item);
+        ScrollDownSoon(chat);
         var refresh = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(60) };
         refresh.Tick += (_, _) =>
         {
             item.Update(answer.Content);
-            ScrollDownSoon();
+            ScrollDownSoon(chat);
         };
         refresh.Start();
         bool stopped = false;
@@ -727,7 +780,8 @@ public partial class GemmaChatView : UserControl
                 {
                     chat.ContextTokens = usage.Prompt + usage.Completion; // What the next request starts from.
                     chat.AnswerTokens = usage.Completion;
-                    ShowProviderState();
+                    if (chat == _chat)
+                        ShowProviderState();
                 }
                 if (piece.Reasoning && answer.Content.Length == 0)
                     item.Status = "Thinking...";
@@ -783,7 +837,7 @@ public partial class GemmaChatView : UserControl
         item.Update(answer.Content);
         item.Refresh();
         if (answer.Content.Length == 0)
-            _items.Remove(item); // Only tool calls: the steps show what happens.
+            run.Items.Remove(item); // Only tool calls: the steps show what happens.
         chat.Messages.Add(answer);
         SaveChat(chat);
         if (stopped)
@@ -793,27 +847,22 @@ public partial class GemmaChatView : UserControl
 
     // ---------- Approvals ----------
 
-    private MessageItem? _pendingCard;
-
-    /// <summary>"Allow all commands in this chat": run_command without asking (until another chat or folder).</summary>
-    private bool _allowCommandsInChat;
-
     /// <summary>
     /// Shows a change card and waits for the user's decision. Without asking (setting, or "Allow all in this chat")
     /// the card only reports it; deleting always asks; commands ask unless "Allow all commands in this chat" (the
     /// setting does not cover them: a command can do anything).
     /// </summary>
-    private Task<(bool Allowed, string Decision)> ApproveAsync(ChangeRequest request)
+    private Task<(bool Allowed, string Decision)> ApproveAsync(ChatThread chat, ChatRun run, ChangeRequest request)
     {
         var card = MessageItem.ForRequest(request);
-        _pendingCard = card;
-        _items.Add(card);
-        ScrollDownSoon();
+        run.PendingCard = card;
+        run.Items.Add(card);
+        ScrollDownSoon(chat);
         bool automatic = request.Kind switch
         {
             "delete" => false,
-            "command" => _allowCommandsInChat,
-            _ => _config.ChangesWithoutAsking || _allowAllInChat,
+            "command" => run.AllowCommands,
+            _ => _config.ChangesWithoutAsking || run.AllowAll,
         };
         if (automatic)
         {
@@ -821,7 +870,16 @@ public partial class GemmaChatView : UserControl
             return Task.FromResult((true, "allowed automatically"));
         }
         // A stopped answer refuses the waiting change.
-        _sending?.Token.Register(() => Dispatcher.BeginInvoke(() => card.Decide(false, "stopped")));
+        run.Cancel?.Token.Register(() => Dispatcher.BeginInvoke(() => card.Decide(false, "stopped")));
+        // The list shows that this chat waits (also while another chat is shown).
+        chat.Activity = "Waits for your decision";
+        RefreshList();
+        _ = card.Decision.Task.ContinueWith(_ => Dispatcher.BeginInvoke(() =>
+        {
+            if (run.IsAnswering)
+                chat.Activity = "Answering...";
+            RefreshList();
+        }), TaskScheduler.Default);
         return card.Decision.Task;
     }
 
@@ -833,13 +891,16 @@ public partial class GemmaChatView : UserControl
 
     private void AllowAll_Click(object sender, RoutedEventArgs e)
     {
+        if (_chat is null)
+            return;
+        var run = RunOf(_chat);
         if (CardOf(sender) is { RequestKind: "command" } command)
         {
-            _allowCommandsInChat = true;
+            run.AllowCommands = true;
             command.Decide(true, "allowed (all commands in this chat)");
             return;
         }
-        _allowAllInChat = true;
+        run.AllowAll = true;
         CardOf(sender)?.Decide(true, "allowed (all in this chat)");
     }
 
@@ -893,9 +954,10 @@ public partial class GemmaChatView : UserControl
             _stickToBottom = MessagesScroller.VerticalOffset >= MessagesScroller.ScrollableHeight - 4;
     }
 
-    private void ScrollDownSoon()
+    /// <summary>Follows the answer down, when it is in the shown chat.</summary>
+    private void ScrollDownSoon(ChatThread? chat = null)
     {
-        if (_stickToBottom)
+        if (_stickToBottom && (chat is null || chat == _chat))
             Dispatcher.BeginInvoke(() => MessagesScroller.ScrollToEnd(), DispatcherPriority.Background);
     }
 
@@ -935,10 +997,10 @@ public partial class GemmaChatView : UserControl
             }
             return;
         }
-        if (e.Key == Key.Escape && _sending is not null)
+        if (e.Key == Key.Escape && _chat is not null && _runs.TryGetValue(_chat, out var run) && run.Cancel is { } cancel)
         {
             e.Handled = true;
-            _sending.Cancel();
+            cancel.Cancel();
         }
         else if (e.Key == Key.N && Keyboard.Modifiers == ModifierKeys.Control)
         {

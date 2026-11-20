@@ -19,8 +19,10 @@ yourself, see [Build](#build).
 ## Explorer
 
 - **Two panes with tabs.** Each tab keeps its own folder, history, sort order
-  and columns. `Ctrl+T` opens a tab, `Ctrl+W` closes it, `Ctrl+Shift+T` brings
-  back a closed tab. Drag a tab to move it.
+  and columns. The `+` adds a tab at the very right, at This PC (a setting
+  makes it the current folder instead); `Ctrl+T` adds a copy of the current
+  tab next to it, `Ctrl+W` closes a tab, `Ctrl+Shift+T` brings back a closed
+  tab. Drag a tab to move it.
 - **Folder tree and favorites bar**, shared by both panes; they act on the
   active pane. The tree shows Home, Favorites, Desktop and This PC. It follows
   the active pane, or stays where it is (toggle in its header). "Collapse all"
@@ -111,6 +113,18 @@ yourself, see [Build](#build).
   it makes a copy under a new name. A drag shows Windows' drag picture (the
   file's icon or thumbnail, a count for several) and what a drop would do
   ("Move to Documents").
+- **Paste from another computer**: files copied in a remote desktop or a
+  virtual machine window, a mail attachment or a phone's files have no path
+  on your disks. `Ctrl+V` hands them to Windows, which gets them into the
+  shown folder with its own copy window; you keep working meanwhile.
+- **New folder** (`Ctrl+Shift+N`, the right-click menu, also Windows' own
+  `New > Folder` there) and **Rename** (`F2`, the right-click menu) use one
+  name dialog. New folder offers the first free "New folder" name; Rename
+  selects a file's name without its extension, so typing keeps the type, and
+  names a shortcut without its hidden `.lnk`. The name is checked while you
+  type (characters Windows does not allow, names it keeps for itself, a name
+  that is already there); a new file type is pointed out. A rename can be
+  taken back with `Undo`.
 - **The Windows context menu** in dark mode, so your shell extensions work.
 - **Quick actions bar** in each pane, in two rows. First: Folder path, File
   path, Copy, Cut, Paste (as `Ctrl+C`, `Ctrl+X`, `Ctrl+V`), 7z (7-Zip's "Add
@@ -248,7 +262,12 @@ yourself, see [Build](#build).
   a page, the wheel scrolls the rail. **Text**: drag over it to select
   (double-click a word, triple-click a line, `Ctrl+A` the page; one page at
   a time), `Ctrl+C` copies it; without a selection `Ctrl+C` copies the page
-  in view as a picture. A PDF with a **password** asks for it in the viewer
+  in view as a picture. **Find** (`Ctrl+F`, or `Find` in the bar): type a
+  text and all pages are searched; the hits are marked on the pages (the
+  current one stronger) and counted ("3 of 17"). `Enter` / `F3` go to the
+  next hit, `Shift+Enter` / `Shift+F3` to the previous one, `Esc` closes
+  the search. Capital letters do not matter, and the text may run over a
+  line end. A PDF with a **password** asks for it in the viewer
   (kept until DirectoryFable closes, never saved). The properties show the
   page count and the paper size (A4, Letter, ...).
   Updating adds `.pdf` once to an older type list; take it out there to keep
@@ -409,7 +428,10 @@ yourself, see [Build](#build).
   Claude's safety check declines a request, Anthropic's recommended model
   answers instead (server-side fallback); a request that stays declined shows
   a red note and is not sent again.
-- The answer streams in as it is written; **Stop** (or `Esc`) ends it. Code
+- The answer streams in as it is written; **Stop** (or `Esc`) ends it. You
+  can open another chat (or start a new one) while an answer is still coming:
+  it goes on in the background, and the list shows "Answering..." (or "Waits
+  for your decision" when the AI asks to change a file). Code
   blocks get their own box with a Copy button; every message can be copied.
   The AI's Markdown is shown formatted and stays selectable: headings, bold,
   italic, `inline code`, lists, tables, quotes and links. Under each answer
@@ -463,6 +485,38 @@ yourself, see [Build](#build).
   the providers with their API keys as plain text (portable; keep the folder
   private), and every chat is its own file in `chats\`.
 
+## FlashSync
+
+- The eighth view in the title bar: backup jobs. A job copies the folders you
+  ticked into its own destination folder (an external drive, a second disk, a
+  network share). Windows' own `robocopy` does the copy, the proven tool for
+  large folders; FlashSync adds the jobs, the checks and the display.
+- **New job**: a folder tree with tick boxes on the left, the job on the
+  right. A tick makes a folder a source. A tick taken away below a ticked
+  folder leaves that folder out (`Space` ticks the selected folder).
+  `Left-out names` are names or patterns (`Thumbs.db`, `*.tmp`, `caches`) of
+  files and folders that are left out everywhere in the job.
+- **In the destination** each ticked folder gets a folder with its own name
+  (`D:\Games\Saves` goes to `Q:\Backup\Saves`; a whole drive gets its
+  letter). Every job has its own destination folder.
+- **Update** (the default): a run copies new and changed files, with their
+  attributes and times. Nothing is deleted in the destination.
+- **Wipe the destination folder before the copy** (an option of the job):
+  each run first deletes everything in the destination folder for good, then
+  copies everything. FlashSync asks before each such run and shows the folder,
+  its drive and what is in it; it warns when the drive is another one than at
+  the last run, or when the folder was not written by this job before. A wipe
+  never runs while a source folder is missing, and never on the Windows drive
+  itself or on a Windows, program or user folder.
+- **Run** the chosen job, or **Run all** in the order of the list; **Stop**
+  ends it at once (copied files stay). The view shows the step (wipe, count,
+  copy), the files and size done, the write speed, the time and a live list
+  of problems (a file in use, no access). Links to other folders (junctions)
+  are not followed.
+- **Log**: every run writes a log file; `Log` opens the last one in Notepad#.
+  The jobs are in `data\flashsync\jobs.json`, the logs in
+  `data\flashsync\logs`.
+
 ## Updates
 
 - `Update` in the title bar, left of the window buttons, opens a drop-down. It
@@ -515,16 +569,16 @@ DirectoryFable.exe [leftFolder] [rightFolder] [--multi] [--taskbar|--tray] [--da
 | Keys | Action |
 |---|---|
 | `Tab` | Switch the active pane |
-| `Ctrl+T` / `Ctrl+W` / `Ctrl+Shift+T` | New tab / close tab / reopen a closed tab |
+| `Ctrl+T` / `Ctrl+W` / `Ctrl+Shift+T` | Copy of the current tab / close tab / reopen a closed tab |
 | `Ctrl+Tab` / `Ctrl+Shift+Tab` | Next / previous tab |
 | `Alt+Left` / `Alt+Right` | Back / forward |
 | `Alt+Up` or `Backspace` | Up one folder |
 | `Ctrl+L`, `Alt+D`, `F4` | Type a path |
 | `F5` | Refresh |
 | `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / cut / paste files |
-| `F2` | Rename |
+| `F2` | Rename (in the name dialog) |
 | `Del` / `Shift+Del` | To the Recycle Bin / delete for good |
-| `Ctrl+Shift+N` | New folder |
+| `Ctrl+Shift+N` | New folder (asks for its name first) |
 | `Ctrl+Z` | Undo the last file operation |
 | `Alt+Enter` | Properties window |
 | `Ctrl+E` | Open the selected files in Notepad# |
@@ -541,6 +595,7 @@ DirectoryFable.exe [leftFolder] [rightFolder] [--multi] [--taskbar|--tray] [--da
 | AstraViewer: `Ctrl+S`, `Ctrl+Shift+S`, `Ctrl+Z` | Save, save as, take back the last edit (crop: `Enter` / `Esc`) |
 | AstraViewer, PDF: wheel, `Up` / `Down`, `Page Up` / `Page Down` | Previous / next page (in Fit; zoomed, the wheel scrolls) |
 | AstraViewer, PDF: `Home` / `End`, `Ctrl`+wheel, `F` | First / last page, zoom at the mouse, fit the page again |
+| AstraViewer, PDF: `Ctrl+F`, `Enter` / `F3`, `Shift+Enter` / `Shift+F3` | Find text, next hit, previous hit (`Esc` closes) |
 | SonnetSearch: `Enter` / `F5`, `Esc` | Read the drives again and search, stop reading |
 | SonnetSearch: `Ctrl+C` / `Ctrl+Shift+C` | Copy the found files / their paths |
 
@@ -570,6 +625,7 @@ src/DirectoryFable/
   Editor/          Notepad#: documents, groups, syntax highlighting, minimap.
   Viewer/          AstraViewer: image loading, PDF pages, thumbnails, file types.
   Search/          SonnetSearch: NTFS file table reader, folder walk, query and sorting.
+  Sync/            FlashSync: jobs, the checks before a wipe, the robocopy run.
   Updates/         The Update button: GitHub releases, release notes, download, exe swap.
   Themes/          Colors and control styles.
   Assets/          The app icon and the icons of the built-in views.

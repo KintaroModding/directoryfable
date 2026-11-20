@@ -29,7 +29,7 @@ public partial class FilePane
         EndMarquee();
         if (e.ChangedButton == MouseButton.Right)
             _suppressContextMenu = false;
-        if (RowAt(e.OriginalSource) is not { DataContext: FileItem { IsRenaming: false } item } row)
+        if (RowAt(e.OriginalSource) is not { DataContext: FileItem item } row)
         {
             // Empty list space: clear the selection, like Explorer.
             // Not on the scroll bar, a column header or a group header; Ctrl/Shift keep it.

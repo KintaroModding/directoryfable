@@ -85,6 +85,7 @@ public partial class MainWindow
             MainView.Player => video ?? "OpusHC",
             MainView.Vault => KeeSeekPage.TitleText,
             MainView.Chat => GemmaChatPage.TitleText,
+            MainView.Sync => FlashSyncPage.TitleText,
             _ => folder,
         };
     }

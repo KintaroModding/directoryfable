@@ -212,6 +212,10 @@ public sealed class SessionState
     public bool GemmaChatShown { get; set; }
     public string? GemmaChatId { get; set; }
 
+    /// <summary>True when FlashSync was the shown view, and the job that was chosen in its list (its random id).</summary>
+    public bool FlashSyncShown { get; set; }
+    public string? FlashSyncJob { get; set; }
+
     /// <summary>OpusHC: the last video, volume, where videos were left.</summary>
     public PlayerState? Player { get; set; }
 

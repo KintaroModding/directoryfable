@@ -37,6 +37,7 @@ public partial class MainWindow : Window
         InitOpusPlayer();
         InitKeeSeek();
         InitGemmaChat();
+        InitFlashSync();
         InitSearch();
         InitUpdate(settings);
         InitCompare();
@@ -106,6 +107,7 @@ public partial class MainWindow : Window
         Views.FilePane.IconsOnly = settings.QuickBarIconsOnly;
         SettingsPage.IconsOnlyChanged += on => Views.FilePane.IconsOnly = on;
         _tree.ShowNetwork(settings.NetworkInTree);
+        Views.PaneView.NewTabThisPc = settings.NewTabThisPc;
         SettingsPage.NetworkInTreeChanged += on =>
         {
             _tree.ShowNetwork(on);
@@ -151,6 +153,7 @@ public partial class MainWindow : Window
             PlayerPage.RestoreState(session?.Player);
             KeeSeekPage.CategoryId = session?.KeeSeekCategory;
             GemmaChatPage.CurrentChatId = session?.GemmaChatId;
+            FlashSyncPage.SelectedJobId = session?.FlashSyncJob;
             if (session?.NotepadShown == true && NotepadPage.Documents.Any())
                 ShowView(MainView.Notepad);
             else if (session?.ViewerShown == true && AstraViewerPage.CurrentPath is not null)
@@ -163,6 +166,8 @@ public partial class MainWindow : Window
                 ShowView(MainView.Vault); // Locked: it asks for the master password.
             else if (session?.GemmaChatShown == true)
                 ShowView(MainView.Chat);
+            else if (session?.FlashSyncShown == true)
+                ShowView(MainView.Sync);
 
             // Restoring tabs queues "focus this list" steps; activate the saved pane after all of them.
             bool rightActive = leftFolder is null && rightFolder is null && session?.RightPaneActive == true;
@@ -256,6 +261,8 @@ public partial class MainWindow : Window
             KeeSeekCategory = KeeSeekPage.CategoryId,
             GemmaChatShown = GemmaChatShown,
             GemmaChatId = GemmaChatPage.CurrentChatId,
+            FlashSyncShown = FlashSyncShown,
+            FlashSyncJob = FlashSyncPage.SelectedJobId,
             SpaceColumns = Views.SpaceView.SavedColumns,
             SpaceBlocks = Views.SpaceView.ShowBlocks,
             TileSize = Views.FilePane.TileSize,
@@ -351,7 +358,7 @@ public partial class MainWindow : Window
     private void Window_Closing(object? sender, CancelEventArgs e)
     {
         // A real exit asks about unsaved Notepad# files first (not at logoff: that would block Windows).
-        if (AllowClose && !SkipUnsavedPrompt && (!NotepadPage.ConfirmExit(this) || !AstraViewerPage.ConfirmExit(this)))
+        if (AllowClose && !SkipUnsavedPrompt && (!NotepadPage.ConfirmExit(this) || !AstraViewerPage.ConfirmExit(this) || !FlashSyncPage.ConfirmExit(this)))
         {
             e.Cancel = true;
             return;
@@ -362,6 +369,7 @@ public partial class MainWindow : Window
         if (AllowClose)
         {
             GemmaChatPage.Shutdown(); // A running answer stops.
+            FlashSyncPage.Shutdown(); // A running job stops (asked above; at logoff without a question).
             PlayerPage.Shutdown(); // VLC stops before the app ends.
             return;
         }

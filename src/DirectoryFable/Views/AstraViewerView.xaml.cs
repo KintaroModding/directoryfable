@@ -540,6 +540,7 @@ public partial class AstraViewerView : UserControl
         {
             Add(menu, "Copy text", "Ctrl+C", CopyFromPdf, enabled: HasTextSelection);
             Add(menu, "Select all text of the page", "Ctrl+A", SelectPageText);
+            Add(menu, "Find text...", "Ctrl+F", OpenFind);
             Add(menu, "Copy page as image", "", CopyPdfPage);
         }
         else

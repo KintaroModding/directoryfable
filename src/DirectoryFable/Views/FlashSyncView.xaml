@@ -1,0 +1,543 @@
+<UserControl x:Class="DirectoryFable.Views.FlashSyncView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sync="clr-namespace:DirectoryFable.Sync"
+             xmlns:views="clr-namespace:DirectoryFable.Views"
+             FontFamily="{StaticResource UiFont}" FontSize="{StaticResource UiFontSize}"
+             Foreground="{StaticResource ListTextBrush}"
+             Background="{StaticResource WindowBackgroundBrush}"
+             Focusable="True" FocusVisualStyle="{x:Null}">
+    <!-- FlashSync: backup jobs. A job copies ticked folders into its own destination folder (Windows' robocopy does
+         the copy); it can empty that folder first. Left: the jobs. Right: the chosen job and its run. The editor
+         (a folder tree with ticks, and the job's lists) covers both while a job is made or changed. -->
+    <UserControl.Resources>
+        <SolidColorBrush x:Key="WarningBrush" Color="#FF9A47" />
+
+        <!-- A row of the editor's folder tree: like the explorer's tree, a little higher for the tick box. -->
+        <Style x:Key="SyncTreeItemStyle" TargetType="TreeViewItem">
+            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+            <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+            <Setter Property="Foreground" Value="{StaticResource ListTextBrush}" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TreeViewItem">
+                        <StackPanel>
+                            <Border x:Name="Bd" Height="22" Background="Transparent" SnapsToDevicePixels="True">
+                                <StackPanel Orientation="Horizontal" Margin="{Binding Depth, Converter={StaticResource DepthToIndent}}">
+                                    <ToggleButton x:Name="Expander" Style="{StaticResource BoxExpanderStyle}"
+                                                  Width="20" Height="18" Margin="0,0,3,0" VerticalAlignment="Center"
+                                                  IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}" />
+                                    <ContentPresenter ContentSource="Header" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+                            <ItemsPresenter x:Name="ItemsHost" Visibility="Collapsed" />
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsExpanded" Value="True">
+                                <Setter TargetName="ItemsHost" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="HasItems" Value="False">
+                                <Setter TargetName="Expander" Property="Visibility" Value="Hidden" />
+                            </Trigger>
+                            <Trigger SourceName="Bd" Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource ListHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource TreeSelectedBrush}" />
+                            </Trigger>
+                            <!-- The stand-in child (before the folders are read) is never shown. -->
+                            <DataTrigger Binding="{Binding IsPlaceholder}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- A job in the list: its name, where it copies to, and its last run. -->
+        <Style x:Key="JobRowStyle" TargetType="ListBoxItem">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Bd" Background="Transparent" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1" Padding="8,9,10,9">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource ListHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource TreeSelectedBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- A line of the run log; a problem shows in the warning color. -->
+        <DataTemplate x:Key="LogLineTemplate" DataType="{x:Type views:SyncLogLine}">
+            <TextBlock x:Name="Text" Text="{Binding Text}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text}" />
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsProblem}" Value="True">
+                    <Setter TargetName="Text" Property="Foreground" Value="{StaticResource WarningBrush}" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- A folder in one of the editor's lists: its name, its path, and a button that takes it out. -->
+        <DataTemplate x:Key="PathRowTemplate" DataType="{x:Type views:SyncPathRow}">
+            <DockPanel Height="22" ToolTip="{Binding Path}">
+                <Button DockPanel.Dock="Right" Style="{StaticResource SubtleButton}" Width="22" Height="20" Padding="0"
+                        ToolTip="Take out" Tag="{Binding}" Click="PathRow_Remove">
+                    <TextBlock Text="&#xE711;" FontFamily="{StaticResource IconFont}" FontSize="9" />
+                </Button>
+                <TextBlock DockPanel.Dock="Left" Text="{Binding Name}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                <TextBlock Text="{Binding Path}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                           Foreground="{StaticResource SecondaryTextBrush}" />
+            </DockPanel>
+        </DataTemplate>
+
+        <Style x:Key="CaptionText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
+            <Setter Property="Margin" Value="0,12,0,4" />
+        </Style>
+
+        <!-- The job's cards (as KeeSeek's: square, a fine frame). -->
+        <SolidColorBrush x:Key="CardBrush" Color="#202020" />
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource CardBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="16,14" />
+        </Style>
+        <!-- A card's head: an icon in the card's color and a small gray title. -->
+        <Style x:Key="CardIcon" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{StaticResource IconFont}" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Margin" Value="0,1,8,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="CardTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="CardCount" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
+            <Setter Property="Margin" Value="8,0,0,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <!-- A line of the run card that takes no room while it is empty (after the run ends). -->
+        <Style x:Key="RunLine" TargetType="TextBlock">
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Style.Triggers>
+                <Trigger Property="Text" Value="">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <!-- The mode tag ("UPDATE", "WIPE FIRST"). -->
+        <DataTemplate x:Key="ModeTag" DataType="{x:Type views:SyncJobRow}">
+            <!-- A clear outline in the mode's color (a dark filled tag looked brown). -->
+            <Border Background="{Binding ModeTagBack}" BorderBrush="{Binding ModeTagText}" BorderThickness="1" Padding="6,0" VerticalAlignment="Center">
+                <TextBlock Text="{Binding ModeTag}" FontSize="10" FontWeight="SemiBold" Foreground="{Binding ModeTagText}" />
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Bar: same size and look as the other views'. -->
+        <Border Grid.Row="0" Height="{StaticResource FavoritesBarHeight}" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1"
+                Background="{StaticResource WindowBackgroundBrush}">
+            <StackPanel Orientation="Horizontal" Margin="4,0" VerticalAlignment="Center" TextElement.FontSize="{StaticResource FavoritesFontSize}">
+                <Button x:Name="NewButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="26" ToolTip="Make a new job" Click="New_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE710;" FontFamily="{StaticResource IconFont}" FontSize="13" Margin="0,1,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="New job" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button x:Name="EditButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="26" ToolTip="Change the chosen job" Click="Edit_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE70F;" FontFamily="{StaticResource IconFont}" FontSize="13" Margin="0,1,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Edit" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button x:Name="DuplicateButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="26"
+                        ToolTip="Make a copy of the chosen job (the copy opens in the editor)" Click="Duplicate_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE8C8;" FontFamily="{StaticResource IconFont}" FontSize="13" Margin="0,1,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Duplicate" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button x:Name="DeleteButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="26"
+                        ToolTip="Delete the chosen job (the copied files stay)" Click="Delete_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE74D;" FontFamily="{StaticResource IconFont}" FontSize="13" Margin="0,1,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Delete" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Rectangle Width="1" Height="14" Margin="10,0" Fill="{StaticResource LineBrush}" />
+                <Button x:Name="RunButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="26" ToolTip="Run the chosen job now" Click="Run_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE768;" FontFamily="{StaticResource IconFont}" FontSize="13" Margin="0,1,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Run" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button x:Name="RunAllButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="26"
+                        ToolTip="Run all jobs, one after the other, from the top of the list" Click="RunAll_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xF5B0;" FontFamily="{StaticResource IconFont}" FontSize="13" Margin="0,1,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Run all" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button x:Name="StopButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="26" IsEnabled="False"
+                        ToolTip="Stop the run. Files that are copied already stay." Click="Stop_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE71A;" FontFamily="{StaticResource IconFont}" FontSize="13" Margin="0,1,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Stop" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Rectangle Width="1" Height="14" Margin="10,0" Fill="{StaticResource LineBrush}" />
+                <Button x:Name="LogButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="26"
+                        ToolTip="Open the log file of the chosen job's last run in Notepad#" Click="Log_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE8A5;" FontFamily="{StaticResource IconFont}" FontSize="13" Margin="0,1,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Log" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button x:Name="DestinationButton" Style="{StaticResource SubtleButton}" Padding="7,1" Height="26"
+                        ToolTip="Show the chosen job's destination folder in the explorer" Click="Destination_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE838;" FontFamily="{StaticResource IconFont}" FontSize="13" Margin="0,1,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Show destination" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Border>
+
+        <!-- The jobs and the chosen job. -->
+        <Grid x:Name="MainPage" Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="320" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,1,0" Background="{StaticResource TreeBackgroundBrush}">
+                <DockPanel>
+                    <Border DockPanel.Dock="Top" Height="25" Background="{StaticResource TreeHeaderBackgroundBrush}"
+                            BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1">
+                        <TextBlock x:Name="JobsHeader" Text="Jobs" Margin="10,0" VerticalAlignment="Center" Foreground="{StaticResource TreeHeaderTextBrush}" />
+                    </Border>
+                    <Grid>
+                        <ListBox x:Name="JobList" Background="Transparent" BorderThickness="0" Padding="0" FocusVisualStyle="{x:Null}"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled" ItemContainerStyle="{StaticResource JobRowStyle}"
+                                 SelectionChanged="JobList_SelectionChanged" MouseDoubleClick="JobList_MouseDoubleClick">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="{x:Type views:SyncJobRow}">
+                                    <DockPanel>
+                                        <Rectangle DockPanel.Dock="Left" Width="3" Margin="0,1,10,1" Fill="{Binding StatusColor}" />
+                                        <StackPanel>
+                                            <DockPanel>
+                                                <ContentPresenter DockPanel.Dock="Right" Margin="8,0,0,0" Content="{Binding}" ContentTemplate="{StaticResource ModeTag}" />
+                                                <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            </DockPanel>
+                                            <TextBlock Text="{Binding Destination}" Margin="0,3,0,0" Foreground="{StaticResource SecondaryTextBrush}"
+                                                       TextTrimming="CharacterEllipsis" ToolTip="{Binding Destination}" />
+                                            <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                                <Ellipse Width="7" Height="7" Fill="{Binding StatusColor}" VerticalAlignment="Center" Margin="0,1,6,0" />
+                                                <TextBlock Text="{Binding LastRunShort}" Foreground="{StaticResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <TextBlock x:Name="NoJobsText" Margin="16,18" TextWrapping="Wrap" VerticalAlignment="Top" Foreground="{StaticResource SecondaryTextBrush}"
+                                   Text="No jobs yet. New job makes the first one: tick the folders to back up, choose where the copy goes, and run it." />
+                    </Grid>
+                </DockPanel>
+            </Border>
+
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- The chosen job. -->
+                <ScrollViewer x:Name="JobPanel" Grid.Row="0" MaxHeight="520" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                              Visibility="Collapsed">
+                    <StackPanel Margin="18,16,18,14">
+                        <!-- Head: the job's badge (blue = update, orange = wipe first), name, mode tag, what a run does,
+                             and the state of the last run on the right. -->
+                        <Border Style="{StaticResource Card}">
+                            <DockPanel>
+                                <Border DockPanel.Dock="Left" Width="46" Height="46" CornerRadius="23" Background="{Binding ModeBadge}">
+                                    <TextBlock Text="&#xE945;" FontFamily="{StaticResource IconFont}" FontSize="21" Foreground="White"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <Border DockPanel.Dock="Right" VerticalAlignment="Center" Padding="10,5" Background="{Binding StatusBack}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Ellipse Width="8" Height="8" Fill="{Binding StatusColor}" VerticalAlignment="Center" Margin="0,1,7,0" />
+                                        <TextBlock Text="{Binding StatusWord}" Foreground="{Binding StatusColor}" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                </Border>
+                                <StackPanel Margin="14,0,14,0" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Name}" FontSize="18" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <ContentPresenter Margin="10,2,0,0" Content="{Binding}" ContentTemplate="{StaticResource ModeTag}" />
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding ModeText}" Margin="0,4,0,0" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="400" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <!-- The folders and where each one goes. -->
+                                <Border Style="{StaticResource Card}">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                            <TextBlock Style="{StaticResource CardIcon}" Text="&#xE8B7;" Foreground="#F8C553" />
+                                            <TextBlock Style="{StaticResource CardTitle}" Text="Folders" />
+                                            <TextBlock Style="{StaticResource CardCount}" Text="{Binding SourcesCaption}" />
+                                        </StackPanel>
+                                        <ItemsControl ItemsSource="{Binding Sources}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type views:SyncSourceRow}">
+                                                    <StackPanel Margin="0,4,0,4">
+                                                        <TextBlock Text="{Binding Source}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Source}" />
+                                                        <StackPanel Orientation="Horizontal" Margin="14,2,0,0">
+                                                            <TextBlock Text="&#xE72A;" FontFamily="{StaticResource IconFont}" FontSize="11" Foreground="{StaticResource GroupChevronBrush}"
+                                                                       VerticalAlignment="Center" Margin="0,1,7,0" />
+                                                            <TextBlock Text="{Binding Target}" Foreground="{StaticResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis"
+                                                                       ToolTip="{Binding Target}" />
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                                <!-- What is left out: folders and names as chips. -->
+                                <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                            <TextBlock Style="{StaticResource CardIcon}" Text="&#xE71C;" Foreground="#C792EA" />
+                                            <TextBlock Style="{StaticResource CardTitle}" Text="Left out" />
+                                        </StackPanel>
+                                        <TextBlock Text="Nothing is left out." Foreground="{StaticResource SecondaryTextBrush}"
+                                                   Visibility="{Binding NothingLeftOut, Converter={StaticResource BoolToVisibility}}" />
+                                        <ItemsControl ItemsSource="{Binding LeftOut}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type views:SyncChip}">
+                                                    <Border Background="#2A2A2A" BorderBrush="#3A3A3A" BorderThickness="1" Padding="8,3" Margin="0,0,6,6" ToolTip="{Binding Tip}">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="{Binding Glyph}" FontFamily="{StaticResource IconFont}" FontSize="11"
+                                                                       Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" Margin="0,1,6,0" />
+                                                            <TextBlock Text="{Binding Text}" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <!-- The last run: a stripe in its color, the numbers as tiles, the result. -->
+                            <Border Grid.Column="2" Style="{StaticResource Card}" VerticalAlignment="Top"
+                                    BorderThickness="4,1,1,1" BorderBrush="{Binding StatusColor}">
+                                <StackPanel>
+                                    <DockPanel Margin="0,0,0,10">
+                                        <TextBlock DockPanel.Dock="Right" Text="{Binding LastRunDate}" Foreground="{StaticResource SecondaryTextBrush}"
+                                                   VerticalAlignment="Center" />
+                                        <TextBlock Style="{StaticResource CardIcon}" Text="&#xE823;" Foreground="{Binding StatusColor}" />
+                                        <TextBlock Style="{StaticResource CardTitle}" Text="Last run" />
+                                    </DockPanel>
+                                    <ItemsControl ItemsSource="{Binding Stats}" Visibility="{Binding HasStats, Converter={StaticResource BoolToVisibility}}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <UniformGrid Columns="2" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type views:SyncStat}">
+                                                <Border Background="#262626" Margin="0,0,6,6" Padding="12,8">
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding Value}" FontSize="19" FontWeight="SemiBold" Foreground="{Binding Color}" />
+                                                        <TextBlock Text="{Binding Caption}" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" />
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Text="{Binding LastResult}" Margin="0,4,0,0" TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}"
+                                               Visibility="{Binding ShowResult, Converter={StaticResource BoolToVisibility}}" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- The run: where it is, and its log. -->
+                <Border x:Name="RunPanel" Grid.Row="1" Style="{StaticResource Card}" Margin="18,0,18,18" BorderThickness="4,1,1,1"
+                        BorderBrush="{StaticResource GroupChevronBrush}" Visibility="Collapsed">
+                    <DockPanel>
+                        <TextBlock x:Name="RunTitle" DockPanel.Dock="Top" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <ProgressBar x:Name="RunBar" DockPanel.Dock="Top" Height="8" Margin="0,8,0,0" Minimum="0" Maximum="1" />
+                        <TextBlock x:Name="RunNumbers" DockPanel.Dock="Top" Margin="0,8,0,0" Style="{StaticResource RunLine}" />
+                        <TextBlock x:Name="RunCurrent" DockPanel.Dock="Top" Margin="0,3,0,0" Foreground="{StaticResource SecondaryTextBrush}"
+                                   Style="{StaticResource RunLine}" />
+                        <ListBox x:Name="RunLog" Margin="0,10,0,0" Background="#141414" BorderBrush="{StaticResource LineBrush}" BorderThickness="1"
+                                 ItemTemplate="{StaticResource LogLineTemplate}" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                                 FontFamily="Consolas" FontSize="12">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Focusable" Value="False" />
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <Border Padding="8,1">
+                                                    <ContentPresenter />
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                        </ListBox>
+                    </DockPanel>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- The editor: the folder tree with ticks on the left, the job on the right. -->
+        <Grid x:Name="EditorPage" Grid.Row="1" Visibility="Collapsed">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="575" />
+            </Grid.ColumnDefinitions>
+
+            <DockPanel Grid.Column="0" Background="{StaticResource TreeBackgroundBrush}">
+                <Border DockPanel.Dock="Top" Height="25" Background="{StaticResource TreeHeaderBackgroundBrush}"
+                        BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1">
+                    <TextBlock Margin="10,0" VerticalAlignment="Center" Foreground="{StaticResource TreeHeaderTextBrush}" TextTrimming="CharacterEllipsis"
+                               Text="Tick the folders to copy. Take a tick away below a ticked folder to leave that folder out." />
+                </Border>
+                <TextBlock x:Name="TreeHint" DockPanel.Dock="Bottom" Margin="10,5" Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap"
+                           Visibility="Collapsed" />
+                <TreeView x:Name="SourceTree" Background="Transparent" BorderThickness="0" Padding="0,4,0,0"
+                          ScrollViewer.CanContentScroll="False" ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                          ItemContainerStyle="{StaticResource SyncTreeItemStyle}" KeyDown="SourceTree_KeyDown">
+                    <TreeView.ItemTemplate>
+                        <HierarchicalDataTemplate DataType="{x:Type sync:SyncTreeNode}" ItemsSource="{Binding Children}">
+                            <StackPanel Orientation="Horizontal" ToolTip="{Binding Path}">
+                                <!-- The tick box: ticked = copied whole, a small square = copied in part, empty = not copied. -->
+                                <Border x:Name="Box" Width="14" Height="14" Margin="0,0,7,0" BorderThickness="1" BorderBrush="#8A8A8A" Background="Transparent"
+                                        SnapsToDevicePixels="True" Cursor="Hand" MouseLeftButtonDown="TreeBox_MouseLeftButtonDown">
+                                    <Grid>
+                                        <Path x:Name="Tick" Data="M 2.5,6.5 L 5.5,9.5 L 10.5,3" Stroke="White" StrokeThickness="1.6" Visibility="Collapsed" />
+                                        <Rectangle x:Name="Part" Width="6" Height="6" Fill="{StaticResource GroupChevronBrush}" Visibility="Collapsed" />
+                                    </Grid>
+                                </Border>
+                                <Image Source="{Binding Icon}" Width="14" Height="14" Margin="0,0,5,0" RenderOptions.BitmapScalingMode="HighQuality" />
+                                <TextBlock x:Name="NameText" Text="{Binding Name}" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <HierarchicalDataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding IsChecked}" Value="True">
+                                    <Setter TargetName="Box" Property="Background" Value="{StaticResource GroupChevronBrush}" />
+                                    <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource GroupChevronBrush}" />
+                                    <Setter TargetName="Tick" Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsChecked}" Value="{x:Null}">
+                                    <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource GroupChevronBrush}" />
+                                    <Setter TargetName="Part" Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsLeftOut}" Value="True">
+                                    <Setter TargetName="NameText" Property="Foreground" Value="#808080" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsLocked}" Value="True">
+                                    <Setter TargetName="Box" Property="Opacity" Value="0.35" />
+                                    <Setter TargetName="Box" Property="Cursor" Value="Arrow" />
+                                </DataTrigger>
+                            </HierarchicalDataTemplate.Triggers>
+                        </HierarchicalDataTemplate>
+                    </TreeView.ItemTemplate>
+                </TreeView>
+            </DockPanel>
+
+            <Border Grid.Column="1" BorderBrush="{StaticResource LineBrush}" BorderThickness="1,0,0,0">
+                <DockPanel>
+                    <Border DockPanel.Dock="Top" Height="25" Background="{StaticResource TreeHeaderBackgroundBrush}"
+                            BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1">
+                        <TextBlock x:Name="EditorHeader" Text="New job" Margin="14,0" VerticalAlignment="Center" Foreground="{StaticResource TreeHeaderTextBrush}" />
+                    </Border>
+                    <!-- Save / Cancel stay in view below the scrolling part. -->
+                    <Border DockPanel.Dock="Bottom" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0" Padding="14,10">
+                        <StackPanel>
+                            <TextBlock x:Name="EditorProblem" Margin="0,0,0,8" Foreground="{StaticResource ErrorTextBrush}" TextWrapping="Wrap" Visibility="Collapsed" />
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button x:Name="SaveButton" Content="Save" Height="26" MinWidth="86" Padding="12,0" Click="EditorSave_Click" />
+                                <Button Content="Cancel" Height="26" MinWidth="86" Padding="12,0" Margin="8,0,0,0" Click="EditorCancel_Click" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Margin="14,2,14,14">
+                            <TextBlock Text="Name" Style="{StaticResource CaptionText}" />
+                            <TextBox x:Name="NameBox" Style="{StaticResource FieldTextBox}" FontSize="13" MaxLength="80" />
+
+                            <TextBlock Text="Destination folder" Style="{StaticResource CaptionText}" />
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Content="Browse..." Height="26" Padding="12,0" Margin="8,0,0,0" Click="Browse_Click" />
+                                <TextBox x:Name="DestinationBox" Style="{StaticResource FieldTextBox}" FontSize="13" TextChanged="Destination_TextChanged" />
+                            </DockPanel>
+                            <TextBlock Margin="0,5,0,0" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap"
+                                       Text="Each ticked folder gets its own folder in it, with the same name. Give each job its own destination folder." />
+
+                            <CheckBox x:Name="WipeBox" Margin="0,14,0,0" Content="Wipe the destination folder before the copy"
+                                      Checked="Wipe_Changed" Unchecked="Wipe_Changed" />
+                            <TextBlock x:Name="WipeNote" Margin="0,4,0,0" TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}" />
+
+                            <TextBlock x:Name="SourcesCaption" Text="Folders to copy" Style="{StaticResource CaptionText}" />
+                            <ItemsControl x:Name="SourceRows" ItemTemplate="{StaticResource PathRowTemplate}" Tag="source" />
+                            <TextBlock x:Name="NoSourcesText" Text="None yet: tick folders in the tree." Foreground="{StaticResource SecondaryTextBrush}" />
+
+                            <TextBlock x:Name="ExcludedCaption" Text="Left-out folders" Style="{StaticResource CaptionText}" />
+                            <ItemsControl x:Name="ExcludedRows" ItemTemplate="{StaticResource PathRowTemplate}" Tag="excluded" />
+                            <TextBlock x:Name="NoExcludedText" Text="None." Foreground="{StaticResource SecondaryTextBrush}" />
+
+                            <TextBlock Text="Left-out names" Style="{StaticResource CaptionText}" />
+                            <TextBox x:Name="NamesBox" Style="{StaticResource FieldTextBox}" FontSize="13" Height="330" Padding="8,5"
+                                     VerticalScrollBarVisibility="Auto"
+                                     AcceptsReturn="True" VerticalContentAlignment="Top" TextWrapping="NoWrap" />
+                            <TextBlock Margin="0,5,0,0" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap"
+                                       Text="One name in each line. Files and folders with such a name are left out everywhere in the job. * and ? stand for any characters: Thumbs.db, *.tmp, caches." />
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

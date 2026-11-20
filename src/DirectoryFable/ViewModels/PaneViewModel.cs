@@ -165,7 +165,7 @@ public sealed class PaneViewModel : ObservableObject
         return null;
     }
 
-    /// <summary>New tab with the same folder as the current one (Ctrl+T, "+" button).</summary>
+    /// <summary>New tab with the same folder as the current one, right after it (Ctrl+T).</summary>
     public Task<TabViewModel> DuplicateTabAsync(TabViewModel? source = null)
     {
         source ??= SelectedTab;

@@ -157,7 +157,11 @@ public partial class FilePane
 
         if (FileClipboard.GetFiles() is not var (paths, cut))
         {
-            _viewModel.ShowStatus("The clipboard has no files.");
+            // No list of paths: files of a remote session, a mail or a phone come as items without a path.
+            if (ShellPaste.HasItems())
+                await PasteItemsAsync();
+            else
+                _viewModel.ShowStatus("The clipboard has no files.");
             return;
         }
 
@@ -192,6 +196,38 @@ public partial class FilePane
             .Select(name => Path.Combine(target, name)).ToList();
         var pasted = created.Count > 0 ? created : [.. paths.Select(p => Path.Combine(target, Path.GetFileName(p)))];
         await _viewModel.RefreshAsync(pasted);
+    }
+
+    /// <summary>
+    /// Pastes clipboard files that have no path on a disk (copied in a remote desktop or virtual machine window,
+    /// a mail, a phone): Windows' drop target of the folder gets them, see <see cref="ShellPaste"/>.
+    /// </summary>
+    private async Task PasteItemsAsync()
+    {
+        if (_viewModel is null)
+            return;
+        string target = _viewModel.CurrentPath;
+        if (InArchive || !Directory.Exists(target))
+        {
+            _viewModel.ShowStatus("These clipboard files have no path on a disk. Paste them into a normal folder.");
+            return;
+        }
+
+        _viewModel.ShowStatus("Paste: Windows gets the files from the other computer or app.");
+        var result = await ShellPaste.PasteAsync(target);
+        if (!result.Ok)
+        {
+            _viewModel.ShowStatus($"The paste did not work: {result.Problem}");
+            return;
+        }
+        // Files that are there already are selected. A source that sends in the background (a remote session)
+        // is still at work: the folder watcher shows its files as they come.
+        var pasted = await Task.Run(() => result.Names.Select(name => Path.Combine(target, name))
+            .Where(path => File.Exists(path) || Directory.Exists(path)).ToList());
+        await _viewModel.RefreshAsync(pasted);
+        _viewModel.ShowStatus(pasted.Count > 0 && pasted.Count == result.Names.Count
+            ? $"Pasted {pasted.Count} {(pasted.Count == 1 ? "item" : "items")} from the clipboard."
+            : "Windows copies the clipboard files in the background.");
     }
 
     /// <summary>Names of the files and folders in a folder (empty when it cannot be read).</summary>
@@ -289,16 +325,30 @@ public partial class FilePane
         }
 
         string folder = _viewModel.CurrentPath;
-        string path = Path.Combine(folder, "New folder");
-        for (int n = 2; Directory.Exists(path) || File.Exists(path); n++)
-            path = Path.Combine(folder, $"New folder ({n})");
+        if (_viewModel.IsThisPc || !Directory.Exists(folder))
+        {
+            _viewModel.ShowStatus("Open a folder first: a new folder is made in the folder that is shown.");
+            return;
+        }
 
-        Directory.CreateDirectory(path);
+        // The name first (own dialog), then the folder is made with it and selected.
+        if (NameDialog.AskNewFolder(Window.GetWindow(this), folder) is not { } name)
+        {
+            FocusList();
+            return;
+        }
+        string path = Path.Combine(folder, name);
+        try
+        {
+            await Task.Run(() => Directory.CreateDirectory(path));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _viewModel.ShowStatus($"The folder \"{name}\" could not be made: {ex.Message}");
+            return;
+        }
         await _viewModel.RefreshAsync([path], path);
-
-        // Like Explorer: the new folder starts in rename mode.
-        if (FileList.Items.Cast<FileItem>().FirstOrDefault(i => i.FullPath == path) is { } item)
-            BeginRename(item);
+        FocusList();
     }
 
     // ---------- Rename (F2) ----------
@@ -308,81 +358,32 @@ public partial class FilePane
         var item = (Keyboard.FocusedElement as ListViewItem)?.DataContext as FileItem
                    ?? FileList.SelectedItem as FileItem;
         if (InArchive)
+        {
             _viewModel?.ShowStatus("Rename is not possible inside a ZIP file yet.");
-        else if (item is not null)
-            BeginRename(item);
-        return Task.CompletedTask;
+            return Task.CompletedTask;
+        }
+        return item is null ? Task.CompletedTask : RenameAsync(item);
     }
 
-    private void BeginRename(FileItem item)
+    /// <summary>Asks for the new name in the name dialog, then renames through Windows (undoable) and selects the item.</summary>
+    private async Task RenameAsync(FileItem item)
     {
+        if (_viewModel is null)
+            return;
         FileList.SelectedItems.Clear();
         FileList.SelectedItem = item;
         FileList.ScrollIntoView(item);
-        item.IsRenaming = true; // The text box in the Name cell becomes visible and takes focus.
-    }
 
-    private void RenameBox_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
-    {
-        if (sender is not TextBox { DataContext: FileItem item } box || !box.IsVisible)
-            return;
-
-        // Shortcuts are edited without their hidden ".lnk" (added back on commit), like Explorer.
-        string name = item.DisplayName;
-        box.Text = name;
-        Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
-        {
-            box.Focus();
-            // Explorer selects the name without the extension for files.
-            int stem = item.IsDirectory || item.HiddenExtension.Length > 0 ? -1 : name.LastIndexOf('.');
-            box.Select(0, stem > 0 ? stem : name.Length);
-        });
-    }
-
-    private void RenameBox_KeyDown(object sender, KeyEventArgs e)
-    {
-        if (sender is not TextBox { DataContext: FileItem item } box)
-            return;
-
-        if (e.Key == Key.Enter)
-        {
-            e.Handled = true;
-            _ = RunSafeAsync(() => CommitRenameAsync(item, box.Text));
-        }
-        else if (e.Key == Key.Escape)
-        {
-            e.Handled = true;
-            item.IsRenaming = false;
-            FocusList();
-        }
-    }
-
-    private void RenameBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
-    {
-        // Clicking elsewhere commits, like Explorer.
-        if (sender is TextBox { DataContext: FileItem { IsRenaming: true } item } box)
-            _ = RunSafeAsync(() => CommitRenameAsync(item, box.Text));
-    }
-
-    private async Task CommitRenameAsync(FileItem item, string newName)
-    {
-        if (!item.IsRenaming || _viewModel is null)
-            return;
-        item.IsRenaming = false; // First, so LostFocus does not commit a second time.
-
-        newName = newName.Trim();
-        // A shortcut keeps its hidden extension, unless the user typed it.
-        string hidden = item.HiddenExtension;
-        if (newName.Length > 0 && hidden.Length > 0 && !newName.EndsWith(hidden, StringComparison.OrdinalIgnoreCase))
-            newName += hidden;
-        if (newName.Length == 0 || newName == item.Name)
+        // Shortcuts are named without their hidden ".lnk" (it is added back), like Explorer.
+        if (NameDialog.AskRename(Window.GetWindow(this), item.FullPath, item.IsDirectory, item.HiddenExtension) is not { } newName)
         {
             FocusList();
             return;
         }
-
-        await FileOperations.RenameAsync(OwnerHandle, item.FullPath, newName);
+        bool ok = await FileOperations.RenameAsync(OwnerHandle, item.FullPath, newName);
         string newPath = Path.Combine(Path.GetDirectoryName(item.FullPath)!, newName);
-        await _viewModel.RefreshAsync([newPath], newPath);
+        string select = ok ? newPath : item.FullPath;
+        await _viewModel.RefreshAsync([select], select);
+        FocusList();
     }
 }

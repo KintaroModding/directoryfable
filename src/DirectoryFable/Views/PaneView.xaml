@@ -70,7 +70,7 @@
 
                 <Button Grid.Column="1" Style="{StaticResource SubtleButton}" Width="24" Height="24"
                         Padding="0" Content="&#xE710;" FontFamily="{StaticResource IconFont}" FontSize="10"
-                        ToolTip="New tab (Ctrl+T)" Click="NewTab_Click" />
+                        ToolTip="New tab at the end (This PC or the current folder: see Settings, Tabs). Ctrl+T: a copy of the current tab." Click="NewTab_Click" />
             </Grid>
         </Border>
 

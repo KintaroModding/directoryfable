@@ -14,6 +14,11 @@ public enum ShellMenuOutcome
     Rename,
     /// <summary>One of the app's own items (see <c>ExtraCommandId</c>) was chosen.</summary>
     Extra,
+    /// <summary>
+    /// Windows' "New > Folder" in a folder background menu; the app asks for the name instead of the shell (the shell
+    /// would make "New folder" and wait for a rename that only Explorer's own window can start).
+    /// </summary>
+    NewFolder,
 }
 
 public sealed record ShellMenuResult(ShellMenuOutcome Outcome, int ExtraCommandId = 0, string? Verb = null);
@@ -102,6 +107,8 @@ public static class ShellContextMenu
             string? verb = GetVerb(menu, offset);
             if (string.Equals(verb, "rename", StringComparison.OrdinalIgnoreCase))
                 return new ShellMenuResult(ShellMenuOutcome.Rename, Verb: verb);
+            if (items.Count == 0 && string.Equals(verb, "NewFolder", StringComparison.OrdinalIgnoreCase))
+                return new ShellMenuResult(ShellMenuOutcome.NewFolder, Verb: verb);
 
             var info = new CMINVOKECOMMANDINFOEX
             {

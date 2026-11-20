@@ -94,6 +94,19 @@
                         <TextBlock Text="GemmaChat" VerticalAlignment="Center" />
                     </StackPanel>
                 </ToggleButton>
+                <ToggleButton x:Name="FlashSyncTab" Style="{StaticResource TitleTabButton}"
+                              ToolTip="FlashSync (backup jobs)" Click="FlashSyncTab_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <!-- Turns while a job runs (MainWindow.FlashSync.cs). -->
+                        <Image x:Name="FlashSyncTabIcon" Source="Assets/flashsync.ico" Style="{StaticResource TitleTabIcon}"
+                               RenderTransformOrigin="0.5,0.5">
+                            <Image.RenderTransform>
+                                <RotateTransform />
+                            </Image.RenderTransform>
+                        </Image>
+                        <TextBlock Text="FlashSync" VerticalAlignment="Center" />
+                    </StackPanel>
+                </ToggleButton>
             </StackPanel>
             <StackPanel Grid.Column="2" Orientation="Horizontal">
                 <!-- Update: GitHub's newest release, what changed, update on a click (MainWindow.Update.cs). -->
@@ -166,6 +179,10 @@
 
         <!-- GemmaChat: covers everything below the title bar while shown (title bar tabs). -->
         <views:GemmaChatView x:Name="GemmaChatPage" Grid.Row="1" Grid.RowSpan="3" Grid.ColumnSpan="5"
+                             Visibility="Collapsed" />
+
+        <!-- FlashSync: covers everything below the title bar while shown (title bar tabs). -->
+        <views:FlashSyncView x:Name="FlashSyncPage" Grid.Row="1" Grid.RowSpan="3" Grid.ColumnSpan="5"
                              Visibility="Collapsed" />
     </Grid>
     </Border>

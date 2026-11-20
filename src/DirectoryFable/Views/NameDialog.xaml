@@ -1,0 +1,26 @@
+<Window x:Class="DirectoryFable.Views.NameDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="New folder"
+        SizeToContent="WidthAndHeight" ResizeMode="NoResize"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner"
+        Background="{StaticResource WindowBackgroundBrush}"
+        Foreground="{StaticResource ListTextBrush}"
+        FontFamily="{StaticResource UiFont}" FontSize="{StaticResource UiFontSize}">
+    <!-- The name of a file or folder: "New folder" and "Rename". The name is checked while it is typed; the button
+         stays off while the name cannot be used. -->
+    <StackPanel Margin="16" Width="440">
+        <TextBlock x:Name="PromptText" Margin="0,0,0,8" TextTrimming="CharacterEllipsis" />
+        <TextBox x:Name="NameBox" MinHeight="0" Height="26" Padding="4,0" VerticalContentAlignment="Center"
+                 MaxLength="255" TextChanged="NameBox_TextChanged" />
+        <!-- Keeps its line, so the window does not change its size while a problem comes and goes. -->
+        <TextBlock x:Name="ProblemText" Margin="0,6,0,0" MinHeight="16" TextWrapping="Wrap"
+                   Foreground="{StaticResource ErrorTextBrush}" />
+        <!-- A note that does not stop the rename (another file type). -->
+        <TextBlock x:Name="NoteText" Margin="0,2,0,0" TextWrapping="Wrap" Foreground="#FFB454" Visibility="Collapsed" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button x:Name="OkButton" Content="Create" IsDefault="True" MinWidth="80" Margin="0,0,8,0" Click="Ok_Click" />
+            <Button Content="Cancel" IsCancel="True" MinWidth="80" />
+        </StackPanel>
+    </StackPanel>
+</Window>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>FlashSync</title>
+  <defs>
+    <linearGradient id="blue" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0" stop-color="#087DE0"/><stop offset="1" stop-color="#0041B8"/></linearGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0" stop-color="#27CCD9"/><stop offset="1" stop-color="#0099B8"/></linearGradient>
+  </defs>
+  <path fill="url(#cyan)" d="M 23,102 C 36,54 77,22 126,22 C 160,22 190,36 211,60 L 227,44 L 229,98 L 175,96 L 195,76 C 178,56 154,44 126,44 C 87,44 54,70 44,108 Z"/>
+  <path fill="url(#cyan)" d="M 233,154 C 220,202 179,234 130,234 C 96,234 66,220 45,196 L 29,212 L 27,158 L 81,160 L 61,180 C 78,200 102,212 130,212 C 169,212 202,186 212,148 Z"/>
+  <path fill="url(#blue)" d="M 73,78 L 111,78 Q 117,78 121,84 L 130,96 L 181,96 Q 194,96 194,109 L 194,174 Q 194,187 181,187 L 73,187 Q 60,187 60,174 L 60,91 Q 60,78 73,78 Z"/>
+  <path fill="#E8F9FF" d="M 130,105 L 108,143 L 126,143 L 116,176 L 151,132 L 133,132 L 145,105 Z"/>
+</svg>

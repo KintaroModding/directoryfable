@@ -46,6 +46,7 @@ public partial class AstraViewerView
             _pdfDrawTimer.Stop();
             DrawShownPages();
         };
+        InitPdfFind();
     }
 
     private bool IsPdfShown => _pdf is not null;
@@ -77,6 +78,7 @@ public partial class AstraViewerView
     private void ClosePdf()
     {
         _pdfDrawTimer.Stop();
+        CloseFind();
         ClearTextSelection();
         foreach (var page in _pages)
         {
@@ -218,6 +220,7 @@ public partial class AstraViewerView
             DrawPage(page);
             if (_pdf is { } pdf)
                 _ = page.LoadTextAsync(pdf); // For the text cursor and for selecting.
+            ShowFindMarks(page);
         }
     }
 
@@ -629,6 +632,12 @@ public partial class AstraViewerView
                 else
                     scroller.ScrollToVerticalOffset(scroller.VerticalOffset + 60);
                 return true;
+            case Key.F when modifiers == ModifierKeys.Control:
+                OpenFind();
+                return true;
+            case Key.F3 when plain || modifiers == ModifierKeys.Shift:
+                FindStep(plain ? 1 : -1);
+                return true;
             case Key.F when plain:
                 PdfZoomTo(1, fit: true);
                 return true;
@@ -649,6 +658,9 @@ public partial class AstraViewerView
                 return true;
             case Key.Escape when HasTextSelection:
                 ClearTextSelection();
+                return true;
+            case Key.Escape when FindIsOpen:
+                CloseFind();
                 return true;
             default:
                 return false;

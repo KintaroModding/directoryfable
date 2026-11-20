@@ -115,7 +115,7 @@ public partial class FilePane
         if (selected.Count == 0)
         {
             extras.Add((CmdRefresh, "Refresh\tF5"));
-            if (FileClipboard.GetFiles() is not null)
+            if (FileClipboard.GetFiles() is not null || ShellPaste.HasItems())
                 extras.Add((CmdPaste, "Paste\tCtrl+V"));
             extras.Add((CmdNewFolder, "New folder\tCtrl+Shift+N"));
             if (FavoritesViewModel.Current?.Contains(_viewModel.CurrentPath) == false)
@@ -142,8 +142,11 @@ public partial class FilePane
 
         switch (result.Outcome)
         {
+            case ShellMenuOutcome.Rename when selected.Count > 0 && InArchive:
+                _viewModel.ShowStatus("Rename is not possible inside a ZIP file yet.");
+                break;
             case ShellMenuOutcome.Rename when selected.Count > 0:
-                BeginRename(selected[0]);
+                _ = RunSafeAsync(() => RenameAsync(selected[0]));
                 break;
             case ShellMenuOutcome.Extra when result.ExtraCommandId == CmdOpenInNewTab:
                 OpenInNewTabRequested?.Invoke(selected[0].FullPath);
@@ -155,6 +158,7 @@ public partial class FilePane
                 _ = RunSafeAsync(PasteAsync);
                 break;
             case ShellMenuOutcome.Extra when result.ExtraCommandId == CmdNewFolder:
+            case ShellMenuOutcome.NewFolder:
                 _ = RunSafeAsync(NewFolderAsync);
                 break;
             case ShellMenuOutcome.Extra when result.ExtraCommandId == CmdOpenInNotepad:

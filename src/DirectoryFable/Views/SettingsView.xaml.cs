@@ -77,6 +77,7 @@ public partial class SettingsView : UserControl
             ArchiveBackground.Text = _settings.ArchiveBackground;
             IconsOnly.IsChecked = _settings.QuickBarIconsOnly;
             NetworkInTree.IsChecked = _settings.NetworkInTree;
+            NewTabThisPc.IsChecked = _settings.NewTabThisPc;
             ShowSwatch(_settings.ArchiveBackground);
             SaveStatus.Text = "";
             ColumnsStatus.Text = "";
@@ -217,6 +218,17 @@ public partial class SettingsView : UserControl
         bool on = IconsOnly.IsChecked == true;
         Save(s => s.QuickBarIconsOnly = on);
         IconsOnlyChanged?.Invoke(on);
+    }
+
+    // ---------- Tabs ----------
+
+    private void NewTabThisPc_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_filling)
+            return;
+        bool on = NewTabThisPc.IsChecked == true;
+        Save(s => s.NewTabThisPc = on);
+        Views.PaneView.NewTabThisPc = on;
     }
 
     // ---------- Folder tree ----------

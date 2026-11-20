@@ -274,10 +274,17 @@ public partial class PaneView : UserControl
         e.Handled = true;
     }
 
+    /// <summary>Setting "New tab (+)": the "+" opens This PC (true) or the current tab's folder. Set at start and by the settings page.</summary>
+    public static bool NewTabThisPc { get; set; } = true;
+
+    /// <summary>"+": a new tab at the very right, at This PC or at the current tab's folder (setting); Ctrl+T copies the current tab next to it.</summary>
     private async void NewTab_Click(object sender, RoutedEventArgs e)
     {
-        if (_viewModel is not null)
-            await _viewModel.DuplicateTabAsync();
+        if (_viewModel is null)
+            return;
+        string path = !NewTabThisPc && _viewModel.SelectedTab?.CurrentPath is { Length: > 0 } current ? current : PathHelper.ThisPc;
+        await _viewModel.AddTabAsync(path, select: true, index: _viewModel.Tabs.Count);
+        TabScroller.ScrollToRightEnd();
     }
 
     // ---------- Drop files on a tab header ----------

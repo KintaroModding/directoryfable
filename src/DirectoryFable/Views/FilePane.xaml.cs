@@ -260,11 +260,6 @@ public partial class FilePane : UserControl
             EndAddressEdit(focusList: true);
         }
 
-        // The same for an open rename box (F2): a click elsewhere in this pane saves the new name,
-        // like Explorer. The box saves when it loses the focus, so move the focus to the list.
-        if (_viewModel.Items.Any(i => i.IsRenaming) && !IsInRenameBox(e.OriginalSource as DependencyObject))
-            FocusList();
-
         // Mouse side buttons, as in Explorer and browsers.
         if (e.ChangedButton == MouseButton.XButton1)
         {
@@ -445,17 +440,6 @@ public partial class FilePane : UserControl
             return;
         }
         PropertiesWindow.Open(Window.GetWindow(this), item.FullPath, item.Icon);
-    }
-
-    /// <summary>True inside the text box of a row that is being renamed.</summary>
-    private static bool IsInRenameBox(DependencyObject? d)
-    {
-        for (; d is not null and not ListViewItem; d = d is System.Windows.Media.Visual ? System.Windows.Media.VisualTreeHelper.GetParent(d) : LogicalTreeHelper.GetParent(d))
-        {
-            if (d is TextBox { DataContext: FileItem { IsRenaming: true } })
-                return true;
-        }
-        return false;
     }
 
     private static bool IsInsideButton(DependencyObject? d)

@@ -110,13 +110,6 @@
                 <Grid Margin="0,4,0,0" Width="{DynamicResource TilePictureWidth}" Height="32">
                     <TextBlock Text="{Binding DisplayName}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
                                TextAlignment="Center" ToolTip="{Binding DisplayName}" />
-                    <!-- In-place rename (F2), as in the rows. -->
-                    <TextBox Text="{Binding DisplayName, Mode=OneTime}" VerticalAlignment="Top"
-                             MinHeight="0" Height="20" Padding="2,0" VerticalContentAlignment="Center"
-                             Visibility="{Binding IsRenaming, Converter={StaticResource BoolToVisibility}}"
-                             IsVisibleChanged="RenameBox_IsVisibleChanged"
-                             KeyDown="RenameBox_KeyDown"
-                             LostKeyboardFocus="RenameBox_LostKeyboardFocus" />
                 </Grid>
                 <TextBlock Text="{Binding SizeText}" TextAlignment="Center" FontSize="11"
                            Foreground="{StaticResource SecondaryTextBrush}" />
@@ -483,17 +476,7 @@
                                             ToolTip="Properties (Alt+Enter)" Click="RowProperties_Click" />
                                     <TextBlock DockPanel.Dock="Right" Text="{Binding CompareText}" Style="{StaticResource CompareMarkText}"
                                                Margin="8,0,2,0" VerticalAlignment="Center" />
-                                    <Grid>
-                                        <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" />
-                                        <!-- In-place rename (F2). Shown only while IsRenaming is true. -->
-                                        <TextBox Text="{Binding DisplayName, Mode=OneTime}" MinWidth="220"
-                                                 MinHeight="0" Height="20" Padding="2,0" Margin="-3,0,0,0"
-                                                 VerticalContentAlignment="Center"
-                                                 Visibility="{Binding IsRenaming, Converter={StaticResource BoolToVisibility}}"
-                                                 IsVisibleChanged="RenameBox_IsVisibleChanged"
-                                                 KeyDown="RenameBox_KeyDown"
-                                                 LostKeyboardFocus="RenameBox_LostKeyboardFocus" />
-                                    </Grid>
+                                    <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" />
                                 </DockPanel>
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>

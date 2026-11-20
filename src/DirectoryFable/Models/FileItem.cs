@@ -6,7 +6,6 @@ namespace DirectoryFable.Models;
 /// <summary>One row in a file list.</summary>
 public sealed class FileItem : ObservableObject
 {
-    private bool _isRenaming;
     private bool _isDropTarget;
     private long? _size;
     private long? _folderSize;
@@ -83,13 +82,6 @@ public sealed class FileItem : ObservableObject
     {
         get => _icon;
         set => SetField(ref _icon, value);
-    }
-
-    /// <summary>True while the name is being edited in place (F2).</summary>
-    public bool IsRenaming
-    {
-        get => _isRenaming;
-        set => SetField(ref _isRenaming, value);
     }
 
     /// <summary>On the clipboard as "cut" (Ctrl+X): the row is shown faded until pasted.</summary>

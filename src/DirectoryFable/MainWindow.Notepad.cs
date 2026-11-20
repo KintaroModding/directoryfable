@@ -73,11 +73,11 @@ public partial class MainWindow
     private void ShowNotepad(bool show) => ShowView(show ? MainView.Notepad : MainView.Explorer);
 
     /// <summary>The views below the title bar, one per title bar tab.</summary>
-    private enum MainView { Explorer, Notepad, Viewer, Search, Player, Vault, Chat }
+    private enum MainView { Explorer, Notepad, Viewer, Search, Player, Vault, Chat, Sync }
 
     private MainView ShownView => NotepadShown ? MainView.Notepad : ViewerShown ? MainView.Viewer
         : SearchShown ? MainView.Search : PlayerShown ? MainView.Player : KeeSeekShown ? MainView.Vault
-        : GemmaChatShown ? MainView.Chat : MainView.Explorer;
+        : GemmaChatShown ? MainView.Chat : FlashSyncShown ? MainView.Sync : MainView.Explorer;
 
     /// <summary>
     /// Shows one view below the title bar; the others keep their state. A click on the tab of
@@ -92,6 +92,7 @@ public partial class MainWindow
         PlayerTab.IsChecked = view == MainView.Player;
         KeeSeekTab.IsChecked = view == MainView.Vault;
         GemmaChatTab.IsChecked = view == MainView.Chat;
+        FlashSyncTab.IsChecked = view == MainView.Sync;
         if (view == ShownView)
             return;
         if (view != MainView.Player && PlayerPage.IsFullScreen)
@@ -107,6 +108,7 @@ public partial class MainWindow
         PlayerPage.Visibility = view == MainView.Player ? Visibility.Visible : Visibility.Collapsed;
         KeeSeekPage.Visibility = view == MainView.Vault ? Visibility.Visible : Visibility.Collapsed;
         GemmaChatPage.Visibility = view == MainView.Chat ? Visibility.Visible : Visibility.Collapsed;
+        FlashSyncPage.Visibility = view == MainView.Sync ? Visibility.Visible : Visibility.Collapsed;
         SetExplorerShown(view == MainView.Explorer);
         switch (view)
         {
@@ -128,6 +130,9 @@ public partial class MainWindow
                 break;
             case MainView.Chat:
                 GemmaChatPage.OnShown();
+                break;
+            case MainView.Sync:
+                FlashSyncPage.OnShown();
                 break;
             default:
                 ActivePaneView.FocusList();
