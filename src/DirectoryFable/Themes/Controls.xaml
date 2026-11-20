@@ -644,6 +644,8 @@
                                 <Button Style="{StaticResource SearchPanelButton}" Content="&#xE70D;" ToolTip="Next match (F3)"
                                         Command="search:SearchCommands.FindNext"
                                         CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}" />
+                                <Button x:Name="FindAllButton" Style="{StaticResource SubtleButton}" Margin="2,0,2,0" Padding="8,0" Height="22"
+                                        Content="Find all" ToolTip="List every line of this file with a match, in the panel below (Alt+Enter)" />
                                 <Button Style="{StaticResource SearchPanelButton}" Content="&#xE711;" ToolTip="Close (Esc)"
                                         Command="search:SearchCommands.CloseSearchPanel"
                                         CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}" />

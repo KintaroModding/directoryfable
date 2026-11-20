@@ -56,6 +56,9 @@ public sealed class AppSettings
     /// <summary>The folder tree shows a Network group (computers, then their shares). Default off.</summary>
     public bool NetworkInTree { get; set; }
 
+    /// <summary>Notepad#'s look inside a file: "default", "vscode" or "midnight" (the Theme menu of its bar).</summary>
+    public string NotepadTheme { get; set; } = "default";
+
     /// <summary>The "+" of a pane's tab strip opens This PC (true, default) or the current tab's folder; always at the end.</summary>
     public bool NewTabThisPc { get; set; } = true;
 
@@ -271,6 +274,8 @@ public sealed class AppSettings
           "networkInTree": {{Json(s.NetworkInTree)}},
           // true: the "+" of a tab strip opens a new tab at This PC; false: at the folder of the current tab (Ctrl+T always copies the current tab).
           "newTabThisPc": {{Json(s.NewTabThisPc)}},
+          // Notepad#'s look inside a file (its Theme menu): "default", "vscode" or "midnight".
+          "notepadTheme": {{Json(s.NotepadTheme)}},
           // File list background while inside a ZIP file ("#RRGGBB"; normal list: "#191919").
           "archiveBackground": {{Json(s.ArchiveBackground)}},
           // Folder of 7-Zip (7zG.exe, 7z.exe) for the "7z" button and 7z / RAR archives; "" = find it automatically.

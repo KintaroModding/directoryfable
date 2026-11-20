@@ -25,6 +25,7 @@ public partial class NotepadView : UserControl
     public NotepadView()
     {
         InitializeComponent();
+        EditorHighlighting.UseTheme(EditorTheme.ById(AppSettings.Load().NotepadTheme)); // Before the first file opens.
         EditorHighlighting.EnsureReady();
         FileList.ItemsSource = _rows;
 
@@ -45,6 +46,9 @@ public partial class NotepadView : UserControl
         search.MarkerBrush = new SolidColorBrush(Color.FromArgb(0x70, 0xB3, 0x5C, 0x1E));
         search.MarkerCornerRadius = 2;
         Minimap.Attach(Editor);
+        ApplyThemeColors(EditorHighlighting.Theme);
+        // A click into a word marks the same word everywhere on screen (as in VS Code).
+        Editor.TextArea.TextView.BackgroundRenderers.Add(new DirectoryFable.Editor.WordMarker(Editor.TextArea));
         // The scroll bar right of the minimap follows the editor (and the editor follows it).
         Editor.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler((_, _) => SyncScrollBar()), handledEventsToo: true);
         Editor.SizeChanged += (_, _) => SyncScrollBar();
@@ -764,6 +768,78 @@ public partial class NotepadView : UserControl
         if (answer == MessageBoxResult.Yes)
             return changed.All(SaveDocument);
         return true;
+    }
+
+    // ---------- Theme menu ----------
+
+    /// <summary>"Default", "VS Code": the look inside a file. The choice is kept (settings.json) and holds for all files.</summary>
+    private void Theme_Click(object sender, RoutedEventArgs e)
+    {
+        var menu = NewMenu(ThemeButton, PlacementMode.Bottom);
+        foreach (var theme in EditorTheme.All)
+        {
+            var item = new MenuItem { Header = theme.Name, IsCheckable = true, IsChecked = theme == EditorHighlighting.Theme };
+            item.Click += (_, _) => SetTheme(theme);
+            menu.Items.Add(item);
+        }
+        menu.IsOpen = true;
+    }
+
+    private void PreviousTheme_Click(object sender, RoutedEventArgs e) => StepTheme(-1);
+
+    private void NextTheme_Click(object sender, RoutedEventArgs e) => StepTheme(1);
+
+    /// <summary>The theme before / after the current one, in the menu's order; wraps at both ends.</summary>
+    private void StepTheme(int step)
+    {
+        var all = EditorTheme.All;
+        int at = Math.Max(0, all.ToList().IndexOf(EditorHighlighting.Theme));
+        SetTheme(all[(at + step + all.Count) % all.Count]);
+    }
+
+    private void SetTheme(EditorTheme theme)
+    {
+        if (theme == EditorHighlighting.Theme)
+            return;
+        EditorHighlighting.UseTheme(theme); // The definitions are built again with the theme's colors ...
+        foreach (var document in Documents)
+        {
+            // ... so every file takes its language's new definition.
+            if (document.Highlighting is { } old)
+                document.Highlighting = EditorHighlighting.ByName(old.Name) ?? old;
+        }
+        Editor.SyntaxHighlighting = Active?.Highlighting;
+        ApplyThemeColors(theme);
+        try
+        {
+            AppSettings.Update(s => s.NotepadTheme = theme.Id);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            ShowMessage($"The theme could not be saved: {ex.Message}");
+        }
+    }
+
+    /// <summary>The theme's background, text, line number, current line and selection colors.</summary>
+    private void ApplyThemeColors(EditorTheme theme)
+    {
+        static Brush Solid(Color color)
+        {
+            var brush = new SolidColorBrush(color);
+            brush.Freeze();
+            return brush;
+        }
+        var background = Solid(theme.Background);
+        Editor.Background = background;
+        Editor.Foreground = Solid(theme.Text);
+        Editor.LineNumbersForeground = Solid(theme.LineNumber);
+        Editor.TextArea.TextView.CurrentLineBackground = Solid(theme.CurrentLine);
+        Editor.TextArea.SelectionBrush = Solid(theme.Selection);
+        PathBar.Background = background;
+        FindResults.Background = background;
+        Minimap.SetBackground(theme.Minimap);
+        FileList.Background = Solid(theme.FileList); // The file list on the left matches the editor.
+        ThemeText.Text = theme.Name;
     }
 
     // ---------- Language menu ----------

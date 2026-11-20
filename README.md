@@ -188,6 +188,19 @@ yourself, see [Build](#build).
   expressions. **Replace** (`Ctrl+H`, or the arrow on the left of the search
   box): Replace (`Enter`) and Replace all (`Ctrl+Alt+Enter`, one Undo takes it
   back); with a regular expression `$1`, `$2` take the groups of the match.
+  **Find all** (button in the search box, or `Alt+Enter`) lists every line of
+  the file with a match in the panel below, the matches colored; a click on a
+  line (or the arrow keys) shows it in the editor, a double-click or `Enter`
+  goes there.
+- **Theme** menu (left of Language): the look inside a file. `Default` is
+  the look Notepad# always had; `VS Code` follows VS Code's dark theme (a
+  near-black background, gray comments, light blue strings, purple methods).
+  `Midnight` is DirectoryFable's own: a deep blue-black background with soft
+  contrast, cool blue keywords and methods, warm strings and numbers.
+  The choice holds for all files and is kept.
+- **Word highlight**: a click into a word marks every place of that word in
+  the file with a gray box (whole words, capital letters do not matter), as
+  in VS Code.
 - **Find in files** (`Ctrl+Shift+F`): a panel above the status line searches a
   folder and its subfolders (not `.git`, `.vs`, `node_modules`, `bin`, `obj`)
   with the same options, in all files or in patterns such as `*.cs *.xaml`.

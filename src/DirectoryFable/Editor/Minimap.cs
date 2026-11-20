@@ -23,7 +23,7 @@ public sealed class Minimap : FrameworkElement
     private const int MaxColumns = 180;       // Characters drawn per line.
     private int _pitch = PreferredPitch;      // Device pixels per line for the current file.
 
-    private static readonly Brush BackgroundBrush = Freeze(new SolidColorBrush(Color.FromRgb(0x1A, 0x1A, 0x1A)));
+    private Brush _backgroundBrush = Freeze(new SolidColorBrush(Color.FromRgb(0x1A, 0x1A, 0x1A)));
     private static readonly Brush BoxBrush = Freeze(new SolidColorBrush(Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF)));
     private static readonly Brush BoxActiveBrush = Freeze(new SolidColorBrush(Color.FromArgb(0x48, 0xFF, 0xFF, 0xFF)));
 
@@ -35,7 +35,7 @@ public sealed class Minimap : FrameworkElement
     private const int MaxBitmapHeight = 16384;
     private const int MaxColoredLines = 20000; // Larger files: one color (highlighting all lines is slow).
 
-    private static readonly Color BackgroundColor = Color.FromRgb(0x1A, 0x1A, 0x1A);
+    private Color _backgroundColor = Color.FromRgb(0x1A, 0x1A, 0x1A);
     private static readonly Color PlainColor = Color.FromRgb(0x8A, 0x8A, 0x8A);
 
     private readonly DispatcherTimer _rebuildTimer;
@@ -60,6 +60,14 @@ public sealed class Minimap : FrameworkElement
     }
 
     /// <summary>The editor this minimap shows and scrolls.</summary>
+    /// <summary>The theme's background; the picture is made again.</summary>
+    public void SetBackground(Color color)
+    {
+        _backgroundColor = color;
+        _backgroundBrush = Freeze(new SolidColorBrush(color));
+        Rebuild();
+    }
+
     public void Attach(TextEditor editor)
     {
         _editor = editor;
@@ -104,7 +112,7 @@ public sealed class Minimap : FrameworkElement
         int height = Math.Clamp(_lines * _pitch, 1, MaxBitmapHeight);
         int drawnLines = Math.Min(_lines, height / _pitch);
         var pixels = new int[width * height];
-        Array.Fill(pixels, ToBgra(BackgroundColor));
+        Array.Fill(pixels, ToBgra(_backgroundColor));
 
         var definition = _editor!.SyntaxHighlighting;
         using var highlighter = definition is null || _lines > MaxColoredLines ? null
@@ -255,7 +263,7 @@ public sealed class Minimap : FrameworkElement
 
     protected override void OnRender(DrawingContext dc)
     {
-        dc.DrawRectangle(BackgroundBrush, null, new Rect(0, 0, ActualWidth, ActualHeight));
+        dc.DrawRectangle(_backgroundBrush, null, new Rect(0, 0, ActualWidth, ActualHeight));
         if (_bitmap is null || _editor?.Document is null)
             return;
 

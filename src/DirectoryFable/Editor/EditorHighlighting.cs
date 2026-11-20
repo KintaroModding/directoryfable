@@ -9,8 +9,8 @@ namespace DirectoryFable.Editor;
 /// <summary>
 /// Syntax highlighting for Notepad#. AvalonEdit's built-in definitions are
 /// made for a white background: they are loaded again here from AvalonEdit's own resources,
-/// their colors are changed to a dark palette (like VS Code's Dark+) before they are built,
-/// and registered under the same names. Own definitions (Editor/Syntax/*.xshd, made for the dark background):
+/// their colors are changed to the dark palette of the chosen <see cref="EditorTheme"/> (Default: like VS Code's
+/// Dark+) before they are built, and registered under the same names. A theme switch builds them again. Own definitions (Editor/Syntax/*.xshd, made for the dark background):
 /// AutoHotkey, INI, Batch, YAML, TOML, TypeScript, Go, Rust, Lua, Shell script, Ruby, Kotlin, Swift, Dockerfile,
 /// Makefile, Registry, Shader (GLSL / HLSL) and Log; and Technical Notes (its own highlighter, see
 /// <see cref="TechnicalNotes"/>).
@@ -18,6 +18,25 @@ namespace DirectoryFable.Editor;
 public static class EditorHighlighting
 {
     private static bool _ready;
+
+    /// <summary>The names of the registered languages (AvalonEdit's manager lists a definition again each time it is registered).</summary>
+    private static readonly List<string> Names = [];
+
+    /// <summary>The theme the definitions are built with.</summary>
+    public static EditorTheme Theme { get; private set; } = EditorTheme.Default;
+
+    /// <summary>
+    /// Chooses the theme. Before the first file opens this only remembers it; afterwards the definitions are built again
+    /// (the caller gives its files the new definitions, see <see cref="ByName"/>).
+    /// </summary>
+    public static void UseTheme(EditorTheme theme)
+    {
+        if (theme == Theme)
+            return;
+        Theme = theme;
+        if (_ready)
+            Build();
+    }
 
     /// <summary>Built-in definitions: name, extensions, resource file (from AvalonEdit's Resources.cs).</summary>
     private static readonly (string Name, string[] Extensions, string File)[] BuiltIn =
@@ -55,7 +74,21 @@ public static class EditorHighlighting
         if (_ready)
             return;
         _ready = true;
+        Build();
+    }
+
+    private static void Register(HighlightingManager manager, string name, string[] extensions, IHighlightingDefinition definition)
+    {
+        manager.RegisterHighlighting(name, extensions, definition);
+        if (!Names.Contains(name))
+            Names.Add(name);
+    }
+
+    /// <summary>Loads and registers every definition with the colors of <see cref="Theme"/>.</summary>
+    private static void Build()
+    {
         var manager = HighlightingManager.Instance;
+        var palette = Theme.Palette;
         var avalon = typeof(HighlightingManager).Assembly;
 
         foreach (var (name, extensions, file) in BuiltIn)
@@ -67,8 +100,8 @@ public static class EditorHighlighting
                     continue;
                 using var reader = XmlReader.Create(stream);
                 var xshd = HighlightingLoader.LoadXshd(reader);
-                Darken(xshd);
-                manager.RegisterHighlighting(name, extensions, HighlightingLoader.Load(xshd, manager));
+                Darken(xshd, palette);
+                Register(manager, name, extensions, HighlightingLoader.Load(xshd, manager));
             }
             catch (Exception ex) when (ex is XmlException or HighlightingDefinitionInvalidException or IOException)
             {
@@ -84,7 +117,10 @@ public static class EditorHighlighting
                 using var stream = own.GetManifestResourceStream(resource)!;
                 using var reader = XmlReader.Create(stream);
                 var xshd = HighlightingLoader.LoadXshd(reader);
-                manager.RegisterHighlighting(xshd.Name, [.. xshd.Extensions], HighlightingLoader.Load(xshd, manager));
+                // Made for the dark background already: only a theme that has its own colors changes them.
+                if (Theme.RecolorOwnLanguages)
+                    Darken(xshd, palette);
+                Register(manager, xshd.Name, [.. xshd.Extensions], HighlightingLoader.Load(xshd, manager));
             }
             catch (Exception ex) when (ex is XmlException or HighlightingDefinitionInvalidException or ArgumentException)
             {
@@ -92,7 +128,7 @@ public static class EditorHighlighting
             }
         }
 
-        manager.RegisterHighlighting(TechnicalNotes.Name, TechnicalNotes.Extensions, TechnicalNotesDefinition.Instance);
+        Register(manager, TechnicalNotes.Name, TechnicalNotes.Extensions, TechnicalNotesDefinition.Instance);
     }
 
     /// <summary>The languages of the Language menu, sorted by name.</summary>
@@ -101,8 +137,9 @@ public static class EditorHighlighting
         get
         {
             EnsureReady();
-            return [.. HighlightingManager.Instance.HighlightingDefinitions
-                .Where(d => !Hidden.Contains(d.Name))
+            return [.. Names.Where(n => !Hidden.Contains(n))
+                .Select(n => HighlightingManager.Instance.GetDefinition(n))
+                .OfType<IHighlightingDefinition>()
                 .OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase)];
         }
     }
@@ -122,23 +159,13 @@ public static class EditorHighlighting
 
     // ---------- Dark palette ----------
 
-    private static readonly Color CommentColor = Color.FromRgb(0x6A, 0x99, 0x55);
-    private static readonly Color StringColor = Color.FromRgb(0xCE, 0x91, 0x78);
-    private static readonly Color NumberColor = Color.FromRgb(0xB5, 0xCE, 0xA8);
-    private static readonly Color KeywordColor = Color.FromRgb(0x56, 0x9C, 0xD6);
-    private static readonly Color ControlColor = Color.FromRgb(0xC5, 0x86, 0xC0);
-    private static readonly Color MethodColor = Color.FromRgb(0xDC, 0xDC, 0xAA);
-    private static readonly Color TypeColor = Color.FromRgb(0x4E, 0xC9, 0xB0);
-    private static readonly Color AttributeColor = Color.FromRgb(0x9C, 0xDC, 0xFE);
-    private static readonly Color PunctuationColor = Color.FromRgb(0xD4, 0xD4, 0xD4);
-
     /// <summary>Gives every named color a foreground that reads well on the dark editor background.</summary>
-    private static void Darken(XshdSyntaxDefinition xshd)
+    private static void Darken(XshdSyntaxDefinition xshd, SyntaxPalette palette)
     {
         foreach (var color in xshd.Elements.OfType<XshdColor>())
         {
             color.Background = null; // Light backgrounds (e.g. Patch) would glare.
-            Color? mapped = ByColorName(color.Name ?? "");
+            Color? mapped = ByColorName(color.Name ?? "", palette);
             if (mapped is null && color.Foreground?.GetColor(null) is Color original)
                 mapped = Lighten(original);
             if (mapped is { } c)
@@ -146,29 +173,31 @@ public static class EditorHighlighting
         }
     }
 
-    private static Color? ByColorName(string name)
+    private static Color? ByColorName(string name, SyntaxPalette p)
     {
         bool Has(params string[] parts) => parts.Any(p => name.Contains(p, StringComparison.OrdinalIgnoreCase));
 
         if (Has("Comment", "XmlDoc", "DocComment"))
-            return CommentColor;
+            return p.Comment;
         if (Has("String", "Char", "Regex", "AttributeValue", "XmlString"))
-            return StringColor;
+            return p.String;
         if (Has("Number", "Digit"))
-            return NumberColor;
+            return p.Number;
         if (Has("Preprocessor", "Directive", "Pragma", "Jump", "Goto", "Iteration", "Selection", "Exception", "Return"))
-            return ControlColor;
+            return p.Control;
         if (Has("Method", "Function"))
-            return MethodColor;
+            return p.Method;
         if (Has("ReferenceType", "ValueType", "TypeKeyword", "Class"))
-            return TypeColor;
+            return p.Type;
         if (Has("AttributeName", "Property", "Variable", "Attribute"))
-            return AttributeColor;
+            return p.Attribute;
         if (Has("Punctuation", "Operator", "Slash"))
-            return name.Contains("Keyword", StringComparison.OrdinalIgnoreCase) ? KeywordColor : PunctuationColor;
+            return name.Contains("Keyword", StringComparison.OrdinalIgnoreCase) ? p.Keyword : p.Punctuation;
+        if (Has("Namespace"))
+            return p.Namespace; // using, namespace.
         if (Has("Keyword", "Modifier", "Visibility", "Access", "TrueFalse", "Null", "This", "Void", "Tag", "Context",
-                "Semantic", "Unsafe", "Checked", "Namespace", "GetSet", "Parameter"))
-            return KeywordColor;
+                "Semantic", "Unsafe", "Checked", "GetSet", "Parameter"))
+            return p.Keyword;
         return null;
     }
 
