@@ -464,14 +464,22 @@ public partial class AstraViewerView : UserControl
         ScheduleStateSave();
     }
 
-    /// <summary>Empties the history (the image files are not touched).</summary>
-    public void ClearHistory()
+    /// <summary>Empties the history after a question (a misclick would lose it all); the image files are not touched. True = cleared.</summary>
+    public bool ClearHistory()
     {
+        if (_history.Count == 0)
+            return false;
+        var answer = MessageDialog.Show(Window.GetWindow(this),
+            $"Clear the history ({_history.Count:N0} {(_history.Count == 1 ? "file" : "files")})?\n\nOnly the list goes; the files themselves stay where they are.",
+            "AstraViewer", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
+        if (answer != MessageBoxResult.Yes)
+            return false;
         foreach (var item in _history)
             item.CancelThumbnail();
         _history.Clear();
         HistoryEmptyText.Visibility = Visibility.Visible;
         ScheduleStateSave();
+        return true;
     }
 
     private void MarkMissing(string path, bool missing)
@@ -500,7 +508,7 @@ public partial class AstraViewerView : UserControl
             menu.Items.Add(new Separator());
             Add(menu, "Remove from history", "", () => RemoveFromHistory(item));
         }
-        Add(menu, "Clear history", "", ClearHistory, enabled: _history.Count > 0);
+        Add(menu, "Clear history...", "", () => ClearHistory(), enabled: _history.Count > 0);
         menu.IsOpen = true;
     }
 

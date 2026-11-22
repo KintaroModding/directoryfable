@@ -110,7 +110,11 @@ yourself, see [Build](#build).
   scrolls when you drag past its top or bottom.
 - **Drag and drop** between the panes, tabs, the tree, the favorites and other
   programs. A right-button drag asks what to do; dropped into the same folder,
-  it makes a copy under a new name. A drag shows Windows' drag picture (the
+  it makes a copy under a new name. Archives (ZIP; 7z and RAR with 7-Zip) dragged with the
+  right button offer **Extract here** and **Extract to "name\"** too, also in
+  their own folder. 7-Zip unpacks them when it is installed (also ZIP files),
+  WinRAR unpacks RAR files when it is installed; both are found automatically,
+  or set their folders in Settings, Tools. A drag shows Windows' drag picture (the
   file's icon or thumbnail, a count for several) and what a drop would do
   ("Move to Documents").
 - **Paste from another computer**: files copied in a remote desktop or a

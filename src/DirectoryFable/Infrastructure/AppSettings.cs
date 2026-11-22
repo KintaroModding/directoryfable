@@ -155,6 +155,9 @@ public sealed class AppSettings
     /// <summary>Folder with 7zG.exe / 7z.exe ("7z" button, 7z and RAR browsing); empty = find 7-Zip automatically.</summary>
     public string SevenZipFolder { get; set; } = "";
 
+    /// <summary>Folder of WinRAR (UnRAR.exe) for unpacking RAR files; "" = find it automatically.</summary>
+    public string WinRarFolder { get; set; } = "";
+
     /// <summary>Start folders when there is no session (environment variables allowed).</summary>
     public string LeftPath { get; set; } = "%USERPROFILE%";
     public string RightPath { get; set; } = "C:\\";
@@ -290,6 +293,8 @@ public sealed class AppSettings
           "archiveBackground": {{Json(s.ArchiveBackground)}},
           // Folder of 7-Zip (7zG.exe, 7z.exe) for the "7z" button and 7z / RAR archives; "" = find it automatically.
           "sevenZipFolder": {{Json(s.SevenZipFolder)}},
+          // Folder of WinRAR (UnRAR.exe): unpacks RAR files when it is there (else 7-Zip). "" = find WinRAR automatically.
+          "winRarFolder": {{Json(s.WinRarFolder)}},
           // Notepad#: editor font and size.
           "editorFontFamily": {{Json(s.EditorFontFamily)}},
           "editorFontSize": {{s.EditorFontSize.ToString(System.Globalization.CultureInfo.InvariantCulture)}},

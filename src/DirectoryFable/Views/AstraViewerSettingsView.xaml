@@ -124,7 +124,7 @@
                     </StackPanel>
                     <ComboBox x:Name="HistorySizeBox" Grid.Column="1" Width="110" VerticalAlignment="Center" IsEditable="True"
                               SelectionChanged="HistorySize_Changed" LostKeyboardFocus="HistorySize_LostFocus" KeyDown="HistorySize_KeyDown" />
-                    <Button Grid.Column="2" Content="Clear history" MinWidth="110" Margin="12,0,0,0" HorizontalAlignment="Left"
+                    <Button Grid.Column="2" Content="Clear history..." MinWidth="110" Padding="12,0" Margin="12,0,0,0" HorizontalAlignment="Left"
                             VerticalAlignment="Center" Click="ClearHistory_Click" />
                 </Grid>
             </Border>

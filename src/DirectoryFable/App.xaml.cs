@@ -65,6 +65,7 @@ public partial class App : Application
         var session = settings.RestoreSession ? SessionState.Load() : null;
         ApplyColors(settings);
         SevenZip.Configure(settings.SevenZipFolder);
+        WinRar.Configure(settings.WinRarFolder);
         Editor.EditorFileTypes.Configure(settings);
         Viewer.ImageFileTypes.Configure(settings);
         Player.VideoFileTypes.Configure(settings);

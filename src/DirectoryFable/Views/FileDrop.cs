@@ -90,12 +90,15 @@ public static class FileDrop
         IntPtr hwnd = Window.GetWindow(owner) is { } w ? new System.Windows.Interop.WindowInteropHelper(w).Handle : IntPtr.Zero;
 
         bool sameFolder = sources.All(s => IsInFolder(s, targetFolder));
+        // Archives (ZIP, 7z, RAR) dropped with the right button: the menu offers to unpack them, as Explorer with 7-Zip
+        // does; also into their own folder.
+        bool archives = rightDrag && !ZipBrowser.IsInArchive(targetFolder) && sources.All(ZipBrowser.IsExtractable);
         owner.Dispatcher.BeginInvoke(() =>
         {
-            if (rightDrag && sameFolder && sameFolderRightDrop is not null)
+            if (rightDrag && sameFolder && sameFolderRightDrop is not null && !archives)
                 sameFolderRightDrop(sources);
             else if (rightDrag)
-                ShowDropMenu(owner, hwnd, sources, targetFolder, allowed, effect);
+                ShowDropMenu(owner, hwnd, sources, targetFolder, allowed, effect, archives, sameFolder ? sameFolderRightDrop : null);
             else
                 _ = RunAsync(hwnd, effect, sources, targetFolder);
         });
@@ -103,10 +106,34 @@ public static class FileDrop
 
     private static void ShowDropMenu(
         FrameworkElement owner, IntPtr hwnd, string[] sources, string targetFolder,
-        DragDropEffects allowed, DragDropEffects defaultEffect)
+        DragDropEffects allowed, DragDropEffects defaultEffect, bool archives = false, Action<string[]>? duplicate = null)
     {
         bool sameFolder = sources.All(s => IsInFolder(s, targetFolder));
         var menu = new ContextMenu { PlacementTarget = owner, Placement = PlacementMode.MousePoint };
+
+        if (archives)
+        {
+            // A small line under each entry names the program that unpacks (found on this PC, or set in Settings, Tools).
+            string by = "with " + string.Join(", ", sources.Select(ZipBrowser.ExtractorName).Distinct());
+            var here = new MenuItem { Header = WithNote("Extract here", by, bold: true) };
+            System.Windows.Automation.AutomationProperties.SetName(here, "Extract here");
+            here.Click += async (_, _) => await ExtractAsync(hwnd, sources, targetFolder, ownFolder: false);
+            menu.Items.Add(here);
+            string name = sources.Length == 1 ? $"Extract to \"{Path.GetFileNameWithoutExtension(sources[0])}\\\"" : "Extract each to its own folder";
+            var own = new MenuItem { Header = WithNote(name, by, bold: false) };
+            System.Windows.Automation.AutomationProperties.SetName(own, name);
+            own.Click += async (_, _) => await ExtractAsync(hwnd, sources, targetFolder, ownFolder: true);
+            menu.Items.Add(own);
+            menu.Items.Add(new Separator());
+            if (duplicate is not null)
+            {
+                // Dropped in its own folder: a copy under a new name (the Duplicate dialog), as without archives.
+                var copy = new MenuItem { Header = "Duplicate..." };
+                copy.Click += (_, _) => duplicate(sources);
+                menu.Items.Add(copy);
+                defaultEffect = DragDropEffects.None; // "Extract here" is the bold one.
+            }
+        }
 
         void Add(string header, DragDropEffects effect, bool enabled)
         {
@@ -120,13 +147,76 @@ public static class FileDrop
             menu.Items.Add(item);
         }
 
-        Add("Copy here", DragDropEffects.Copy, enabled: true);
+        if (archives)
+            defaultEffect = DragDropEffects.None; // "Extract here" is the bold one.
+        if (duplicate is null)
+            Add("Copy here", DragDropEffects.Copy, enabled: true);
         Add("Move here", DragDropEffects.Move, enabled: !sameFolder);
         Add("Create shortcuts here", DragDropEffects.Link, enabled: true);
         menu.Items.Add(new Separator());
         menu.Items.Add(new MenuItem { Header = "Cancel" }); // Closing the menu does nothing.
 
         menu.IsOpen = true;
+    }
+
+    /// <summary>A menu entry's text with a small gray line below it.</summary>
+    private static StackPanel WithNote(string text, string note, bool bold)
+    {
+        var panel = new StackPanel { Margin = new Thickness(0, 1, 0, 1) };
+        panel.Children.Add(new TextBlock { Text = text, FontWeight = bold ? FontWeights.Bold : FontWeights.Normal });
+        panel.Children.Add(new TextBlock
+        {
+            Text = note,
+            FontSize = 10.5,
+            Foreground = (System.Windows.Media.Brush)Application.Current.FindResource("SecondaryTextBrush"),
+        });
+        return panel;
+    }
+
+    /// <summary>
+    /// Unpacks each archive into a temp folder, then copies its content (or, with <paramref name="ownFolder"/>, a folder
+    /// named like the archive) into the target through Windows' copy: names that are taken get the usual question, and
+    /// Undo takes the copy back. A password-protected archive or a broken one gives a message.
+    /// </summary>
+    private static async Task ExtractAsync(IntPtr hwnd, string[] archives, string targetFolder, bool ownFolder)
+    {
+        foreach (string archive in archives)
+        {
+            string? temp = null;
+            try
+            {
+                System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+                string? folderName = ownFolder ? Path.GetFileNameWithoutExtension(archive) : null;
+                temp = await Task.Run(() => ZipBrowser.ExtractAllToTemp(archive, folderName));
+                System.Windows.Input.Mouse.OverrideCursor = null;
+                string[] items = folderName is not null
+                    ? [Path.Combine(temp, folderName)]
+                    : Directory.GetFileSystemEntries(temp);
+                if (items.Length == 0)
+                {
+                    MessageDialog.Show(null, $"{Path.GetFileName(archive)} is empty.", "DirectoryFable");
+                    continue;
+                }
+                if (!await FileOperations.CopyAsync(hwnd, items, targetFolder))
+                    break; // Cancelled: the other archives are not unpacked either.
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException
+                                       or InvalidDataException or NotSupportedException or System.ComponentModel.Win32Exception)
+            {
+                System.Windows.Input.Mouse.OverrideCursor = null;
+                MessageDialog.Show(null, $"{Path.GetFileName(archive)} could not be unpacked: {ex.Message}", "DirectoryFable",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            finally
+            {
+                System.Windows.Input.Mouse.OverrideCursor = null;
+                if (temp is not null)
+                {
+                    string done = temp;
+                    _ = Task.Run(() => ZipBrowser.DeleteTemp(done));
+                }
+            }
+        }
     }
 
     private static async Task RunAsync(IntPtr hwnd, DragDropEffects effect, string[] sources, string targetFolder)

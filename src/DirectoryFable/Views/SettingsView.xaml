@@ -305,6 +305,31 @@
                 </Grid>
             </Border>
 
+            <Border Style="{StaticResource SettingRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.RowSpan="2" Margin="0,0,24,0">
+                        <TextBlock Style="{StaticResource SettingName}" Text="WinRAR folder" />
+                        <TextBlock Style="{StaticResource SettingHelp}"
+                                   Text="Folder with UnRAR.exe. Unpacks RAR files (Extract here / Extract to); without WinRAR, 7-Zip does it. Leave empty to find WinRAR automatically." />
+                    </StackPanel>
+                    <TextBox x:Name="WinRarFolder" Grid.Column="1" VerticalAlignment="Center"
+                             LostKeyboardFocus="Path_LostFocus" KeyDown="Path_KeyDown" />
+                    <Button Grid.Column="2" Content="Browse…" MinWidth="90" Margin="8,0,0,0" VerticalAlignment="Center"
+                            Tag="{Binding ElementName=WinRarFolder}" Click="Browse_Click" />
+                    <TextBlock x:Name="WinRarStatus" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                               Style="{StaticResource SettingHelp}" Margin="0,6,0,0" />
+                </Grid>
+            </Border>
+
             <!-- ===== Updates ===== -->
             <TextBlock Style="{StaticResource SectionTitle}" Text="Updates" />
 

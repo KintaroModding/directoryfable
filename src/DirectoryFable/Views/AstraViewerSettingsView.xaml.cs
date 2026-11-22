@@ -32,7 +32,7 @@ public partial class AstraViewerSettingsView : UserControl
     public event Action<AppSettings>? SettingsChanged;
 
     /// <summary>"Clear history" was clicked.</summary>
-    public event Action? ClearHistoryRequested;
+    public event Func<bool>? ClearHistoryRequested;
 
     /// <summary>Reads settings.json again and fills the controls.</summary>
     public void Open()
@@ -120,8 +120,8 @@ public partial class AstraViewerSettingsView : UserControl
 
     private void ClearHistory_Click(object sender, RoutedEventArgs e)
     {
-        ClearHistoryRequested?.Invoke();
-        SaveStatus.Text = $"History cleared at {DateTime.Now:HH:mm:ss}";
+        if (ClearHistoryRequested?.Invoke() == true) // Asks first; "No" changes nothing.
+            SaveStatus.Text = $"History cleared at {DateTime.Now:HH:mm:ss}";
     }
 
     // ---------- File types ----------

@@ -74,6 +74,8 @@ public partial class SettingsView : UserControl
             RightPath.Text = _settings.RightPath;
             SevenZipFolder.Text = _settings.SevenZipFolder;
             ShowSevenZipStatus();
+            WinRarFolder.Text = _settings.WinRarFolder;
+            ShowWinRarStatus();
             ArchiveBackground.Text = _settings.ArchiveBackground;
             IconsOnly.IsChecked = _settings.QuickBarIconsOnly;
             NetworkInTree.IsChecked = _settings.NetworkInTree;
@@ -287,7 +289,8 @@ public partial class SettingsView : UserControl
         string left = LeftPath.Text.Trim();
         string right = RightPath.Text.Trim();
         string sevenZip = SevenZipFolder.Text.Trim();
-        if (left == _settings.LeftPath && right == _settings.RightPath && sevenZip == _settings.SevenZipFolder)
+        string winRar = WinRarFolder.Text.Trim();
+        if (left == _settings.LeftPath && right == _settings.RightPath && sevenZip == _settings.SevenZipFolder && winRar == _settings.WinRarFolder)
             return;
         // An empty box keeps the previous folder (an empty start folder makes no sense).
         if (left.Length == 0)
@@ -295,11 +298,13 @@ public partial class SettingsView : UserControl
         if (right.Length == 0)
             right = _settings.RightPath;
         bool sevenZipChanged = sevenZip != _settings.SevenZipFolder;
+        bool winRarChanged = winRar != _settings.WinRarFolder;
         Save(s =>
         {
             s.LeftPath = left;
             s.RightPath = right;
             s.SevenZipFolder = sevenZip; // Empty is allowed (= automatic).
+            s.WinRarFolder = winRar;
         });
         LeftPath.Text = _settings.LeftPath;
         RightPath.Text = _settings.RightPath;
@@ -308,6 +313,26 @@ public partial class SettingsView : UserControl
             Shell.SevenZip.Configure(sevenZip); // Applies at once.
             ShowSevenZipStatus();
         }
+        if (winRarChanged)
+        {
+            Shell.WinRar.Configure(winRar);
+            ShowWinRarStatus();
+        }
+    }
+
+    /// <summary>Which WinRAR is used now (or why none).</summary>
+    private void ShowWinRarStatus()
+    {
+        string? exe = Shell.WinRar.UnRarPath;
+        string used = exe is null ? "WinRAR was not found: 7-Zip unpacks RAR files." : $"Using {System.IO.Path.GetDirectoryName(exe)}";
+        WinRarStatus.Text = _settings.WinRarFolder.Length == 0
+            ? $"Automatic. {used}"
+            : Shell.WinRar.ConfiguredFolderInvalid
+                ? $"No UnRAR.exe in this folder. {used}"
+                : used;
+        WinRarStatus.Foreground = Shell.WinRar.ConfiguredFolderInvalid
+            ? (System.Windows.Media.Brush)FindResource("ErrorTextBrush")
+            : (System.Windows.Media.Brush)FindResource("SecondaryTextBrush");
     }
 
     /// <summary>Which 7-Zip is used now (or why none).</summary>
@@ -334,7 +359,7 @@ public partial class SettingsView : UserControl
         string current = Environment.ExpandEnvironmentVariables(box.Text.Trim());
         var dialog = new Microsoft.Win32.OpenFolderDialog
         {
-            Title = box == SevenZipFolder ? "Choose the 7-Zip folder" : "Choose the start folder",
+            Title = box == SevenZipFolder ? "Choose the 7-Zip folder" : box == WinRarFolder ? "Choose the WinRAR folder" : "Choose the start folder",
             InitialDirectory = Directory.Exists(current) ? current : "",
         };
         if (dialog.ShowDialog(Window.GetWindow(this)) == true)

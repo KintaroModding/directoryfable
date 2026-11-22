@@ -223,6 +223,43 @@ public static class ZipBrowser
 
     // ---------- Unpack ----------
 
+    /// <summary>The program that unpacks this archive whole: "WinRAR" (RAR), "7-Zip", or "Windows' .NET" (ZIP without 7-Zip).</summary>
+    public static string ExtractorName(string archivePath) =>
+        IsRarName(archivePath) && WinRar.UnRarPath is not null ? "WinRAR"
+        : UseSevenZip(archivePath) ? "7-Zip"
+        : ".NET (7-Zip not found)";
+
+    /// <summary>7z and RAR always go through 7-Zip; a ZIP too when 7-Zip is there (else .NET unpacks it).</summary>
+    private static bool UseSevenZip(string archivePath) => IsReadOnlyName(archivePath) || SevenZip.ConsolePath is not null;
+
+    /// <summary>True for an archive file on disk that can be unpacked whole (ZIP; 7z and RAR when 7-Zip is installed).</summary>
+    public static bool IsExtractable(string path) =>
+        (IsZipFile(path) || (IsRarName(path) && WinRar.UnRarPath is not null && File.Exists(path)))
+        && !IsInArchive(Path.GetDirectoryName(path) ?? ""); // The archive itself counts as "in an archive" (its root).
+
+    private static bool IsRarName(string path) => path.EndsWith(".rar", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Unpacks a whole archive into a new temporary folder (into a subfolder <paramref name="subfolder"/> when given)
+    /// and returns that folder. The caller copies from there and deletes the temp folder (<see cref="DeleteTemp"/>).
+    /// </summary>
+    public static string ExtractAllToTemp(string archivePath, string? subfolder)
+    {
+        string temp = Path.Combine(TempRoot, "x" + Guid.NewGuid().ToString("N")[..8]);
+        string target = subfolder is null ? temp : Path.Combine(temp, subfolder);
+        Directory.CreateDirectory(target);
+        if (IsRarName(archivePath) && WinRar.UnRarPath is not null)
+            WinRar.ExtractAll(archivePath, target); // RAR: WinRAR when it is installed (settings "WinRAR folder").
+        else if (UseSevenZip(archivePath))
+            RunSevenZip(["x", "-y", "-scsUTF-8", "-sccUTF-8", "-p-", "-o" + target, archivePath], workingDirectory: null);
+        else
+            ZipFile.ExtractToDirectory(archivePath, target, overwriteFiles: true); // Refuses entries outside the folder ("../").
+        return temp;
+    }
+
+    /// <summary>Deletes a temp folder made by <see cref="ExtractAllToTemp"/>.</summary>
+    public static void DeleteTemp(string temp) => TryDelete(temp);
+
     /// <summary>
     /// Unpacks items of one archive folder (inner paths) into a new temporary folder and
     /// returns the unpacked top-level paths (for opening, the clipboard or a drag).
@@ -231,7 +268,9 @@ public static class ZipBrowser
     {
         string target = Path.Combine(TempRoot, Guid.NewGuid().ToString("N")[..8]);
         Directory.CreateDirectory(target);
-        return IsReadOnlyName(zipFile)
+        // 7-Zip unpacks every type when it is there (settings "7-Zip folder", or found automatically); without it a ZIP
+        // is unpacked by .NET.
+        return UseSevenZip(zipFile)
             ? ExtractWithSevenZip(zipFile, innerPaths, target)
             : ExtractZip(zipFile, innerPaths, target);
     }
